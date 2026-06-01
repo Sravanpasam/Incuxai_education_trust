@@ -1,0 +1,6 @@
+{
+  "name": "AI FOR ALL Educational Trust",
+  "description": "An educational trust website designed to bring AI courses and workshops to farmers, students, teachers, and communities.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

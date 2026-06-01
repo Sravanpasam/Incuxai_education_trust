@@ -1,0 +1,11 @@
+$content = Get-Content -Path ".\src\index.css" -Raw
+
+$content = $content -replace "\.logo-title \{\s*font-family: 'Space Grotesk', sans-serif;\s*font-size: 1\.25rem;\s*font-weight: 700;\s*letter-spacing: -0\.01e;\s*color: var\(--text\);\s*transition: color 0\.4s ease;\s*\}", ".logo-title {`r`n  font-family: 'Space Grotesk', sans-serif;`r`n  font-size: 1.25rem;`r`n  font-weight: 800;`r`n  letter-spacing: -0.01em;`r`n  background: var(--x-gradient);`r`n  -webkit-background-clip: text;`r`n  -webkit-text-fill-color: transparent;`r`n  transition: opacity 0.4s ease;`r`n}"
+
+$content = $content -replace "\.logo-subtitle \{\s*font-family: 'Inter', sans-serif;\s*font-size: 0\.72rem;\s*font-weight: 600;\s*color: var\(--text-muted\);\s*text-transform: uppercase;\s*letter-spacing: 0\.04em;\s*transition: color 0\.4s ease;\s*\}", ".logo-subtitle {`r`n  font-family: 'Inter', sans-serif;`r`n  font-size: 0.72rem;`r`n  font-weight: 700;`r`n  background: var(--x-gradient);`r`n  -webkit-background-clip: text;`r`n  -webkit-text-fill-color: transparent;`r`n  text-transform: uppercase;`r`n  letter-spacing: 0.04em;`r`n  transition: opacity 0.4s ease;`r`n}"
+
+$content = $content -replace "nav a \{\s*color: #1e293b; /\* Premium soft dark text for readability \*/\s*text-decoration: none;\s*padding: 0\.5rem 1\.1rem;\s*border-radius: 99px;\s*font-size: 0\.9rem;\s*font-weight: 600;\s*transition: all 0\.4s cubic-bezier\(0\.16, 1, 0\.3, 1\);\s*cursor: pointer;\s*border: 1px solid transparent;\s*background: transparent;\s*\}", "nav a {`r`n  background: var(--x-gradient);`r`n  -webkit-background-clip: text;`r`n  -webkit-text-fill-color: transparent;`r`n  text-decoration: none;`r`n  padding: 0.5rem 1.1rem;`r`n  border-radius: 99px;`r`n  font-size: 0.95rem;`r`n  font-weight: 700;`r`n  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);`r`n  cursor: pointer;`r`n  border: 1px solid transparent;`r`n}"
+
+$content = $content -replace "header:not\(\.scrolled\) nav a \{\s*color: #ffffff; /\* Contrast on top of dark slide images \*/\s*background: rgba\(0, 0, 0, 0\.2\); /\* Semi-transparent dark capsule \*/\s*border-color: rgba\(255, 255, 255, 0\.1\);\s*\}", "header:not(.scrolled) nav a {`r`n  -webkit-text-fill-color: #ffffff;`r`n  background: rgba(0, 0, 0, 0.2);`r`n  border-color: rgba(255, 255, 255, 0.1);`r`n}"
+
+$content | Set-Content -Path ".\src\index.css"
