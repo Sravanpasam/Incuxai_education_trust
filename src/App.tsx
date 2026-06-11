@@ -33,6 +33,14 @@ import elivatxLogo from './assets/elivatx.jpeg';
 import hcetLogo from './assets/hcet.jpeg';
 import jobreciepeLogo from './assets/jobreciepe.jpeg';
 
+// Partner Logos
+import jvvLogo from './assets/JVV.jpeg';
+import sunLogo from './assets/SUN.jpeg';
+import covidfightersLogo from './assets/covidfighters.jpeg';
+import elivatxLogo from './assets/elivatx.jpeg';
+import hcetLogo from './assets/hcet.jpeg';
+import jobreciepeLogo from './assets/jobreciepe.jpeg';
+
 // Slides details (Futuristic city, AI students, robotics, technology, smart agritech)
 const slideImages = [
   editedPicImg,
@@ -450,6 +458,7 @@ export default function App() {
       document.querySelectorAll('nav > a, nav > .nav-item > a').forEach(a => a.classList.remove('active'));
       const navItems = document.querySelectorAll('nav > a, nav > .nav-item > a');
       const navMap: Record<string, number> = { home: 0, about: 1, ai4all: 2, programs: 3, volunteer: 4, teachxai: 5, gallery: 6, contact: 7 };
+      const navMap: Record<string, number> = { home: 0, about: 1, ai4all: 2, programs: 3, volunteer: 4, gallery: 5, contact: 6 };
       if (navMap[id] !== undefined && navItems[navMap[id]]) {
         navItems[navMap[id]].classList.add('active');
       }
@@ -978,6 +987,17 @@ export default function App() {
       const why = (document.getElementById('vol-app-why') as HTMLTextAreaElement)?.value;
       if (!fname || !phone || !email || !education || !why) {
         w.showToast('Please fill in all required fields');
+    w.registerVolunteer = () => {
+      const fname = (document.getElementById('vol-fname') as HTMLInputElement)?.value;
+      const email = (document.getElementById('vol-email') as HTMLInputElement)?.value;
+      const phone = (document.getElementById('vol-phone') as HTMLInputElement)?.value || '';
+      const state = (document.getElementById('vol-state') as HTMLSelectElement)?.value || '';
+      const city = (document.getElementById('vol-city') as HTMLInputElement)?.value || '';
+      const why = (document.getElementById('vol-why') as HTMLTextAreaElement)?.value || '';
+      const checkedDepts = Array.from(document.querySelectorAll('#vol-dept-checkboxes input[type="checkbox"]:checked')).map((cb: any) => cb.value);
+      const pass = (document.getElementById('vol-pass') as HTMLInputElement)?.value || '';
+      if (!fname || !email) {
+        w.showToast('Please fill in required fields');
         return;
       }
       const apps = getSafeArray('volunteer_applications');
@@ -1219,6 +1239,38 @@ export default function App() {
       (document.getElementById('tch-current-pass') as HTMLInputElement)!.value = '';
       (document.getElementById('tch-new-pass') as HTMLInputElement)!.value = '';
       w.showToast('Password updated successfully!');
+      volunteers.push({ name: fname, email, phone, state, city, why, depts: checkedDepts, date: new Date().toLocaleDateString('en-IN'), hours: 10, password: pass });
+      localStorage.setItem('volunteers', JSON.stringify(volunteers));
+      
+      w.renderVolunteersAndLeaderboard();
+      w.showToast('Registered successfully! Logging you in...');
+      
+      // Auto login
+      w.currentUserEmail = email;
+      currentUser = { role: 'volunteer', name: fname };
+      
+      const loginBtn = document.getElementById('login-btn');
+      if (loginBtn) loginBtn.textContent = 'Logout';
+      const loggedUserEl = document.getElementById('logged-user');
+      if (loggedUserEl) {
+        loggedUserEl.textContent = fname;
+        loggedUserEl.style.display = 'inline';
+      }
+      
+      setTimeout(() => {
+        w.closeSignUpModal();
+        const pName = document.getElementById('portal-name');
+        const pFullName = document.getElementById('portal-fullname');
+        const pAvatar = document.getElementById('portal-avatar');
+        if (pName) pName.textContent = fname;
+        if (pFullName) pFullName.textContent = fname;
+        if (pAvatar) pAvatar.textContent = fname[0].toUpperCase();
+        
+        w.renderEvents();
+        w.renderTasks();
+        w.renderVolunteersAndLeaderboard();
+        w.showPage('vol-portal');
+      }, 1000);
     };
 
     // Portal navigations
@@ -2562,6 +2614,7 @@ export default function App() {
                   </div>
                   <div className="about-detail-photo">
                     <img src={ourMissionImg} alt="Our Mission" />
+                    <img src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=400&auto=format&fit=crop" alt="Our Mission" />
                   </div>
                 </div>
                 
@@ -2587,6 +2640,7 @@ export default function App() {
                   </div>
                   <div className="about-detail-photo">
                     <img src={ourValuesImg} alt="Our Values" />
+                    <img src="https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=400&auto=format&fit=crop" alt="Our Values" />
                   </div>
                 </div>
 
@@ -2599,6 +2653,7 @@ export default function App() {
                   </div>
                   <div className="about-detail-photo">
                     <img src={ourJourneyImg} alt="Our Journey" />
+                    <img src="https://images.unsplash.com/photo-1517457373958-b7bdd4587205?q=80&w=400&auto=format&fit=crop" alt="Our Journey" />
                   </div>
                 </div>
               </div>
@@ -2620,6 +2675,13 @@ export default function App() {
               <div className="partner-card">
                 <div className="partner-logo-wrapper">
                   <img src={incuxLogoImg} alt="Incuxai Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                </div>
+              </div>
+
+              {/* Tile 1: JVV */}
+              <div className="partner-card">
+                <div className="partner-logo-wrapper">
+                  <img src={jvvLogo} alt="JVV Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
                 </div>
               </div>
 
@@ -2767,18 +2829,21 @@ export default function App() {
               <div className="card-text">IIT Delhi graduate. Spearheads vernacular AI prompt engineering bootcamps across 40+ villages.</div>
             </div>
             <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
+            <div className="card" style={{ textAlign: 'center' }}>
               <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=200&auto=format&fit=crop" alt="Sneha Patel" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
               <div className="card-title">Sneha Patel</div>
               <div style={{ fontSize: '0.8rem', color: 'var(--secondary)', fontWeight: 600, marginBottom: '0.5rem' }}>Outreach Coordinator, West India</div>
               <div className="card-text">Social work specialist. Mapped agricultural cooperative partnerships to train 20,000+ farmers in AI.</div>
             </div>
             <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
+            <div className="card" style={{ textAlign: 'center' }}>
               <img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=200&auto=format&fit=crop" alt="Karthik Raja" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
               <div className="card-title">Karthik Raja</div>
               <div style={{ fontSize: '0.8rem', color: 'var(--secondary)', fontWeight: 600, marginBottom: '0.5rem' }}>AI Curriculum Lead, South India</div>
               <div className="card-text">Software engineer. Designs interactive vernacular code templates for rural government schools.</div>
             </div>
             <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
+            <div className="card" style={{ textAlign: 'center' }}>
               <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop" alt="Ananya Das" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
               <div className="card-title">Ananya Das</div>
               <div style={{ fontSize: '0.8rem', color: 'var(--secondary)', fontWeight: 600, marginBottom: '0.5rem' }}>Literacy Coordinator, East India</div>
@@ -3155,6 +3220,102 @@ export default function App() {
                 ></iframe>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ========== CONTACT US PAGE ========== */}
+      <div id="contact" className="page" style={{ paddingTop: '85px', background: 'var(--darker)', minHeight: '80vh' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '3rem 2rem' }}>
+          <div className="section-header" style={{ textAlign: 'center', marginBottom: '3.5rem' }}>
+            <span className="section-tag">Get in Touch</span>
+            <h2 className="section-title">Contact <span style={{ color: 'var(--secondary)' }}>Us</span></h2>
+            <p className="section-sub">Have questions or want to collaborate? Reach out to us and we'll get back to you shortly.</p>
+          </div>
+
+          <div className="contact-grid">
+            {/* Contact Form */}
+            <div className="form-card" style={{ background: 'var(--glass)', border: '1px solid var(--glass-border)', padding: '2.5rem', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.02)' }}>
+              <h3 className="card-title" style={{ fontSize: '1.6rem', marginBottom: '1.5rem', borderBottom: '2px solid var(--secondary)', display: 'inline-block', paddingBottom: '0.4rem' }}>Send Us a Message</h3>
+              <form onSubmit={(e) => { e.preventDefault(); (window as any).showToast('Thank you! Your message has been sent successfully.'); (e.target as HTMLFormElement).reset(); }} className="contact-form">
+                <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                  <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>First Name</label>
+                    <input type="text" required style={{ padding: '0.8rem 1.1rem', background: '#ffffff', border: '1.5px solid var(--glass-border)', borderRadius: '12px', outline: 'none', transition: 'border-color 0.3s' }} />
+                  </div>
+                  <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>Last Name</label>
+                    <input type="text" required style={{ padding: '0.8rem 1.1rem', background: '#ffffff', border: '1.5px solid var(--glass-border)', borderRadius: '12px', outline: 'none', transition: 'border-color 0.3s' }} />
+                  </div>
+                </div>
+                <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                  <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>Email Address</label>
+                    <input type="email" required style={{ padding: '0.8rem 1.1rem', background: '#ffffff', border: '1.5px solid var(--glass-border)', borderRadius: '12px', outline: 'none', transition: 'border-color 0.3s' }} />
+                  </div>
+                  <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>Phone Number</label>
+                    <input type="tel" style={{ padding: '0.8rem 1.1rem', background: '#ffffff', border: '1.5px solid var(--glass-border)', borderRadius: '12px', outline: 'none', transition: 'border-color 0.3s' }} />
+                  </div>
+                </div>
+                <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>Subject</label>
+                  <input type="text" required style={{ padding: '0.8rem 1.1rem', background: '#ffffff', border: '1.5px solid var(--glass-border)', borderRadius: '12px', outline: 'none', transition: 'border-color 0.3s' }} />
+                </div>
+                <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '2rem' }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>Message</label>
+                  <textarea rows={5} required style={{ padding: '0.8rem 1.1rem', background: '#ffffff', border: '1.5px solid var(--glass-border)', borderRadius: '12px', outline: 'none', transition: 'border-color 0.3s', resize: 'vertical' }}></textarea>
+                </div>
+                <button type="submit" className="btn-modern-primary" style={{ border: 'none', width: '100%' }}>Send Message</button>
+              </form>
+            </div>
+
+            {/* Info Cards */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+              {/* Address card */}
+              <div className="card" style={{ padding: '2rem', height: 'fit-content' }}>
+                <h4 className="card-title" style={{ fontSize: '1.2rem', marginBottom: '1rem', color: 'var(--secondary)' }}>Our Headquarters</h4>
+                <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: '1.8', marginBottom: '1rem' }}>
+                  📍 Vijayawada, Andhra Pradesh, India<br/>
+                  ✉ info@aiforall.org<br/>
+                  📞 +91 866 555 0199
+                </p>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Operating across 22 states with 5000+ local volunteers conducting weekend field courses.</p>
+              </div>
+
+              {/* Social links card */}
+              <div className="card" style={{ padding: '2rem', height: 'fit-content' }}>
+                <h4 className="card-title" style={{ fontSize: '1.2rem', marginBottom: '1rem', color: 'var(--secondary)' }}>Connect With Us</h4>
+                <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1.2rem' }}>Follow our journey and updates on our official social media channels:</p>
+                <div className="social-link-grid" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                  <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="social-link instagram" style={{ width: '45px', height: '45px', background: '#ffffff', border: '1.5px solid var(--glass-border)', color: '#e1306c', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', boxShadow: '0 4px 10px rgba(0,0,0,0.03)', transition: 'all 0.3s' }}>
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+                  </a>
+                  <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="social-link linkedin" style={{ width: '45px', height: '45px', background: '#ffffff', border: '1.5px solid var(--glass-border)', color: '#0077b5', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', boxShadow: '0 4px 10px rgba(0,0,0,0.03)', transition: 'all 0.3s' }}>
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+                  </a>
+                  <a href="https://whatsapp.com" target="_blank" rel="noopener noreferrer" className="social-link whatsapp" style={{ width: '45px', height: '45px', background: '#ffffff', border: '1.5px solid var(--glass-border)', color: '#25d366', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', boxShadow: '0 4px 10px rgba(0,0,0,0.03)', transition: 'all 0.3s' }}>
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.725 1.45 5.489 0 9.952-4.43 9.955-9.885.002-2.643-1.022-5.127-2.885-7c-1.863-1.874-4.343-2.905-6.994-2.906-5.49 0-9.953 4.429-9.957 9.884-.002 1.714.453 3.39 1.32 4.887l-.994 3.634 3.73-.974zm12.002-6.852c-.274-.136-1.62-.801-1.871-.892-.252-.09-.435-.136-.617.136-.183.272-.708.89-.867 1.072-.16.182-.32.205-.594.069-.275-.136-1.16-.427-2.209-1.364-.817-.73-1.368-1.63-1.528-1.905-.16-.273-.017-.421.12-.557.123-.122.274-.32.41-.48.138-.16.183-.273.275-.455.092-.182.046-.341-.023-.477-.068-.136-.617-1.485-.845-2.03-.22-.533-.48-.46-.617-.466-.123-.006-.275-.007-.426-.007-.152 0-.401.057-.61.284-.21.227-.8.781-.8 1.904 0 1.124.816 2.207.93 2.36.114.152 1.606 2.451 3.89 3.435.543.233.967.373 1.3.479.546.173 1.042.149 1.433.09.437-.066 1.62-.662 1.849-1.3.23-.637.23-1.182.16-1.3-.069-.117-.251-.183-.526-.32z"/></svg>
+                  </a>
+                  <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" className="social-link youtube" style={{ width: '45px', height: '45px', background: '#ffffff', border: '1.5px solid var(--glass-border)', color: '#ff0000', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', boxShadow: '0 4px 10px rgba(0,0,0,0.03)', transition: 'all 0.3s' }}>
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon></svg>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Map Section */}
+          <div style={{ marginTop: '3rem', background: '#ffffff', padding: '1rem', borderRadius: '32px', border: '1px solid var(--glass-border)', boxShadow: '0 15px 40px rgba(0,0,0,0.04)' }}>
+            <iframe 
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d122425.22572337603!2d80.5739818!3d16.5061743!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3a35effd15b22cd7%3A0xc314dfa4ab12ab34!2sVijayawada%2C%20Andhra%20Pradesh!5e0!3m2!1sen!2sin!4v1717409200000!5m2!1sen!2sin" 
+              width="100%" 
+              height="450" 
+              style={{ border: 0, borderRadius: '24px', display: 'block' }} 
+              allowFullScreen={true} 
+              loading="lazy" 
+              referrerPolicy="no-referrer-when-downgrade"
+            ></iframe>
           </div>
         </div>
       </div>
@@ -3796,7 +3957,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* ========== SIGN UP MODAL ========== */}
       {/* ========== VOLUNTEER APPLICATION MODAL ========== */}
       <div className="modal-overlay" id="signup-modal">
         <div className="modal">
