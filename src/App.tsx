@@ -33,14 +33,6 @@ import elivatxLogo from './assets/elivatx.jpeg';
 import hcetLogo from './assets/hcet.jpeg';
 import jobreciepeLogo from './assets/jobreciepe.jpeg';
 
-// Partner Logos
-import jvvLogo from './assets/JVV.jpeg';
-import sunLogo from './assets/SUN.jpeg';
-import covidfightersLogo from './assets/covidfighters.jpeg';
-import elivatxLogo from './assets/elivatx.jpeg';
-import hcetLogo from './assets/hcet.jpeg';
-import jobreciepeLogo from './assets/jobreciepe.jpeg';
-
 // Slides details (Futuristic city, AI students, robotics, technology, smart agritech)
 const slideImages = [
   editedPicImg,
@@ -458,7 +450,6 @@ export default function App() {
       document.querySelectorAll('nav > a, nav > .nav-item > a').forEach(a => a.classList.remove('active'));
       const navItems = document.querySelectorAll('nav > a, nav > .nav-item > a');
       const navMap: Record<string, number> = { home: 0, about: 1, ai4all: 2, programs: 3, volunteer: 4, teachxai: 5, gallery: 6, contact: 7 };
-      const navMap: Record<string, number> = { home: 0, about: 1, ai4all: 2, programs: 3, volunteer: 4, gallery: 5, contact: 6 };
       if (navMap[id] !== undefined && navItems[navMap[id]]) {
         navItems[navMap[id]].classList.add('active');
       }
@@ -987,17 +978,6 @@ export default function App() {
       const why = (document.getElementById('vol-app-why') as HTMLTextAreaElement)?.value;
       if (!fname || !phone || !email || !education || !why) {
         w.showToast('Please fill in all required fields');
-    w.registerVolunteer = () => {
-      const fname = (document.getElementById('vol-fname') as HTMLInputElement)?.value;
-      const email = (document.getElementById('vol-email') as HTMLInputElement)?.value;
-      const phone = (document.getElementById('vol-phone') as HTMLInputElement)?.value || '';
-      const state = (document.getElementById('vol-state') as HTMLSelectElement)?.value || '';
-      const city = (document.getElementById('vol-city') as HTMLInputElement)?.value || '';
-      const why = (document.getElementById('vol-why') as HTMLTextAreaElement)?.value || '';
-      const checkedDepts = Array.from(document.querySelectorAll('#vol-dept-checkboxes input[type="checkbox"]:checked')).map((cb: any) => cb.value);
-      const pass = (document.getElementById('vol-pass') as HTMLInputElement)?.value || '';
-      if (!fname || !email) {
-        w.showToast('Please fill in required fields');
         return;
       }
       const apps = getSafeArray('volunteer_applications');
@@ -1239,38 +1219,6 @@ export default function App() {
       (document.getElementById('tch-current-pass') as HTMLInputElement)!.value = '';
       (document.getElementById('tch-new-pass') as HTMLInputElement)!.value = '';
       w.showToast('Password updated successfully!');
-      volunteers.push({ name: fname, email, phone, state, city, why, depts: checkedDepts, date: new Date().toLocaleDateString('en-IN'), hours: 10, password: pass });
-      localStorage.setItem('volunteers', JSON.stringify(volunteers));
-      
-      w.renderVolunteersAndLeaderboard();
-      w.showToast('Registered successfully! Logging you in...');
-      
-      // Auto login
-      w.currentUserEmail = email;
-      currentUser = { role: 'volunteer', name: fname };
-      
-      const loginBtn = document.getElementById('login-btn');
-      if (loginBtn) loginBtn.textContent = 'Logout';
-      const loggedUserEl = document.getElementById('logged-user');
-      if (loggedUserEl) {
-        loggedUserEl.textContent = fname;
-        loggedUserEl.style.display = 'inline';
-      }
-      
-      setTimeout(() => {
-        w.closeSignUpModal();
-        const pName = document.getElementById('portal-name');
-        const pFullName = document.getElementById('portal-fullname');
-        const pAvatar = document.getElementById('portal-avatar');
-        if (pName) pName.textContent = fname;
-        if (pFullName) pFullName.textContent = fname;
-        if (pAvatar) pAvatar.textContent = fname[0].toUpperCase();
-        
-        w.renderEvents();
-        w.renderTasks();
-        w.renderVolunteersAndLeaderboard();
-        w.showPage('vol-portal');
-      }, 1000);
     };
 
     // Portal navigations
@@ -2829,21 +2777,18 @@ export default function App() {
               <div className="card-text">IIT Delhi graduate. Spearheads vernacular AI prompt engineering bootcamps across 40+ villages.</div>
             </div>
             <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
-            <div className="card" style={{ textAlign: 'center' }}>
               <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=200&auto=format&fit=crop" alt="Sneha Patel" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
               <div className="card-title">Sneha Patel</div>
               <div style={{ fontSize: '0.8rem', color: 'var(--secondary)', fontWeight: 600, marginBottom: '0.5rem' }}>Outreach Coordinator, West India</div>
               <div className="card-text">Social work specialist. Mapped agricultural cooperative partnerships to train 20,000+ farmers in AI.</div>
             </div>
             <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
-            <div className="card" style={{ textAlign: 'center' }}>
               <img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=200&auto=format&fit=crop" alt="Karthik Raja" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
               <div className="card-title">Karthik Raja</div>
               <div style={{ fontSize: '0.8rem', color: 'var(--secondary)', fontWeight: 600, marginBottom: '0.5rem' }}>AI Curriculum Lead, South India</div>
               <div className="card-text">Software engineer. Designs interactive vernacular code templates for rural government schools.</div>
             </div>
             <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
-            <div className="card" style={{ textAlign: 'center' }}>
               <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop" alt="Ananya Das" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
               <div className="card-title">Ananya Das</div>
               <div style={{ fontSize: '0.8rem', color: 'var(--secondary)', fontWeight: 600, marginBottom: '0.5rem' }}>Literacy Coordinator, East India</div>
