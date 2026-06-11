@@ -4,19 +4,43 @@
  */
 
 import { useEffect } from 'react';
+import { motion } from 'motion/react';
 import logoImg from './assets/logo.jpeg';
-import smartCitiesImg from './assets/slider_smart_cities.jpg';
-import educationImg from './assets/slider_education.jpg';
-import healthImg from './assets/slider_health.jpg';
-import ourPlanetImg from './assets/slider_our_planet.jpg';
 import whoWeAreImg from './assets/about_who_we_are.jpg';
+import editedPicImg from '../picss/edited_pic.jpeg';
+import sunChildrenImg from '../picss/sun_children.jpg';
+import sunGrpImg from '../picss/sun_grp.jpg';
+import iasClassesImg from '../picss/IAS_classes.jpeg';
+import rtihAmaravatiImg from '../picss/rtih_amaravati.jpeg';
+import policehackImg from '../picss/policehack.png';
+import sunEduSupportImg from '../picss/sun_education support.jpeg';
+import aiFirImg from '../picss/AI_FIR.jpeg';
+
+// About section images
+import ourMissionImg from '../picss/ourmission.jpeg';
+import ourVisionImg from '../picss/ourvision.jpeg';
+import ourValuesImg from '../picss/ourvalues.jpeg';
+import ourJourneyImg from '../picss/ourjouney.jpeg';
+
+// Incux Logo
+import incuxLogoImg from '../picss/Incux logo.jpg';
+
+// Partner Logos
+import jvvLogo from './assets/JVV.jpeg';
+import sunLogo from './assets/SUN.jpeg';
+import covidfightersLogo from './assets/covidfighters.jpeg';
+import elivatxLogo from './assets/elivatx.jpeg';
+import hcetLogo from './assets/hcet.jpeg';
+import jobreciepeLogo from './assets/jobreciepe.jpeg';
 
 // Slides details (Futuristic city, AI students, robotics, technology, smart agritech)
 const slideImages = [
-  smartCitiesImg,
-  educationImg,
-  healthImg,
-  ourPlanetImg
+  editedPicImg,
+  sunChildrenImg,
+  sunGrpImg,
+  editedPicImg,
+  sunChildrenImg,
+  sunGrpImg
 ];
 
 const taglines = [
@@ -291,22 +315,16 @@ export default function App() {
       }
     }, 500);
 
-    // Floating Particles Setup (Identical metrics)
+    // Floating Particles Setup (Disabled per user request)
     const container = document.getElementById('particles');
     if (container) {
       container.innerHTML = '';
-      for (let i = 0; i < 40; i++) {
-        const p = document.createElement('div');
-        p.className = 'particle';
-        p.style.cssText = `left:${Math.random() * 100}%;--dur:${6 + Math.random() * 12}s;--x:${-30 + Math.random() * 60}px;--dx:${-20 + Math.random() * 40}px;--op:${0.2 + Math.random() * 0.5};animation-delay:-${Math.random() * 15}s;`;
-        container.appendChild(p);
-      }
     }
 
     // Type tagline animation
-    const taglineEl = document.getElementById('tagline-text');
     let typingInterval: ReturnType<typeof setInterval> | null = null;
     const typeTagline = (text: string) => {
+      const taglineEl = document.getElementById('tagline-text');
       if (!taglineEl) return;
       if (typingInterval) clearInterval(typingInterval);
       taglineEl.textContent = '';
@@ -321,22 +339,9 @@ export default function App() {
       }, 40);
     };
 
-    // Slideshow Dots dynamic population
-    const slides = document.querySelectorAll('.slide');
-    const dotsContainer = document.getElementById('slider-dots');
-    if (dotsContainer && slides.length > 0) {
-      dotsContainer.innerHTML = '';
-      slides.forEach((_, i) => {
-        const d = document.createElement('div');
-        d.className = 'dot' + (i === 0 ? ' active' : '');
-        d.onclick = () => w.goToSlide(i);
-        dotsContainer.appendChild(d);
-      });
-    }
-
     w.goToSlide = (n: number) => {
       const activeSlides = document.querySelectorAll('.slide');
-      const activeDots = document.getElementById('slider-dots')?.children;
+      const activeDots = document.querySelectorAll('.slider-dots .dot');
       if (activeSlides.length > 0) {
         activeSlides[currentSlide]?.classList.remove('active');
         if (activeDots && activeDots[currentSlide]) {
@@ -374,21 +379,31 @@ export default function App() {
 
 
 
-    // Toggle about details (mission/vision/programs)
-    w.toggleAboutDetail = (id: string, event?: any) => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      
-      if (event && event.currentTarget) {
-        document.querySelectorAll('.about-pill-btn').forEach(btn => btn.classList.remove('active'));
-        event.currentTarget.classList.add('active');
+    // 3D Cube Rotation Logic (mission/vision/values/journey)
+    let lastManualCubeClick = 0;
+    let currentActiveCubeIndex = 0;
+    w.rotateCubeToIndex = (index: number, isManualClick = false) => {
+      const cube = document.getElementById('about-cube');
+      if (!cube) return;
+
+      if (isManualClick) {
+        lastManualCubeClick = Date.now();
+        currentActiveCubeIndex = index;
       }
 
-      ['about-mission', 'about-vision', 'about-values', 'about-journey'].forEach(sid => {
-        const s = document.getElementById(sid);
-        if (s) s.style.display = 'none';
+      // Rotate Y coordinate (index 0 is 0deg, 1 is -90deg, 2 is -180deg, 3 is -270deg)
+      const angleY = index * -90;
+      cube.style.transform = `rotateY(${angleY}deg)`;
+
+      // Update button active state
+      const buttons = document.querySelectorAll('.about-pill-btn');
+      buttons.forEach((btn, idx) => {
+        if (idx === index) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
       });
-      el.style.display = 'grid';
     };
 
     // Toggle compact values
@@ -410,6 +425,12 @@ export default function App() {
       } else {
         if (header) header.classList.add('page-active');
       }
+      const portalPages = ['vol-portal', 'admin-portal', 'teacher-portal'];
+      if (portalPages.includes(id)) {
+        if (header) header.classList.add('portal-mode');
+      } else {
+        if (header) header.classList.remove('portal-mode');
+      }
       if (id === 'about') {
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         const homePage = document.getElementById('home');
@@ -421,14 +442,14 @@ export default function App() {
         return;
       }
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-      const footerHide = ['vol-portal', 'admin-portal'];
+      const footerHide = ['vol-portal', 'admin-portal', 'teacher-portal'];
       const targetPage = document.getElementById(id);
       if (targetPage) {
         targetPage.classList.add('active');
       }
       document.querySelectorAll('nav > a, nav > .nav-item > a').forEach(a => a.classList.remove('active'));
       const navItems = document.querySelectorAll('nav > a, nav > .nav-item > a');
-      const navMap: Record<string, number> = { home: 0, about: 1, ai4all: 2, programs: 3, gallery: 4 };
+      const navMap: Record<string, number> = { home: 0, about: 1, ai4all: 2, programs: 3, volunteer: 4, teachxai: 5, gallery: 6, contact: 7 };
       if (navMap[id] !== undefined && navItems[navMap[id]]) {
         navItems[navMap[id]].classList.add('active');
       }
@@ -448,6 +469,9 @@ export default function App() {
     w.handleLoginBtn = () => {
       if (currentUser) {
         currentUser = null;
+        w.currentUserEmail = null;
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('currentUserEmail');
         const loginBtn = document.getElementById('login-btn');
         if (loginBtn) loginBtn.textContent = 'Login';
         const loggedUserEl = document.getElementById('logged-user');
@@ -481,6 +505,16 @@ export default function App() {
       });
     };
 
+    w.openSignUpModal = () => {
+      const modal = document.getElementById('signup-modal');
+      if (modal) modal.classList.add('active');
+    };
+
+    w.closeSignUpModal = () => {
+      const modal = document.getElementById('signup-modal');
+      if (modal) modal.classList.remove('active');
+    };
+
     w.switchTab = (id: string, e: Event) => {
       document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
       if (e && e.currentTarget) {
@@ -500,19 +534,31 @@ export default function App() {
 
       let name = 'User';
       if (role === 'volunteer') {
-        const val = (document.getElementById('vol-login-email') as HTMLInputElement)?.value;
-        const registeredVols = getSafeArray('volunteers');
-        let foundVol = registeredVols.find((v: any) => v && (v.email || '').toLowerCase() === (val || '').toLowerCase());
-        
-        // If they logged in with a new email, register them dynamically to keep it fully operational!
-        if (!foundVol && val) {
-          foundVol = { name: val.split('@')[0], email: val, state: 'AP', hours: 10, date: new Date().toLocaleDateString('en-IN') };
-          registeredVols.push(foundVol);
-          localStorage.setItem('volunteers', JSON.stringify(registeredVols));
+        const email = (document.getElementById('vol-login-email') as HTMLInputElement)?.value;
+        const pass = (document.getElementById('vol-login-pass') as HTMLInputElement)?.value;
+        const volCreds = getSafeArray('volunteer_pass');
+        const found = volCreds.find((v: any) => v && v.email === email && v.password === pass);
+        if (!found) {
+          w.showToast('Invalid email or password');
+          document.querySelectorAll('.modal-form').forEach(f => { (f as HTMLElement).style.display = ''; });
+          if (success) success.style.display = 'none';
+          return;
         }
-        
-        name = foundVol ? foundVol.name : 'Volunteer';
-        w.currentUserEmail = foundVol ? foundVol.email : val;
+        name = found.name || email.split('@')[0];
+        w.currentUserEmail = email;
+      } else if (role === 'teacher') {
+        const email = (document.getElementById('tch-login-email') as HTMLInputElement)?.value;
+        const pass = (document.getElementById('tch-login-pass') as HTMLInputElement)?.value;
+        const teacherCreds = getSafeArray('teachxai_teachers_pass');
+        const found = teacherCreds.find((t: any) => t && t.email === email && t.password === pass);
+        if (!found) {
+          w.showToast('Invalid teacher credentials');
+          document.querySelectorAll('.modal-form').forEach(f => { (f as HTMLElement).style.display = ''; });
+          if (success) success.style.display = 'none';
+          return;
+        }
+        name = found.name || email.split('@')[0];
+        w.currentUserEmail = email;
       } else {
         name = 'Admin';
       }
@@ -521,6 +567,8 @@ export default function App() {
       if (successMsg) successMsg.textContent = `Welcome ${name}! Redirecting to your portal...`;
 
       currentUser = { role, name };
+      localStorage.setItem('currentUser', JSON.stringify(currentUser));
+      if (w.currentUserEmail) localStorage.setItem('currentUserEmail', w.currentUserEmail);
       const loginBtn = document.getElementById('login-btn');
       if (loginBtn) loginBtn.textContent = 'Logout';
       const loggedUserEl = document.getElementById('logged-user');
@@ -543,7 +591,18 @@ export default function App() {
           w.renderEvents();
           w.renderTasks();
           w.renderVolunteersAndLeaderboard();
+          // Populate profile fields
+          w.populateVolunteerProfile();
           w.showPage('vol-portal');
+        } else if (role === 'teacher') {
+          const tpName = document.getElementById('tportal-name');
+          const tpFullName = document.getElementById('tportal-fullname');
+          const tpAvatar = document.getElementById('tportal-avatar');
+          if (tpName) tpName.textContent = name;
+          if (tpFullName) tpFullName.textContent = name;
+          if (tpAvatar) tpAvatar.textContent = name[0].toUpperCase();
+          w.renderTeacherPortal();
+          w.showPage('teacher-portal');
         } else {
           w.renderEvents();
           w.renderTasks();
@@ -585,12 +644,40 @@ export default function App() {
 
       if (!localStorage.getItem('volunteers')) {
         const defaultVols = [
-          { name: 'Ravi Kumar', email: 'ravi@gmail.com', phone: '9876543210', state: 'AP', why: 'Tech enthusiast', date: '2025-05-01', password: 'password', hours: 47 },
-          { name: 'Priya Nair', email: 'priya@gmail.com', phone: '9876543211', state: 'Kerala', why: 'Social outreach', date: '2025-05-02', password: 'password', hours: 32 },
-          { name: 'Arun Singh', email: 'arun@gmail.com', phone: '9876543212', state: 'UP', why: 'Education advocate', date: '2025-05-03', password: 'password', hours: 28 },
-          { name: 'Neha Verma', email: 'neha@gmail.com', phone: '9876543213', state: 'MH', why: 'Organizing events', date: '2025-05-04', password: 'password', hours: 15 }
+          { name: 'Ravi Kumar', email: 'ravi@gmail.com', phone: '9876543210', state: 'AP', why: 'Tech enthusiast', date: '2025-05-01', hours: 47 },
+          { name: 'Priya Nair', email: 'priya@gmail.com', phone: '9876543211', state: 'Kerala', why: 'Social outreach', date: '2025-05-02', hours: 32 },
+          { name: 'Arun Singh', email: 'arun@gmail.com', phone: '9876543212', state: 'UP', why: 'Education advocate', date: '2025-05-03', hours: 28 },
+          { name: 'Neha Verma', email: 'neha@gmail.com', phone: '9876543213', state: 'MH', why: 'Organizing events', date: '2025-05-04', hours: 15 }
         ];
         localStorage.setItem('volunteers', JSON.stringify(defaultVols));
+      }
+      // Ensure volunteer_pass has entries for default volunteers
+      if (!localStorage.getItem('volunteer_pass')) {
+        const defaultPass = [
+          { email: 'ravi@gmail.com', password: 'volunteer123', name: 'Ravi Kumar' },
+          { email: 'priya@gmail.com', password: 'volunteer123', name: 'Priya Nair' },
+          { email: 'arun@gmail.com', password: 'volunteer123', name: 'Arun Singh' },
+          { email: 'neha@gmail.com', password: 'volunteer123', name: 'Neha Verma' }
+        ];
+        localStorage.setItem('volunteer_pass', JSON.stringify(defaultPass));
+      }
+      // Restore session
+      const savedUser = localStorage.getItem('currentUser');
+      const savedEmail = localStorage.getItem('currentUserEmail');
+      if (savedUser && savedEmail) {
+        try {
+          currentUser = JSON.parse(savedUser);
+          w.currentUserEmail = savedEmail;
+          const loginBtn = document.getElementById('login-btn');
+          if (loginBtn) loginBtn.textContent = 'Logout';
+          const loggedUserEl = document.getElementById('logged-user');
+          if (loggedUserEl) {
+            loggedUserEl.textContent = currentUser.name;
+            loggedUserEl.style.display = 'inline';
+          }
+        } catch (e) {
+          // corrupted session data, ignore
+        }
       }
     };
 
@@ -790,70 +877,348 @@ export default function App() {
       // 3. Render Leaderboard in Volunteer Portal (Leaderboard Tab)
       const leaderboardEl = document.getElementById('st-leaderboard')?.querySelector('.leaderboard');
       if (leaderboardEl) {
-        leaderboardEl.innerHTML = rankedVols.map((v: any, index: number) => {
-          let medal = index === 0 ? '1st' : (index === 1 ? '2nd' : (index === 2 ? '3rd' : (index + 1).toString()));
-          const isTop = index < 3;
-          return `
-            <div class="leaderboard-item">
-              <div class="lb-rank ${isTop ? 'top' : ''}">${medal}</div>
-              <div class="lb-name">${v.name || ''}</div>
-              <div class="lb-xp">${(v.hours || 0) * 20} XP (${v.hours || 0} hrs)</div>
-            </div>
-          `;
-        }).join('');
+        const maxHours = rankedVols.length > 0 ? Math.max(...rankedVols.map((v: any) => v.hours || 0), 1) : 1;
+        const medals = ['🥇', '🥈', '🥉'];
+        leaderboardEl.innerHTML = `
+          <div style="display:flex;align-items:flex-end;gap:0.8rem;padding:1.5rem 0;min-height:220px;justify-content:center;border-bottom:2px solid var(--glass-border);margin-bottom:1rem;">
+            ${rankedVols.slice(0, 5).map((v: any, i: number) => {
+              const pct = ((v.hours || 0) / maxHours) * 100;
+              const colors = ['linear-gradient(180deg,#f59e0b,#d97706)', 'linear-gradient(180deg,#94a3b8,#64748b)', 'linear-gradient(180deg,#d97706,#92400e)', 'linear-gradient(180deg,var(--secondary),var(--warning))', 'linear-gradient(180deg,var(--accent),var(--primary))'];
+              return `
+                <div style="display:flex;flex-direction:column;align-items:center;gap:0.3rem;flex:1;max-width:100px;">
+                  <div style="font-size:0.7rem;font-weight:700;color:var(--text-muted);">${(v.hours || 0) * 20}XP</div>
+                  <div style="width:100%;background:rgba(155,122,62,0.08);border-radius:8px 8px 0 0;position:relative;height:160px;display:flex;align-items:flex-end;">
+                    <div style="width:100%;background:${colors[i]};border-radius:6px 6px 0 0;height:${Math.max(pct, 5)}%;transition:height 0.8s ease;box-shadow:0 2px 8px rgba(155,122,62,0.2);"></div>
+                  </div>
+                  <div style="font-size:0.75rem;font-weight:700;text-align:center;color:var(--primary);">${medals[i] || ''} ${v.name || ''}</div>
+                  <div style="font-size:0.65rem;color:var(--text-muted);">${v.hours || 0} hrs</div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+          <div style="display:flex;flex-direction:column;gap:0.4rem;">
+            ${rankedVols.slice(0, 10).map((v: any, index: number) => {
+              const pct = ((v.hours || 0) / maxHours) * 100;
+              const isTop = index < 3;
+              return `
+                <div style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0.75rem;background:${isTop ? 'rgba(155,122,62,0.06)' : 'transparent'};border-radius:10px;">
+                  <div style="font-size:1rem;width:28px;text-align:center;font-weight:700;color:${isTop ? 'var(--secondary)' : 'var(--text-muted)'};">${index === 0 ? '🥇' : (index === 1 ? '🥈' : (index === 2 ? '🥉' : (index + 1)))}</div>
+                  <div style="flex:1;display:flex;flex-direction:column;gap:0.2rem;">
+                    <div style="display:flex;justify-content:space-between;">
+                      <span style="font-weight:600;font-size:0.85rem;">${v.name || ''}</span>
+                      <span style="font-size:0.78rem;font-weight:600;color:var(--secondary);">${(v.hours || 0) * 20} XP</span>
+                    </div>
+                    <div style="width:100%;height:6px;background:rgba(155,122,62,0.1);border-radius:99px;overflow:hidden;">
+                      <div style="height:100%;width:${Math.max(pct, 2)}%;background:${isTop ? 'linear-gradient(90deg,var(--secondary),var(--warning))' : 'rgba(155,122,62,0.3)'};border-radius:99px;transition:width 0.6s ease;"></div>
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
       }
 
       // 4. Render Leaderboard in Admin Portal (Leaderboard Tab)
       const adminLeaderboardEl = document.getElementById('admin-leaderboard')?.querySelector('.leaderboard');
       if (adminLeaderboardEl) {
-        adminLeaderboardEl.innerHTML = rankedVols.map((v: any, index: number) => {
-          let medal = index === 0 ? '1st' : (index === 1 ? '2nd' : (index === 2 ? '3rd' : (index + 1).toString()));
-          const isTop = index < 3;
-          return `
-            <div class="leaderboard-item" style="display:flex;align-items:center;justify-content:space-between;padding:0.75rem 1rem;background:var(--glass);border:1px solid var(--glass-border);border-radius:12px;margin-bottom:0.5rem;">
-              <div style="display:flex;align-items:center;gap:1rem;">
-                <div style="font-size:1.2rem;width:24px;text-align:center;font-weight:700;">${medal}</div>
-                <div>
-                  <div style="font-weight:700;">${v.name || ''}</div>
-                  <div style="font-size:0.78rem;color:var(--text-muted);">${v.email || ''} | ${v.state || 'India'}</div>
+        const maxHours = rankedVols.length > 0 ? Math.max(...rankedVols.map((v: any) => v.hours || 0), 1) : 1;
+        const medals = ['🥇', '🥈', '🥉'];
+        adminLeaderboardEl.innerHTML = `
+          <div style="display:flex;align-items:flex-end;gap:1rem;padding:1.5rem 0;min-height:260px;justify-content:center;border-bottom:2px solid var(--glass-border);margin-bottom:1.5rem;">
+            ${rankedVols.slice(0, 5).map((v: any, i: number) => {
+              const pct = ((v.hours || 0) / maxHours) * 100;
+              const colors = ['linear-gradient(180deg,#f59e0b,#d97706)', 'linear-gradient(180deg,#94a3b8,#64748b)', 'linear-gradient(180deg,#d97706,#92400e)', 'linear-gradient(180deg,var(--secondary),var(--warning))', 'linear-gradient(180deg,var(--accent),var(--primary))'];
+              return `
+                <div style="display:flex;flex-direction:column;align-items:center;gap:0.4rem;flex:1;max-width:120px;">
+                  <div style="font-size:0.75rem;font-weight:700;color:var(--text-muted);">${(v.hours || 0) * 20}XP</div>
+                  <div style="width:100%;background:rgba(155,122,62,0.06);border-radius:10px 10px 0 0;position:relative;height:200px;display:flex;align-items:flex-end;">
+                    <div style="width:100%;background:${colors[i]};border-radius:8px 8px 0 0;height:${Math.max(pct, 5)}%;transition:height 0.8s ease;box-shadow:0 2px 12px rgba(155,122,62,0.25);"></div>
+                  </div>
+                  <div style="font-size:0.8rem;font-weight:700;text-align:center;color:var(--primary);">${medals[i] || ''} ${v.name || ''}</div>
+                  <div style="font-size:0.7rem;color:var(--text-muted);">${v.hours || 0} hrs</div>
                 </div>
-              </div>
-              <div style="text-align:right;">
-                <div style="font-weight:700;color:var(--primary);">${(v.hours || 0) * 20} XP</div>
-                <div style="font-size:0.75rem;color:var(--text-muted);">${v.hours || 0} hours logged</div>
-              </div>
-            </div>
-          `;
-        }).join('');
+              `;
+            }).join('')}
+          </div>
+          <h4 style="font-size:0.9rem;color:var(--text-muted);margin-bottom:0.75rem;">All Participants</h4>
+          <div style="display:flex;flex-direction:column;gap:0.5rem;">
+            ${rankedVols.slice(0, 15).map((v: any, index: number) => {
+              const pct = ((v.hours || 0) / maxHours) * 100;
+              const isTop = index < 3;
+              return `
+                <div style="display:flex;align-items:center;gap:0.75rem;padding:0.6rem 1rem;background:${isTop ? 'linear-gradient(135deg,rgba(155,122,62,0.08),rgba(155,122,62,0.02))' : 'var(--glass)'};border:1px solid ${isTop ? 'rgba(155,122,62,0.2)' : 'var(--glass-border)'};border-radius:12px;">
+                  <div style="font-size:1.2rem;width:32px;text-align:center;font-weight:700;color:${isTop ? 'var(--secondary)' : 'var(--text-muted)'};">${index === 0 ? '🥇' : (index === 1 ? '🥈' : (index === 2 ? '🥉' : (index + 1)))}</div>
+                  <div style="flex:1;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.3rem;">
+                      <div>
+                        <span style="font-weight:700;font-size:0.88rem;">${v.name || ''}</span>
+                        <span style="font-size:0.72rem;color:var(--text-muted);margin-left:0.5rem;">${v.email || ''}</span>
+                      </div>
+                      <span style="font-size:0.82rem;font-weight:700;color:var(--secondary);">${(v.hours || 0) * 20} XP</span>
+                    </div>
+                    <div style="width:100%;height:8px;background:rgba(155,122,62,0.08);border-radius:99px;overflow:hidden;">
+                      <div style="height:100%;width:${Math.max(pct, 2)}%;background:${isTop ? 'linear-gradient(90deg,var(--secondary),var(--warning))' : 'rgba(155,122,62,0.25)'};border-radius:99px;transition:width 0.6s ease;"></div>
+                    </div>
+                    <div style="font-size:0.7rem;color:var(--text-muted);margin-top:0.2rem;">${v.hours || 0} hours logged | ${v.state || 'India'}</div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
       }
     };
 
-    w.registerVolunteer = () => {
-      const fname = (document.getElementById('vol-fname') as HTMLInputElement)?.value;
-      const email = (document.getElementById('vol-email') as HTMLInputElement)?.value;
-      const phone = (document.getElementById('vol-phone') as HTMLInputElement)?.value || '';
-      const state = (document.getElementById('vol-state') as HTMLSelectElement)?.value || '';
-      const city = (document.getElementById('vol-city') as HTMLInputElement)?.value || '';
-      const why = (document.getElementById('vol-why') as HTMLTextAreaElement)?.value || '';
-      const checkedDepts = Array.from(document.querySelectorAll('#vol-dept-checkboxes input[type="checkbox"]:checked')).map((cb: any) => cb.value);
-      if (!fname || !email) {
-        w.showToast('Please fill in required fields');
+    w.submitVolunteerApplication = () => {
+      const fname = (document.getElementById('vol-app-fname') as HTMLInputElement)?.value;
+      const phone = (document.getElementById('vol-app-phone') as HTMLInputElement)?.value;
+      const email = (document.getElementById('vol-app-email') as HTMLInputElement)?.value;
+      const education = (document.getElementById('vol-app-education') as HTMLSelectElement)?.value;
+      const why = (document.getElementById('vol-app-why') as HTMLTextAreaElement)?.value;
+      if (!fname || !phone || !email || !education || !why) {
+        w.showToast('Please fill in all required fields');
         return;
       }
-      
-      const volunteers = getSafeArray('volunteers');
-      const alreadyExists = volunteers.some((v: any) => v && (v.email || '').toLowerCase() === (email || '').toLowerCase());
+      const apps = getSafeArray('volunteer_applications');
+      const alreadyExists = apps.some((a: any) => a && a.email === email);
       if (alreadyExists) {
-        w.showToast('This email is already registered! Please login.');
+        w.showToast('An application with this email already exists!');
+        return;
+      }
+      apps.push({ name: fname, phone, email, education, why, date: new Date().toLocaleDateString('en-IN') });
+      localStorage.setItem('volunteer_applications', JSON.stringify(apps));
+      w.closeSignUpModal();
+      w.showToast('Application submitted! Admin will review and approve it shortly.');
+    };
+
+    // TeachXai form submission
+    w.submitTeachXai = () => {
+      const name = (document.getElementById('tx-name') as HTMLInputElement)?.value;
+      const email = (document.getElementById('tx-email') as HTMLInputElement)?.value;
+      const phone = (document.getElementById('tx-phone') as HTMLInputElement)?.value;
+      const education = (document.getElementById('tx-education') as HTMLSelectElement)?.value;
+      const institution = (document.getElementById('tx-institution') as HTMLInputElement)?.value || '';
+      const experience = (document.getElementById('tx-experience') as HTMLSelectElement)?.value;
+      const certifications = (document.getElementById('tx-certifications') as HTMLInputElement)?.value || '';
+      const why = (document.getElementById('tx-why') as HTMLTextAreaElement)?.value;
+      const availability = (document.getElementById('tx-availability') as HTMLSelectElement)?.value;
+      const subjects = Array.from(document.querySelectorAll('#teachxai .dept-checkbox-grid:first-of-type input[type="checkbox"]:checked')).map((cb: any) => cb.value);
+      const languages = Array.from(document.querySelectorAll('#teachxai .dept-checkbox-grid:last-of-type input[type="checkbox"]:checked')).map((cb: any) => cb.value);
+
+      if (!name || !email || !phone || !education || !why || !availability || subjects.length === 0 || languages.length === 0) {
+        w.showToast('Please fill in all required fields');
         return;
       }
 
-      volunteers.push({ name: fname, email, phone, state, city, why, depts: checkedDepts, date: new Date().toLocaleDateString('en-IN'), hours: 10 });
-      localStorage.setItem('volunteers', JSON.stringify(volunteers));
-      
-      w.renderVolunteersAndLeaderboard();
-      w.showToast('Registered successfully! Please login to access your portal.');
-      setTimeout(() => w.openModal(), 1800);
+      const educators = getSafeArray('teachxai_educators');
+      educators.push({ name, email, phone, education, institution, experience, certifications, why, availability, subjects, languages, date: new Date().toLocaleDateString('en-IN') });
+      localStorage.setItem('teachxai_educators', JSON.stringify(educators));
+
+      // Reset form
+      const form = document.querySelector('.teachxai-form') as HTMLFormElement;
+      if (form) form.reset();
+
+      w.showToast('Application submitted successfully! We will contact you soon.');
+    };
+
+    // ===== VOLUNTEER APPLICATION ADMIN FUNCTIONS =====
+    w.renderVolunteerApplications = () => {
+      const apps = getSafeArray('volunteer_applications');
+      const volCreds = getSafeArray('volunteer_pass');
+      const body = document.getElementById('admin-vol-apps-body');
+      if (!body) return;
+      if (apps.length === 0) {
+        body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:2rem">No pending applications</td></tr>';
+      } else {
+        body.innerHTML = apps.map((a: any, i: number) => `
+          <tr>
+            <td>${a.name || ''}</td>
+            <td>${a.email || ''}</td>
+            <td>${a.phone || ''}</td>
+            <td>${a.education || ''}</td>
+            <td>
+              <button class="btn-small btn-success-small" onclick="window.approveVolunteerApp(${i})">Approve</button>
+              <button class="btn-small btn-danger-small" onclick="window.rejectVolunteerApp(${i})">Reject</button>
+            </td>
+          </tr>
+        `).join('');
+      }
+      document.getElementById('admin-vol-apps-count')!.textContent = apps.length.toString();
+    };
+
+    w.approveVolunteerApp = (index: number) => {
+      const apps = getSafeArray('volunteer_applications');
+      const volunteers = getSafeArray('volunteers');
+      const volCreds = getSafeArray('volunteer_pass');
+      if (index >= 0 && index < apps.length) {
+        const app = apps[index];
+        const volEntry = { name: app.name, email: app.email, phone: app.phone, education: app.education, why: app.why, date: app.date, hours: 0, state: '', city: '', depts: [] };
+        volunteers.push(volEntry);
+        apps.splice(index, 1);
+        localStorage.setItem('volunteers', JSON.stringify(volunteers));
+        localStorage.setItem('volunteer_applications', JSON.stringify(apps));
+        // Create login credentials with default password
+        if (!volCreds.some((v: any) => v && v.email === app.email)) {
+          volCreds.push({ email: app.email, password: 'volunteer123', name: app.name });
+          localStorage.setItem('volunteer_pass', JSON.stringify(volCreds));
+        }
+        w.renderVolunteerApplications();
+        w.renderVolunteersAndLeaderboard();
+        w.showToast(`Approved! ${app.name} can login with email and password "volunteer123"`);
+      }
+    };
+
+    w.rejectVolunteerApp = (index: number) => {
+      const apps = getSafeArray('volunteer_applications');
+      if (index >= 0 && index < apps.length) {
+        apps.splice(index, 1);
+        localStorage.setItem('volunteer_applications', JSON.stringify(apps));
+        w.renderVolunteerApplications();
+        w.showToast('Application rejected');
+      }
+    };
+
+    w.populateVolunteerProfile = () => {
+      const email = w.currentUserEmail;
+      const vols = getSafeArray('volunteers');
+      const vol = vols.find((v: any) => v && v.email === email);
+      const nameEl = document.getElementById('vol-profile-name') as HTMLInputElement;
+      const emailEl = document.getElementById('vol-profile-email') as HTMLInputElement;
+      const phoneEl = document.getElementById('vol-profile-phone') as HTMLInputElement;
+      const eduEl = document.getElementById('vol-profile-education') as HTMLInputElement;
+      const aboutEl = document.getElementById('vol-profile-about') as HTMLTextAreaElement;
+      if (vol) {
+        if (nameEl) nameEl.value = vol.name || '';
+        if (emailEl) emailEl.value = vol.email || '';
+        if (phoneEl) phoneEl.value = vol.phone || '';
+        if (eduEl) eduEl.value = vol.education || '';
+        if (aboutEl) aboutEl.value = vol.why || '';
+      } else if (email) {
+        if (emailEl) emailEl.value = email;
+      }
+      // Restore profile photo
+      const savedPhoto = localStorage.getItem('vol_profile_photo_' + email);
+      if (savedPhoto) {
+        const img = document.getElementById('vol-profile-photo-img') as HTMLImageElement;
+        const txt = document.getElementById('vol-profile-photo-text');
+        if (img && txt) { img.src = savedPhoto; img.style.display = 'block'; txt.style.display = 'none'; }
+      }
+    };
+
+    w.saveVolunteerProfile = () => {
+      const name = (document.getElementById('vol-profile-name') as HTMLInputElement)?.value;
+      const phone = (document.getElementById('vol-profile-phone') as HTMLInputElement)?.value;
+      const education = (document.getElementById('vol-profile-education') as HTMLInputElement)?.value;
+      const about = (document.getElementById('vol-profile-about') as HTMLTextAreaElement)?.value;
+      if (!name) { w.showToast('Name is required'); return; }
+      const email = w.currentUserEmail;
+      const vols = getSafeArray('volunteers');
+      const vol = vols.find((v: any) => v && v.email === email);
+      if (vol) {
+        vol.name = name;
+        vol.phone = phone;
+        vol.education = education;
+        vol.why = about;
+        localStorage.setItem('volunteers', JSON.stringify(vols));
+      }
+      // Update display
+      const pName = document.getElementById('portal-name');
+      const pFullName = document.getElementById('portal-fullname');
+      const pAvatar = document.getElementById('portal-avatar');
+      if (pName) pName.textContent = name;
+      if (pFullName) pFullName.textContent = name;
+      if (pAvatar) pAvatar.textContent = name[0].toUpperCase();
+      w.showToast('Profile updated!');
+    };
+
+    w.saveTeacherProfile = () => {
+      const name = (document.getElementById('tch-profile-name') as HTMLInputElement)?.value;
+      const phone = (document.getElementById('tch-profile-phone') as HTMLInputElement)?.value;
+      const education = (document.getElementById('tch-profile-education') as HTMLInputElement)?.value;
+      const subjectsStr = (document.getElementById('tch-profile-subjects') as HTMLInputElement)?.value;
+      const languagesStr = (document.getElementById('tch-profile-languages') as HTMLInputElement)?.value;
+      if (!name) { w.showToast('Name is required'); return; }
+      const email = w.currentUserEmail;
+      const approved = getSafeArray('teachxai_approved');
+      const teacher = approved.find((t: any) => t && t.email === email);
+      if (teacher) {
+        teacher.name = name;
+        teacher.phone = phone;
+        teacher.education = education;
+        teacher.subjects = subjectsStr ? subjectsStr.split(',').map((s: string) => s.trim()) : [];
+        teacher.languages = languagesStr ? languagesStr.split(',').map((l: string) => l.trim()) : [];
+        localStorage.setItem('teachxai_approved', JSON.stringify(approved));
+      }
+      const tpName = document.getElementById('tportal-name');
+      const tpFullName = document.getElementById('tportal-fullname');
+      const tpAvatar = document.getElementById('tportal-avatar');
+      if (tpName) tpName.textContent = name;
+      if (tpFullName) tpFullName.textContent = name;
+      if (tpAvatar) tpAvatar.textContent = name[0].toUpperCase();
+      // Also update password entry name
+      const creds = getSafeArray('teachxai_teachers_pass');
+      const entry = creds.find((c: any) => c && c.email === email);
+      if (entry) { entry.name = name; localStorage.setItem('teachxai_teachers_pass', JSON.stringify(creds)); }
+      w.showToast('Profile updated!');
+    };
+
+    w.changeVolunteerPassword = () => {
+      const currentPass = (document.getElementById('vol-current-pass') as HTMLInputElement)?.value;
+      const newPass = (document.getElementById('vol-new-pass') as HTMLInputElement)?.value;
+      if (!currentPass || !newPass) {
+        w.showToast('Please fill in both password fields');
+        return;
+      }
+      if (newPass.length < 6) {
+        w.showToast('New password must be at least 6 characters');
+        return;
+      }
+      const email = w.currentUserEmail;
+      const creds = getSafeArray('volunteer_pass');
+      const entry = creds.find((c: any) => c && c.email === email);
+      if (!entry) {
+        w.showToast('Account not found');
+        return;
+      }
+      if (entry.password !== currentPass) {
+        w.showToast('Current password is incorrect');
+        return;
+      }
+      entry.password = newPass;
+      localStorage.setItem('volunteer_pass', JSON.stringify(creds));
+      (document.getElementById('vol-current-pass') as HTMLInputElement)!.value = '';
+      (document.getElementById('vol-new-pass') as HTMLInputElement)!.value = '';
+      w.showToast('Password updated successfully!');
+    };
+
+    w.changeTeacherPassword = () => {
+      const currentPass = (document.getElementById('tch-current-pass') as HTMLInputElement)?.value;
+      const newPass = (document.getElementById('tch-new-pass') as HTMLInputElement)?.value;
+      if (!currentPass || !newPass) {
+        w.showToast('Please fill in both password fields');
+        return;
+      }
+      if (newPass.length < 6) {
+        w.showToast('New password must be at least 6 characters');
+        return;
+      }
+      const email = w.currentUserEmail;
+      const creds = getSafeArray('teachxai_teachers_pass');
+      const entry = creds.find((c: any) => c && c.email === email);
+      if (!entry) {
+        w.showToast('Account not found');
+        return;
+      }
+      if (entry.password !== currentPass) {
+        w.showToast('Current password is incorrect');
+        return;
+      }
+      entry.password = newPass;
+      localStorage.setItem('teachxai_teachers_pass', JSON.stringify(creds));
+      (document.getElementById('tch-current-pass') as HTMLInputElement)!.value = '';
+      (document.getElementById('tch-new-pass') as HTMLInputElement)!.value = '';
+      w.showToast('Password updated successfully!');
     };
 
     // Portal navigations
@@ -885,10 +1250,385 @@ export default function App() {
       if (id === 'admin-analytics') w.buildAnalytics();
       if (id === 'admin-registrations') w.loadEventRegistrations();
       if (id === 'admin-attendance') w.loadAttendanceEvents();
+      if (id === 'admin-vol-apps') w.renderVolunteerApplications();
+      if (id === 'admin-teachxai') w.renderTeachXaiAdmin();
       if (id === 'admin-overview' || id === 'admin-events' || id === 'admin-volunteers' || id === 'admin-tasks' || id === 'admin-leaderboard') {
         w.renderEvents();
         w.renderTasks();
         w.renderVolunteersAndLeaderboard();
+      }
+    };
+
+    w.renderTeachXaiAdmin = () => {
+      const educators = getSafeArray('teachxai_educators');
+      const approved = getSafeArray('teachxai_approved');
+      const lessons = getSafeArray('teachxai_lessons');
+
+      document.getElementById('tx-pending-count')!.textContent = educators.length.toString();
+      document.getElementById('tx-approved-count')!.textContent = approved.length.toString();
+      document.getElementById('tx-lessons-count')!.textContent = lessons.length.toString();
+
+      // Pending table
+      const pendingBody = document.getElementById('tx-pending-table');
+      if (pendingBody) {
+        if (educators.length === 0) {
+          pendingBody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:2rem">No pending applications</td></tr>';
+        } else {
+          pendingBody.innerHTML = educators.map((e: any, i: number) => `
+            <tr>
+              <td>${e.name || ''}</td>
+              <td>${e.email || ''}</td>
+              <td>${e.phone || ''}</td>
+              <td>${e.education || ''}</td>
+              <td>${(e.subjects || []).join(', ')}</td>
+              <td>${e.experience || '0'}</td>
+              <td>
+                <button class="btn-small btn-success-small" onclick="window.approveTxEducator(${i})">Approve</button>
+                <button class="btn-small btn-danger-small" onclick="window.rejectTxEducator(${i})">Reject</button>
+              </td>
+            </tr>
+          `).join('');
+        }
+      }
+
+      // Approved table
+      const approvedBody = document.getElementById('tx-approved-table');
+      if (approvedBody) {
+        if (approved.length === 0) {
+          approvedBody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:2rem">No approved educators</td></tr>';
+        } else {
+          approvedBody.innerHTML = approved.map((a: any, i: number) => {
+            const taughtCount = lessons.filter((l: any) => l.educator === a.name).length;
+            return `
+              <tr>
+                <td>${a.name || ''}</td>
+                <td>${a.email || ''}</td>
+                <td>${(a.subjects || []).join(', ')}</td>
+                <td>${(a.languages || []).join(', ')}</td>
+                <td>${taughtCount}</td>
+                <td><button class="btn-small btn-danger-small" onclick="window.removeTxEducator(${i})">Remove</button></td>
+              </tr>
+            `;
+          }).join('');
+        }
+      }
+
+      // Lessons table
+      const lessonsBody = document.getElementById('tx-lessons-table');
+      if (lessonsBody) {
+        if (lessons.length === 0) {
+          lessonsBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:2rem">No lessons recorded</td></tr>';
+        } else {
+          lessonsBody.innerHTML = lessons.map((l: any) => `
+            <tr>
+              <td>${l.educator || ''}</td>
+              <td>${l.title || ''}</td>
+              <td>${l.subject || ''}</td>
+              <td>${l.date || ''}</td>
+              <td><span class="badge badge-green">Completed</span></td>
+            </tr>
+          `).join('');
+        }
+      }
+
+      // Fill educator dropdown for lesson assignment
+      const eduSelect = document.getElementById('tx-lesson-educator') as HTMLSelectElement;
+      if (eduSelect) {
+        eduSelect.innerHTML = '<option value="">-- Select --</option>' + approved.map((a: any) => `<option value="${a.name}">${a.name}</option>`).join('');
+      }
+      // Fill educator dropdown for attendance
+      const attEduSelect = document.getElementById('tx-att-educator') as HTMLSelectElement;
+      if (attEduSelect) {
+        attEduSelect.innerHTML = '<option value="">-- Select --</option>' + approved.map((a: any) => `<option value="${a.name}">${a.name}</option>`).join('');
+      }
+    };
+
+    w.showTxTab = (tab: string, e: Event) => {
+      ['pending', 'approved', 'lessons', 'attendance', 'stats'].forEach(t => {
+        const el = document.getElementById(`tx-${t}-panel`);
+        if (el) el.style.display = t === tab ? 'block' : 'none';
+      });
+      if (tab === 'attendance') {
+        const approved = getSafeArray('teachxai_approved');
+        const attSelect = document.getElementById('tx-att-educator') as HTMLSelectElement;
+        if (attSelect) {
+          attSelect.innerHTML = '<option value="">-- Select --</option>' + approved.map((a: any) => `<option value="${a.name}">${a.name}</option>`).join('');
+        }
+        const att = getSafeArray('teachxai_attendance');
+        const attBody = document.getElementById('tx-attendance-table');
+        if (attBody) {
+          if (att.length === 0) {
+            attBody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--text-muted);padding:2rem">No attendance records</td></tr>';
+          } else {
+            attBody.innerHTML = att.map((a: any) => `
+              <tr><td>${a.educator || ''}</td><td>${a.date || ''}</td><td><span class="badge ${a.status === 'Present' ? 'badge-green' : a.status === 'Absent' ? 'badge-red' : 'badge-blue'}">${a.status || ''}</span></td></tr>
+            `).join('');
+          }
+        }
+      }
+      if (tab === 'stats') {
+        w.renderTxStats();
+      }
+    };
+
+    w.approveTxEducator = (index: number) => {
+      const educators = getSafeArray('teachxai_educators');
+      const approved = getSafeArray('teachxai_approved');
+      if (index >= 0 && index < educators.length) {
+        const educator = educators[index];
+        approved.push(educator);
+        educators.splice(index, 1);
+        localStorage.setItem('teachxai_educators', JSON.stringify(educators));
+        localStorage.setItem('teachxai_approved', JSON.stringify(approved));
+        // Auto-create teacher login credentials with default password
+        const teacherCreds = getSafeArray('teachxai_teachers_pass');
+        if (!teacherCreds.some((t: any) => t && t.email === educator.email)) {
+          teacherCreds.push({ email: educator.email, password: 'teacher123', name: educator.name });
+          localStorage.setItem('teachxai_teachers_pass', JSON.stringify(teacherCreds));
+          w.showToast(`Approved! ${educator.name} can login with password "teacher123"`);
+        } else {
+          w.showToast('Educator approved successfully!');
+        }
+        w.renderTeachXaiAdmin();
+      }
+    };
+
+    w.rejectTxEducator = (index: number) => {
+      const educators = getSafeArray('teachxai_educators');
+      if (index >= 0 && index < educators.length) {
+        educators.splice(index, 1);
+        localStorage.setItem('teachxai_educators', JSON.stringify(educators));
+        w.renderTeachXaiAdmin();
+      }
+    };
+
+    w.removeTxEducator = (index: number) => {
+      const approved = getSafeArray('teachxai_approved');
+      if (index >= 0 && index < approved.length) {
+        const removed = approved[index];
+        approved.splice(index, 1);
+        localStorage.setItem('teachxai_approved', JSON.stringify(approved));
+        // Also remove their login credentials
+        const creds = getSafeArray('teachxai_teachers_pass');
+        const filtered = creds.filter((c: any) => c && c.email !== removed.email);
+        localStorage.setItem('teachxai_teachers_pass', JSON.stringify(filtered));
+        w.renderTeachXaiAdmin();
+      }
+    };
+
+    w.markTxAttendance = () => {
+      const educator = (document.getElementById('tx-att-educator') as HTMLSelectElement)?.value;
+      const date = (document.getElementById('tx-att-date') as HTMLInputElement)?.value;
+      const status = (document.getElementById('tx-att-status') as HTMLSelectElement)?.value;
+      if (!educator || !date) {
+        w.showToast('Please select educator and date');
+        return;
+      }
+      const attendance = getSafeArray('teachxai_attendance');
+      attendance.push({ educator, date, status });
+      localStorage.setItem('teachxai_attendance', JSON.stringify(attendance));
+      (document.getElementById('tx-att-date') as HTMLInputElement)!.value = '';
+      // Refresh the attendance tab if active
+      const attPanel = document.getElementById('tx-attendance-panel');
+      if (attPanel && attPanel.style.display !== 'none') {
+        const attBody = document.getElementById('tx-attendance-table');
+        if (attBody) {
+          const allAtt = getSafeArray('teachxai_attendance');
+          attBody.innerHTML = allAtt.map((a: any) => `
+            <tr><td>${a.educator || ''}</td><td>${a.date || ''}</td><td><span class="badge ${a.status === 'Present' ? 'badge-green' : a.status === 'Absent' ? 'badge-red' : 'badge-blue'}">${a.status || ''}</span></td></tr>
+          `).join('');
+        }
+      }
+      w.renderTeachXaiAdmin();
+      w.showToast('Attendance marked!');
+    };
+
+    w.renderTxStats = () => {
+      const approved = getSafeArray('teachxai_approved');
+      const lessons = getSafeArray('teachxai_lessons');
+      const attendance = getSafeArray('teachxai_attendance');
+      document.getElementById('tx-stats-total')!.textContent = approved.length.toString();
+      const activeTeachers = approved.filter((a: any) => lessons.some((l: any) => l.educator === a.name)).length;
+      document.getElementById('tx-stats-active')!.textContent = activeTeachers.toString();
+      const totalAtt = attendance.length;
+      const presentAtt = attendance.filter((a: any) => a.status === 'Present').length;
+      document.getElementById('tx-stats-att-rate')!.textContent = totalAtt > 0 ? Math.round((presentAtt / totalAtt) * 100) + '%' : '0%';
+      document.getElementById('tx-stats-total-lessons')!.textContent = lessons.length.toString();
+      const statsBody = document.getElementById('tx-stats-table');
+      if (statsBody) {
+        if (approved.length === 0) {
+          statsBody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:2rem">No teachers</td></tr>';
+        } else {
+          statsBody.innerHTML = approved.map((a: any) => {
+            const tLessons = lessons.filter((l: any) => l.educator === a.name).length;
+            const tAtt = attendance.filter((at: any) => at.educator === a.name);
+            const tPresent = tAtt.filter((at: any) => at.status === 'Present').length;
+            const tAbsent = tAtt.filter((at: any) => at.status === 'Absent').length;
+            const tPct = tAtt.length > 0 ? Math.round((tPresent / tAtt.length) * 100) : 0;
+            return `
+              <tr>
+                <td>${a.name || ''}</td>
+                <td>${a.email || ''}</td>
+                <td>${tLessons}</td>
+                <td>${tPresent}</td>
+                <td>${tAbsent}</td>
+                <td>${tPct}%</td>
+              </tr>
+            `;
+          }).join('');
+        }
+      }
+    };
+
+    w.assignTxLesson = () => {
+      const educator = (document.getElementById('tx-lesson-educator') as HTMLSelectElement)?.value;
+      const title = (document.getElementById('tx-lesson-title') as HTMLInputElement)?.value;
+      const subject = (document.getElementById('tx-lesson-subject') as HTMLInputElement)?.value;
+      const date = (document.getElementById('tx-lesson-date') as HTMLInputElement)?.value;
+      if (!educator || !title || !subject) {
+        w.showToast('Please fill in educator, lesson title, and subject');
+        return;
+      }
+      const lessons = getSafeArray('teachxai_lessons');
+      lessons.push({ educator, title, subject, date: date || new Date().toLocaleDateString('en-IN') });
+      localStorage.setItem('teachxai_lessons', JSON.stringify(lessons));
+      (document.getElementById('tx-lesson-title') as HTMLInputElement)!.value = '';
+      (document.getElementById('tx-lesson-subject') as HTMLInputElement)!.value = '';
+      (document.getElementById('tx-lesson-date') as HTMLInputElement)!.value = '';
+      w.renderTeachXaiAdmin();
+      w.showToast('Lesson assigned successfully!');
+    };
+
+    // ===== TEACHER PORTAL =====
+    w.showTportalSection = (id: string, e: Event) => {
+      document.querySelectorAll('#teacher-portal .portal-section').forEach(s => s.classList.remove('active'));
+      const sect = document.getElementById(id);
+      if (sect) sect.classList.add('active');
+      document.querySelectorAll('#teacher-portal .portal-nav-btn').forEach(b => b.classList.remove('active'));
+      if (e && e.currentTarget) {
+        (e.currentTarget as HTMLElement).classList.add('active');
+      }
+    };
+
+    w.renderTeacherPortal = () => {
+      const email = w.currentUserEmail || '';
+      const approved = getSafeArray('teachxai_approved');
+      const teacher = approved.find((a: any) => a && a.email === email);
+      const lessons = getSafeArray('teachxai_lessons');
+      const attendance = getSafeArray('teachxai_attendance');
+      const teacherLessons = lessons.filter((l: any) => l.educator === (teacher?.name || ''));
+      const teacherAttendance = attendance.filter((a: any) => a.educator === (teacher?.name || ''));
+
+      const totalHours = teacherLessons.length * 2; // assume 2 hrs per lesson
+      const upcomingCount = teacherLessons.filter((l: any) => l.date && new Date(l.date) > new Date()).length;
+      const assignedCount = teacherLessons.length;
+      const presentCount = teacherAttendance.filter((a: any) => a.status === 'Present').length;
+      const attPct = teacherAttendance.length > 0 ? Math.round((presentCount / teacherAttendance.length) * 100) : 0;
+
+      document.getElementById('tportal-hours')!.textContent = totalHours.toString();
+      document.getElementById('tportal-upcoming')!.textContent = upcomingCount.toString();
+      document.getElementById('tportal-assigned')!.textContent = assignedCount.toString();
+      document.getElementById('tportal-att-pct')!.textContent = attPct + '%';
+
+      // Recent activity
+      const activityEl = document.getElementById('tportal-recent-activity');
+      if (activityEl) {
+        if (teacherLessons.length === 0) {
+          activityEl.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem">No recent activity yet.</p>';
+        } else {
+          activityEl.innerHTML = teacherLessons.slice(-3).reverse().map((l: any) => `
+            <div class="task-card"><div class="task-title">${l.title || 'Lesson'}</div><div class="task-desc">${l.subject || ''} — ${l.date || ''}</div><div class="task-footer"><span class="badge badge-green">Completed</span></div></div>
+          `).join('');
+        }
+      }
+
+      // Classes list
+      const classesEl = document.getElementById('tportal-classes-list');
+      if (classesEl) {
+        if (teacherLessons.length === 0) {
+          classesEl.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem">No classes yet.</p>';
+        } else {
+          classesEl.innerHTML = teacherLessons.map((l: any) => `
+            <div class="task-card"><div class="task-title">${l.title || 'Lesson'}</div><div class="task-desc">Subject: ${l.subject || ''} | Date: ${l.date || ''}</div><div class="task-footer"><span class="badge badge-green">Completed</span></div></div>
+          `).join('');
+        }
+      }
+
+      // Assigned lessons
+      const tasksEl = document.getElementById('tportal-tasks-list');
+      if (tasksEl) {
+        if (teacherLessons.length === 0) {
+          tasksEl.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem">No assignments yet.</p>';
+        } else {
+          tasksEl.innerHTML = teacherLessons.map((l: any) => `
+            <div class="task-card"><div class="task-title">${l.title || 'Lesson'}</div><div class="task-desc">${l.subject || ''} — Due: ${l.date || 'N/A'}</div><div class="task-footer"><span class="badge badge-green">Assigned</span></div></div>
+          `).join('');
+        }
+      }
+
+      // Attendance records
+      const attEl = document.getElementById('tportal-attendance-list');
+      if (attEl) {
+        if (teacherAttendance.length === 0) {
+          attEl.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem">No attendance records yet.</p>';
+        } else {
+          attEl.innerHTML = `<table class="data-table"><thead><tr><th>Date</th><th>Status</th></tr></thead><tbody>${teacherAttendance.map((a: any) => `
+            <tr><td>${a.date || ''}</td><td><span class="badge ${a.status === 'Present' ? 'badge-green' : 'badge-red'}">${a.status || ''}</span></td></tr>
+          `).join('')}</tbody></table>`;
+        }
+      }
+
+      // Suggested courses based on subjects
+      const coursesEl = document.getElementById('tportal-courses-list');
+      if (coursesEl) {
+        const subjects = teacher?.subjects || [];
+        if (subjects.length === 0) {
+          coursesEl.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem">Courses will be suggested based on your registered subjects.</p>';
+        } else {
+          const courseMap: Record<string, string[]> = {
+            'Machine Learning': ['ML Fundamentals', 'Supervised Learning', 'Neural Networks'],
+            'Deep Learning': ['Intro to Deep Learning', 'CNNs', 'RNNs'],
+            'Data Science': ['Data Analysis with Python', 'Statistics', 'Data Visualization'],
+            'Python': ['Python Basics', 'Advanced Python', 'Python for AI'],
+            'AI Ethics': ['Ethics in AI', 'Bias & Fairness', 'Responsible AI'],
+            'Robotics': ['Intro to Robotics', 'ROS Basics', 'Robot Programming'],
+            'IoT': ['IoT Fundamentals', 'Sensor Networks', 'Edge Computing'],
+            'Computer Vision': ['Image Processing', 'Object Detection', 'OpenCV'],
+            'NLP': ['Text Processing', 'Transformers', 'LLMs'],
+          };
+          let suggested: string[] = [];
+          subjects.forEach((s: string) => {
+            if (courseMap[s]) suggested = suggested.concat(courseMap[s]);
+          });
+          if (suggested.length === 0) suggested = ['AI Fundamentals', 'Introduction to Programming', 'Data Literacy'];
+          coursesEl.innerHTML = suggested.map((c: string) => `
+            <div class="task-card"><div class="task-title">${c}</div><div class="task-footer"><span class="badge badge-green">Recommended</span></div></div>
+          `).join('');
+        }
+      }
+      // Populate teacher profile fields
+      const tNameEl = document.getElementById('tch-profile-name') as HTMLInputElement;
+      const tEmailEl = document.getElementById('tch-profile-email') as HTMLInputElement;
+      const tPhoneEl = document.getElementById('tch-profile-phone') as HTMLInputElement;
+      const tEduEl = document.getElementById('tch-profile-education') as HTMLInputElement;
+      const tSubjEl = document.getElementById('tch-profile-subjects') as HTMLInputElement;
+      const tLangEl = document.getElementById('tch-profile-languages') as HTMLInputElement;
+      if (teacher) {
+        if (tNameEl) tNameEl.value = teacher.name || '';
+        if (tEmailEl) tEmailEl.value = teacher.email || '';
+        if (tPhoneEl) tPhoneEl.value = teacher.phone || '';
+        if (tEduEl) tEduEl.value = teacher.education || '';
+        if (tSubjEl) tSubjEl.value = (teacher.subjects || []).join(', ');
+        if (tLangEl) tLangEl.value = (teacher.languages || []).join(', ');
+      } else if (email) {
+        if (tEmailEl) tEmailEl.value = email;
+      }
+      // Restore teacher profile photo
+      const savedPhoto = localStorage.getItem('tch_profile_photo_' + email);
+      if (savedPhoto) {
+        const img = document.getElementById('tch-profile-photo-img') as HTMLImageElement;
+        const txt = document.getElementById('tch-profile-photo-text');
+        if (img && txt) { img.src = savedPhoto; img.style.display = 'block'; txt.style.display = 'none'; }
       }
     };
 
@@ -1364,6 +2104,70 @@ export default function App() {
     // Run once on load to establish correct state
     handleScroll();
 
+    // Intersection Observer for Partnerships staggered reveal
+    const collabSection = document.getElementById('collaboration-section');
+    if (collabSection) {
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            collabSection.classList.add('reveal-active');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.05 });
+      observer.observe(collabSection);
+    }
+
+    // Fallback: automatically reveal collaboration section after 1.5 seconds if not already done
+    const revealTimeout = setTimeout(() => {
+      const el = document.getElementById('collaboration-section');
+      if (el) el.classList.add('reveal-active');
+    }, 1500);
+
+    // 3D Tilt Hover Handlers for Partnerships Cards
+    w.handleLogoMouseMove = (e: any) => {
+      const card = e.currentTarget;
+      const rect = card.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
+      const rotX = ((centerY - y) / centerY) * 10;
+      const rotY = ((x - centerX) / centerX) * 10;
+      card.style.transform = `perspective(800px) translateY(-10px) scale(1.06) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+      card.style.boxShadow = `0 20px 45px rgba(150, 116, 45, 0.18), 0 0 25px rgba(150, 116, 45, 0.22)`;
+      card.style.borderColor = `rgba(150, 116, 45, 0.3)`;
+    };
+
+    w.handleLogoMouseLeave = (e: any) => {
+      const card = e.currentTarget;
+      card.style.transform = `perspective(800px) translateY(0) scale(1) rotateX(0deg) rotateY(0deg)`;
+      card.style.boxShadow = ``;
+      card.style.borderColor = ``;
+    };
+
+    // 3D Tilt for Testimonial Cards
+    w.handleCardTiltMove = (e: any) => {
+      const card = e.currentTarget;
+      const rect = card.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
+      const rotX = ((centerY - y) / centerY) * 10;
+      const rotY = ((x - centerX) / centerX) * 10;
+      card.style.transform = `perspective(800px) translateY(-12px) scale(1.07) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+      card.style.boxShadow = `0 25px 50px rgba(155, 122, 62, 0.2), 0 0 30px rgba(155, 122, 62, 0.15)`;
+      card.style.borderColor = `rgba(155, 122, 62, 0.35)`;
+    };
+
+    w.handleCardTiltLeave = (e: any) => {
+      const card = e.currentTarget;
+      card.style.transform = ``;
+      card.style.boxShadow = ``;
+      card.style.borderColor = ``;
+    };
+
     // Chat functionality
     w.toggleChat = () => {
       const modal = document.getElementById('chat-modal');
@@ -1517,8 +2321,43 @@ export default function App() {
     w.renderTasks();
     w.renderVolunteersAndLeaderboard();
 
+    // Restore page from saved session
+    if (currentUser) {
+      setTimeout(() => {
+        if (currentUser?.role === 'volunteer') {
+          const pName = document.getElementById('portal-name');
+          const pFullName = document.getElementById('portal-fullname');
+          const pAvatar = document.getElementById('portal-avatar');
+          if (pName) pName.textContent = currentUser.name;
+          if (pFullName) pFullName.textContent = currentUser.name;
+          if (pAvatar) pAvatar.textContent = currentUser.name[0].toUpperCase();
+          w.renderEvents();
+          w.renderTasks();
+          w.renderVolunteersAndLeaderboard();
+          w.populateVolunteerProfile();
+          w.showPage('vol-portal');
+        } else if (currentUser?.role === 'teacher') {
+          const tpName = document.getElementById('tportal-name');
+          const tpFullName = document.getElementById('tportal-fullname');
+          const tpAvatar = document.getElementById('tportal-avatar');
+          if (tpName) tpName.textContent = currentUser.name;
+          if (tpFullName) tpFullName.textContent = currentUser.name;
+          if (tpAvatar) tpAvatar.textContent = currentUser.name[0].toUpperCase();
+          w.renderTeacherPortal();
+          w.showPage('teacher-portal');
+        } else if (currentUser?.role === 'admin') {
+          w.renderEvents();
+          w.renderTasks();
+          w.renderVolunteersAndLeaderboard();
+          w.loadEventRegistrations();
+          w.showPage('admin-portal');
+        }
+      }, 100);
+    }
+
     return () => {
       clearTimeout(initTimeout);
+      clearTimeout(revealTimeout);
       if (typingInterval) clearInterval(typingInterval);
       clearInterval(sliderInterval);
       clearInterval(labelInterval);
@@ -1548,7 +2387,7 @@ export default function App() {
             </div>
           </div>
           <div className="nav-item">
-            <a onClick={() => (window as any).showPage('ai4all')}>AI 4 ALL</a>
+            <a onClick={() => (window as any).showPage('ai4all')} className="nav-highlight-btn">AI 4 ALL</a>
             <div className="dropdown">
               <a onClick={() => { (window as any).showPage('ai4all'); setTimeout(() => document.getElementById('ai4all-top')?.scrollIntoView({ behavior: 'smooth' }), 100); }}>Free AI Course</a>
               <a onClick={() => { (window as any).showPage('ai4all'); setTimeout(() => { const el = document.querySelector('.cat-card[data-cat="farmers"]'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }, 100); }}>AI for Farmers</a>
@@ -1559,6 +2398,8 @@ export default function App() {
             </div>
           </div>
           <a onClick={() => (window as any).showPage('programs')}>Programs</a>
+          <a onClick={() => (window as any).showPage('volunteer')}>Volunteer</a>
+          <a onClick={() => (window as any).showPage('teachxai')} className="nav-highlight-btn">TeachXai</a>
           <div className="nav-item">
             <a onClick={() => (window as any).showPage('gallery')}>Gallery</a>
             <div className="dropdown">
@@ -1568,10 +2409,15 @@ export default function App() {
               <a onClick={() => { (window as any).showPage('gallery'); setTimeout(() => { const cards = document.querySelectorAll('.gallery-folder-card'); if (cards[3]) cards[3].scrollIntoView({ behavior: 'smooth' }); }, 100); }}>Celebrations</a>
             </div>
           </div>
+          <a onClick={() => (window as any).showPage('contact')}>Contact</a>
+        </nav>
+        <nav id="portal-nav" style={{ display: 'none', alignItems: 'center', gap: '0.25rem', flexWrap: 'wrap' }}>
+          <a id="portal-nav-dashboard" onClick={() => { const u = JSON.parse(localStorage.getItem('currentUser')||'{}'); if(u.role==='volunteer') (window as any).showPage('vol-portal'); else if(u.role==='teacher') (window as any).showPage('teacher-portal'); else (window as any).showPage('admin-portal'); }}>Dashboard</a>
+          <a id="portal-nav-profile" onClick={() => { const u = JSON.parse(localStorage.getItem('currentUser')||'{}'); if(u.role==='volunteer') (window as any).showPage('vol-portal'); else if(u.role==='teacher') (window as any).showPage('teacher-portal'); setTimeout(() => { const el = document.getElementById(u.role==='teacher'?'tportal-profile':'vol-profile'); if(el) (window as any)[u.role==='teacher'?'showTportalSection':'showPortalSection'](u.role==='teacher'?'tportal-profile':'vol-profile', {currentTarget: el}); }, 50); }}>Profile</a>
         </nav>
         <div className="header-right">
           <span id="logged-user" style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.8)', fontWeight: '600', display: 'none' }}></span>
-          <button className="btn-donate" onClick={() => (window as any).showPage('volunteer')}>Volunteer</button>
+          <button className="btn-donate" id="signup-btn" onClick={() => (window as any).openSignUpModal()}>Sign Up</button>
           <button className="btn-login" onClick={() => (window as any).handleLoginBtn()} id="login-btn">Login</button>
         </div>
       </header>
@@ -1598,13 +2444,51 @@ export default function App() {
           {/* Hero Content */}
           <div className="hero-content">
             <div className="hero-text">
-              <h1 className="hero-title">AI FOR ALL</h1>
+              <h1 className="hero-title creative-hero-title">
+                <span className="char">A</span>
+                <span className="char">I</span>
+                <span className="space">&nbsp;</span>
+                <span className="char">F</span>
+                <span className="char">O</span>
+                <span className="char">R</span>
+                <span className="space">&nbsp;</span>
+                <span className="char">A</span>
+                <span className="char">L</span>
+                <span className="char">L</span>
+              </h1>
               <div className="hero-tagline" id="hero-tagline">
                 <span id="tagline-text"></span>
               </div>
               <div className="hero-btns">
-                <button className="btn-primary" onClick={() => (window as any).showPage('ai4all')}>Explore AI Courses</button>
-                <button className="btn-outline" onClick={() => (window as any).showPage('volunteer')}>Become a Volunteer</button>
+                <button className="btn-modern-primary" onClick={() => (window as any).showPage('ai4all')}>
+                  <span className="btn-text">Explore AI Courses</span>
+                  <span className="btn-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                      <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg>
+                  </span>
+                  <span className="btn-glow-wrapper"></span>
+                </button>
+                <button className="btn-modern-secondary" onClick={() => (window as any).showPage('volunteer')}>
+                  <span className="btn-text">Become a Volunteer</span>
+                  <span className="btn-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                      <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg>
+                  </span>
+                </button>
+                <button className="btn-modern-primary" onClick={() => (window as any).showPage('teachxai')}>
+                  <span className="btn-text">TeachXai</span>
+                  <span className="btn-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                      <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg>
+                  </span>
+                  <span className="btn-glow-wrapper"></span>
+                </button>
               </div>
             </div>
           </div>
@@ -1614,13 +2498,34 @@ export default function App() {
             <span className="chat-bubble-icon">💬</span>
           </button>
 
-          {/* Slider dots */}
-          <div className="slider-dots" id="slider-dots"></div>
+          {/* Minimal Slider dots */}
+          <div className="slider-dots" id="slider-dots">
+            {slideImages.map((_, idx) => (
+              <div
+                key={idx}
+                className={`dot ${idx === 0 ? 'active' : ''}`}
+                onClick={() => (window as any).goToSlide(idx)}
+              ></div>
+            ))}
+          </div>
 
-          {/* Scroll indicator */}
-          <div className="scroll-indicator">
-            <div className="scroll-line"></div>
-            SCROLL
+          {/* Social Media Strip at bottom of hero */}
+          <div className="hero-social-strip">
+            <span className="hero-social-strip-label">Follow Us</span>
+            <div className="hero-social-strip-icons">
+              <a href="https://www.instagram.com/incuxai/" target="_blank" rel="noopener noreferrer" className="strip-social-link strip-instagram" title="Instagram">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+              </a>
+              <a href="https://linkedin.com/company/incuxai/posts/?feedView=all" target="_blank" rel="noopener noreferrer" className="strip-social-link strip-linkedin" title="LinkedIn">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+              </a>
+              <a href="https://www.facebook.com/profile.php?id=61590436827340" target="_blank" rel="noopener noreferrer" className="strip-social-link strip-facebook" title="Facebook">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+              </a>
+              <a href="https://youtube.com/@incuxai?si=1KB19n7w3B0xmrBc" target="_blank" rel="noopener noreferrer" className="strip-social-link strip-youtube" title="YouTube">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+              </a>
+            </div>
           </div>
         </div>
 
@@ -1640,54 +2545,184 @@ export default function App() {
 
           <div className="about-extras">
             <div className="about-tabs-container">
-              <button className="about-pill-btn active" onClick={(e) => (window as any).toggleAboutDetail('about-mission', e)}>Our Mission</button>
-              <button className="about-pill-btn" onClick={(e) => (window as any).toggleAboutDetail('about-vision', e)}>Our Vision</button>
-              <button className="about-pill-btn" onClick={(e) => (window as any).toggleAboutDetail('about-values', e)}>Our Values</button>
-              <button className="about-pill-btn" onClick={(e) => (window as any).toggleAboutDetail('about-journey', e)}>Our Journey</button>
+              <button className="about-pill-btn active" onClick={() => (window as any).rotateCubeToIndex(0, true)}>Our Mission</button>
+              <button className="about-pill-btn" onClick={() => (window as any).rotateCubeToIndex(1, true)}>Our Vision</button>
+              <button className="about-pill-btn" onClick={() => (window as any).rotateCubeToIndex(2, true)}>Our Values</button>
+              <button className="about-pill-btn" onClick={() => (window as any).rotateCubeToIndex(3, true)}>Our Journey</button>
             </div>
             
-            <div id="about-mission" className="about-detail" style={{ display: 'grid' }}>
-              <div className="about-detail-matter">
-                <h4 className="tab-title">Democratizing AI Education</h4>
-                <p>To make AI knowledge accessible, affordable, and actionable for every Indian citizen regardless of their education, age, or economic background.</p>
-                <p>We believe that artificial intelligence should not be a privilege for the few, but a fundamental tool for the many. By breaking down language barriers and simplifying complex concepts, our mission is to empower rural communities, local businesses, and students to actively shape the future of technology rather than just consuming it.</p>
-              </div>
-              <div className="about-detail-photo">
-                <img src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=400&auto=format&fit=crop" alt="Our Mission" />
-              </div>
-            </div>
-            
-            <div id="about-vision" className="about-detail">
-              <div className="about-detail-matter">
-                <h4 className="tab-title">A Digitally Empowered India</h4>
-                <p>To create a future where every Indian has the knowledge and tools to harness AI for personal and community growth.</p>
-                <p>We envision a nationwide ecosystem where farmers optimize their yields using predictive AI, teachers personalize learning for every student, and small businesses scale efficiently. By fostering a culture of innovation and digital literacy, we aim to position India as a global leader in inclusive AI adoption.</p>
-              </div>
-              <div className="about-detail-photo">
-                <img src="https://images.unsplash.com/photo-1531482615713-2afd69097998?q=80&w=400&auto=format&fit=crop" alt="Our Vision" />
-              </div>
-            </div>
+            <div className="cube-viewport">
+              <div className="about-cube" id="about-cube">
+                {/* Face 1: Mission (Front) */}
+                <div className="cube-face cube-front">
+                  <div className="about-detail-matter">
+                    <h4 className="tab-title">Democratizing AI Education</h4>
+                    <p>To make AI knowledge accessible, affordable, and actionable for every Indian citizen regardless of their education, age, or economic background.</p>
+                    <p>We believe that artificial intelligence should not be a privilege for the few, but a fundamental tool for the many. By breaking down language barriers and simplifying complex concepts, our mission is to empower rural communities, local businesses, and students to actively shape the future of technology rather than just consuming it.</p>
+                  </div>
+                  <div className="about-detail-photo">
+                    <img src={ourMissionImg} alt="Our Mission" />
+                    <img src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=400&auto=format&fit=crop" alt="Our Mission" />
+                  </div>
+                </div>
+                
+                {/* Face 2: Vision (Right) */}
+                <div className="cube-face cube-right">
+                  <div className="about-detail-matter">
+                    <h4 className="tab-title">A Digitally Empowered India</h4>
+                    <p>To create a future where every Indian has the knowledge and tools to harness AI for personal and community growth.</p>
+                    <p>We envision a nationwide ecosystem where farmers optimize their yields using predictive AI, teachers personalize learning for every student, and small businesses scale efficiently. By fostering a culture of innovation and digital literacy, we aim to position India as a global leader in inclusive AI adoption.</p>
+                  </div>
+                  <div className="about-detail-photo">
+                    <img src={ourVisionImg} alt="Our Vision" />
+                  </div>
+                </div>
 
-            <div id="about-values" className="about-detail">
-              <div className="about-detail-matter">
-                <h4 className="tab-title">What Drives Us Every Day</h4>
-                <p><strong>Inclusivity:</strong> We design our programs for every person, breaking through barriers of language, caste, and geography.</p>
-                <p><strong>Open Access:</strong> Education should be free forever. We enforce no paywalls and no hidden barriers.</p>
-                <p><strong>Community-First:</strong> We build a supportive ecosystem of learners who teach and uplift one another, measuring our success by the tangible impact we create in real lives.</p>
-              </div>
-              <div className="about-detail-photo">
-                <img src="https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=400&auto=format&fit=crop" alt="Our Values" />
+                {/* Face 3: Values (Back) */}
+                <div className="cube-face cube-back">
+                  <div className="about-detail-matter">
+                    <h4 className="tab-title">What Drives Us Every Day</h4>
+                    <p><strong>Inclusivity:</strong> We design our programs for every person, breaking through barriers of language, caste, and geography.</p>
+                    <p><strong>Open Access:</strong> Education should be free forever. We enforce no paywalls and no hidden barriers.</p>
+                    <p><strong>Community-First:</strong> We build a supportive ecosystem of learners who teach and uplift one another, measuring our success by the tangible impact we create in real lives.</p>
+                  </div>
+                  <div className="about-detail-photo">
+                    <img src={ourValuesImg} alt="Our Values" />
+                    <img src="https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=400&auto=format&fit=crop" alt="Our Values" />
+                  </div>
+                </div>
+
+                {/* Face 4: Journey (Left) */}
+                <div className="cube-face cube-left">
+                  <div className="about-detail-matter">
+                    <h4 className="tab-title">From Concept to Movement</h4>
+                    <p>Starting with a handful of volunteers in a single district, our journey began with a simple idea: tech literacy is a fundamental right. Over the years, we've expanded our reach to 22 states, translating complex AI concepts into regional languages.</p>
+                    <p>Today, with a strong network of over 5,000 passionate volunteers, we have transformed from a small local initiative into a nationwide movement that has already impacted hundreds of thousands of lives.</p>
+                  </div>
+                  <div className="about-detail-photo">
+                    <img src={ourJourneyImg} alt="Our Journey" />
+                    <img src="https://images.unsplash.com/photo-1517457373958-b7bdd4587205?q=80&w=400&auto=format&fit=crop" alt="Our Journey" />
+                  </div>
+                </div>
               </div>
             </div>
+          </div>
+        </section>
 
-            <div id="about-journey" className="about-detail">
-              <div className="about-detail-matter">
-                <h4 className="tab-title">From Concept to Movement</h4>
-                <p>Starting with a handful of volunteers in a single district, our journey began with a simple idea: tech literacy is a fundamental right. Over the years, we've expanded our reach to 22 states, translating complex AI concepts into regional languages.</p>
-                <p>Today, with a strong network of over 5,000 passionate volunteers, we have transformed from a small local initiative into a nationwide movement that has already impacted hundreds of thousands of lives.</p>
+        {/* ========== COLLABORATION SECTION ========== */}
+        <section id="collaboration-section" style={{ background: 'var(--darker)', borderTop: '1px solid var(--glass-border)', padding: '5rem 8%' }}>
+          <div className="section-header">
+            <span className="section-tag">Partnerships</span>
+            <h2 className="section-title">Our <span style={{ color: 'var(--secondary)' }}>Collaboration</span> Network</h2>
+            <p className="section-sub">Empowering rural and urban communities in partnership with India's leading organizations</p>
+          </div>
+          
+          <div className="logo-marquee-container">
+            <div className="logo-marquee-track">
+              {/* Tile 0: Incuxai */}
+              <div className="partner-card">
+                <div className="partner-logo-wrapper">
+                  <img src={incuxLogoImg} alt="Incuxai Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                </div>
               </div>
-              <div className="about-detail-photo">
-                <img src="https://images.unsplash.com/photo-1517457373958-b7bdd4587205?q=80&w=400&auto=format&fit=crop" alt="Our Journey" />
+
+              {/* Tile 1: JVV */}
+              <div className="partner-card">
+                <div className="partner-logo-wrapper">
+                  <img src={jvvLogo} alt="JVV Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                </div>
+              </div>
+
+              {/* Tile 1: JVV */}
+              <div className="partner-card">
+                <div className="partner-logo-wrapper">
+                  <img src={jvvLogo} alt="JVV Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                </div>
+              </div>
+
+              {/* Tile 2: SUN */}
+              <div className="partner-card">
+                <div className="partner-logo-wrapper">
+                  <img src={sunLogo} alt="SUN Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                </div>
+              </div>
+
+              {/* Tile 3: Covid Fighters */}
+              <div className="partner-card">
+                <div className="partner-logo-wrapper">
+                  <img src={covidfightersLogo} alt="Covid Fighters Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                </div>
+              </div>
+
+              {/* Tile 4: Elivatx */}
+              <div className="partner-card">
+                <div className="partner-logo-wrapper">
+                  <img src={elivatxLogo} alt="Elivatx Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                </div>
+              </div>
+
+              {/* Tile 5: HCET */}
+              <div className="partner-card">
+                <div className="partner-logo-wrapper">
+                  <img src={hcetLogo} alt="HCET Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                </div>
+              </div>
+
+              {/* Tile 6: Job Recipe */}
+              <div className="partner-card">
+                <div className="partner-logo-wrapper">
+                  <img src={jobreciepeLogo} alt="Job Recipe Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                </div>
+              </div>
+
+              {/* Duplicate the items for seamless infinite scrolling loop */}
+              {/* Tile 0: Incuxai */}
+              <div className="partner-card">
+                <div className="partner-logo-wrapper">
+                  <img src={incuxLogoImg} alt="Incuxai Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                </div>
+              </div>
+
+              {/* Tile 1: JVV */}
+              <div className="partner-card">
+                <div className="partner-logo-wrapper">
+                  <img src={jvvLogo} alt="JVV Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                </div>
+              </div>
+
+              {/* Tile 2: SUN */}
+              <div className="partner-card">
+                <div className="partner-logo-wrapper">
+                  <img src={sunLogo} alt="SUN Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                </div>
+              </div>
+
+              {/* Tile 3: Covid Fighters */}
+              <div className="partner-card">
+                <div className="partner-logo-wrapper">
+                  <img src={covidfightersLogo} alt="Covid Fighters Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                </div>
+              </div>
+
+              {/* Tile 4: Elivatx */}
+              <div className="partner-card">
+                <div className="partner-logo-wrapper">
+                  <img src={elivatxLogo} alt="Elivatx Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                </div>
+              </div>
+
+              {/* Tile 5: HCET */}
+              <div className="partner-card">
+                <div className="partner-logo-wrapper">
+                  <img src={hcetLogo} alt="HCET Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                </div>
+              </div>
+
+              {/* Tile 6: Job Recipe */}
+              <div className="partner-card">
+                <div className="partner-logo-wrapper">
+                  <img src={jobreciepeLogo} alt="Job Recipe Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                </div>
               </div>
             </div>
           </div>
@@ -1701,25 +2736,25 @@ export default function App() {
             <p className="section-sub">Hear from people whose lives have been touched by IncuxAI Education Trust</p>
           </div>
           <div className="cards-grid cards-grid-4">
-            <div className="card" style={{ textAlign: 'center' }}>
+            <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
               <img src="https://images.unsplash.com/photo-1599566150163-29194dcaad36?q=80&w=200&auto=format&fit=crop" alt="Ramesh Patel" style={{ width: '70px', height: '70px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
               <div className="card-title" style={{ fontSize: '1rem' }}>Ramesh Patel</div>
               <div style={{ fontSize: '0.75rem', color: 'var(--secondary)', fontWeight: 600, marginBottom: '0.6rem' }}>Farmer, Gujarat</div>
               <div className="card-text" style={{ fontSize: '0.85rem', fontStyle: 'italic' }}>IncuxAI&apos;s crop disease detection training helped me save my entire season&apos;s yield. I now teach other farmers in my village how to use AI on their phones.</div>
             </div>
-            <div className="card" style={{ textAlign: 'center' }}>
+            <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
               <img src="https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=200&auto=format&fit=crop" alt="Sunita Devi" style={{ width: '70px', height: '70px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
               <div className="card-title" style={{ fontSize: '1rem' }}>Sunita Devi</div>
               <div style={{ fontSize: '0.75rem', color: 'var(--secondary)', fontWeight: 600, marginBottom: '0.6rem' }}>Teacher, Bihar</div>
               <div className="card-text" style={{ fontSize: '0.85rem', fontStyle: 'italic' }}>The AI teacher training program transformed my classroom. My students are more engaged and I can now create personalized lessons for each child.</div>
             </div>
-            <div className="card" style={{ textAlign: 'center' }}>
+            <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
               <img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=200&auto=format&fit=crop" alt="Arun Kumar" style={{ width: '70px', height: '70px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
               <div className="card-title" style={{ fontSize: '1rem' }}>Arun Kumar</div>
               <div style={{ fontSize: '0.75rem', color: 'var(--secondary)', fontWeight: 600, marginBottom: '0.6rem' }}>Small Business Owner, Tamil Nadu</div>
               <div className="card-text" style={{ fontSize: '0.85rem', fontStyle: 'italic' }}>I doubled my sales after applying AI tools I learned at IncuxAI&apos;s MSME workshop. Best decision I ever made for my business.</div>
             </div>
-            <div className="card" style={{ textAlign: 'center' }}>
+            <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
               <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=200&auto=format&fit=crop" alt="Priya Singh" style={{ width: '70px', height: '70px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
               <div className="card-title" style={{ fontSize: '1rem' }}>Priya Singh</div>
               <div style={{ fontSize: '0.75rem', color: 'var(--secondary)', fontWeight: 600, marginBottom: '0.6rem' }}>Student, Uttar Pradesh</div>
@@ -1729,35 +2764,35 @@ export default function App() {
         </section>
 
         {/* Team */}
-        <section>
+        <section id="team-section">
           <div className="section-header">
-            <span className="section-tag">Leadership</span>
-            <h2 className="section-title">Our Team</h2>
+            <span className="section-tag">Volunteers</span>
+            <h2 className="section-title">Our Volunteer Network</h2>
           </div>
           <div className="cards-grid cards-grid-4">
-            <div className="card" style={{ textAlign: 'center' }}>
-              <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=200&auto=format&fit=crop" alt="Dr. Arjun Reddy" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
-              <div className="card-title">Dr. Arjun Reddy</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--secondary)', fontWeight: 600, marginBottom: '0.5rem' }}>Founder & CEO</div>
-              <div className="card-text">IIT Hyderabad alumnus. 15+ years in AI research and rural education.</div>
+            <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
+              <img src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?q=80&w=200&auto=format&fit=crop" alt="Rohan Sharma" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
+              <div className="card-title">Rohan Sharma</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--secondary)', fontWeight: 600, marginBottom: '0.5rem' }}>Regional Lead, North India</div>
+              <div className="card-text">IIT Delhi graduate. Spearheads vernacular AI prompt engineering bootcamps across 40+ villages.</div>
             </div>
-            <div className="card" style={{ textAlign: 'center' }}>
-              <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&auto=format&fit=crop" alt="Dr. Priya Sharma" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
-              <div className="card-title">Dr. Priya Sharma</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--secondary)', fontWeight: 600, marginBottom: '0.5rem' }}>Chief Learning Officer</div>
-              <div className="card-text">Curriculum design expert. Former professor at Delhi University.</div>
+            <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
+              <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=200&auto=format&fit=crop" alt="Sneha Patel" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
+              <div className="card-title">Sneha Patel</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--secondary)', fontWeight: 600, marginBottom: '0.5rem' }}>Outreach Coordinator, West India</div>
+              <div className="card-text">Social work specialist. Mapped agricultural cooperative partnerships to train 20,000+ farmers in AI.</div>
             </div>
-            <div className="card" style={{ textAlign: 'center' }}>
-              <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200&auto=format&fit=crop" alt="Sai Krishna" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
-              <div className="card-title">Sai Krishna</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--secondary)', fontWeight: 600, marginBottom: '0.5rem' }}>CTO</div>
-              <div className="card-text">Full-stack AI engineer. Built our platform from scratch.</div>
+            <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
+              <img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=200&auto=format&fit=crop" alt="Karthik Raja" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
+              <div className="card-title">Karthik Raja</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--secondary)', fontWeight: 600, marginBottom: '0.5rem' }}>AI Curriculum Lead, South India</div>
+              <div className="card-text">Software engineer. Designs interactive vernacular code templates for rural government schools.</div>
             </div>
-            <div className="card" style={{ textAlign: 'center' }}>
-              <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=200&auto=format&fit=crop" alt="Meera Nair" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
-              <div className="card-title">Meera Nair</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--secondary)', fontWeight: 600, marginBottom: '0.5rem' }}>Head of Volunteers</div>
-              <div className="card-text">Manages our 5000+ volunteer network across 22 states.</div>
+            <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
+              <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop" alt="Ananya Das" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
+              <div className="card-title">Ananya Das</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--secondary)', fontWeight: 600, marginBottom: '0.5rem' }}>Literacy Coordinator, East India</div>
+              <div className="card-text">Rural education activist. Established 60+ mobile-learning resource centers across remote districts.</div>
             </div>
           </div>
         </section>
@@ -1795,36 +2830,36 @@ export default function App() {
           </div>
         </section>
         <div className="gallery-folders">
-          <div className="gallery-folder-card" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1593113598332-cd288d649433?q=80&w=600&auto=format&fit=crop')" }} onClick={() => (window as any).showGalleryFolder('gfol-farmers', 'Farmer Workshops')}>
+          <div className="gallery-folder-card" style={{ backgroundImage: `url(${iasClassesImg})` }} onClick={() => (window as any).showGalleryFolder('gfol-farmers', 'Farmer Workshops')}>
             <span className="gallery-folder-name">Farmer Workshops</span>
             <div id="gfol-farmers" className="gallery-folder-grid" style={{ display: 'none' }}>
-              <div className="gallery-item" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1593113598332-cd288d649433?q=80&w=600&auto=format&fit=crop')", backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="gallery-overlay">Farmer AI Workshop – Andhra Pradesh</div></div>
-              <div className="gallery-item" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=600&auto=format&fit=crop')", backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="gallery-overlay">Crop Disease Detection Camp</div></div>
-              <div className="gallery-item" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1576086213369-97a306d36557?q=80&w=600&auto=format&fit=crop')", backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="gallery-overlay">Soil Analysis Training – Guntur</div></div>
+              <div className="gallery-item" style={{ backgroundImage: `url(${sunEduSupportImg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="gallery-overlay">Farmer AI Workshop – Andhra Pradesh</div></div>
+              <div className="gallery-item" style={{ backgroundImage: `url(${aiFirImg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="gallery-overlay">Crop Disease Detection Camp</div></div>
+              <div className="gallery-item" style={{ backgroundImage: `url(${rtihAmaravatiImg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="gallery-overlay">Soil Analysis Training – Guntur</div></div>
             </div>
           </div>
-          <div className="gallery-folder-card" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1523240795612-9a054b0db644?q=80&w=600&auto=format&fit=crop')" }} onClick={() => (window as any).showGalleryFolder('gfol-education', 'Education & Training')}>
+          <div className="gallery-folder-card" style={{ backgroundImage: `url(${ourMissionImg})` }} onClick={() => (window as any).showGalleryFolder('gfol-education', 'Education & Training')}>
             <span className="gallery-folder-name">Education & Training</span>
             <div id="gfol-education" className="gallery-folder-grid" style={{ display: 'none' }}>
-              <div className="gallery-item" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1523240795612-9a054b0db644?q=80&w=600&auto=format&fit=crop')", backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="gallery-overlay">Teacher Training Camp – Hyderabad</div></div>
-              <div className="gallery-item" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=600&auto=format&fit=crop')", backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="gallery-overlay">Student Hackathon – Vijayawada</div></div>
-              <div className="gallery-item" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?q=80&w=600&auto=format&fit=crop')", backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="gallery-overlay">Kids AI Camp – Bangalore</div></div>
+              <div className="gallery-item" style={{ backgroundImage: `url(${ourVisionImg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="gallery-overlay">Teacher Training Camp – Hyderabad</div></div>
+              <div className="gallery-item" style={{ backgroundImage: `url(${ourValuesImg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="gallery-overlay">Student Hackathon – Vijayawada</div></div>
+              <div className="gallery-item" style={{ backgroundImage: `url(${ourJourneyImg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="gallery-overlay">Kids AI Camp – Bangalore</div></div>
             </div>
           </div>
-          <div className="gallery-folder-card" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1517457373958-b7bdd4587205?q=80&w=600&auto=format&fit=crop')" }} onClick={() => (window as any).showGalleryFolder('gfol-volunteer', 'Volunteer Events')}>
+          <div className="gallery-folder-card" style={{ backgroundImage: `url(${policehackImg})` }} onClick={() => (window as any).showGalleryFolder('gfol-volunteer', 'Volunteer Events')}>
             <span className="gallery-folder-name">Volunteer Events</span>
             <div id="gfol-volunteer" className="gallery-folder-grid" style={{ display: 'none' }}>
-              <div className="gallery-item" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1517457373958-b7bdd4587205?q=80&w=600&auto=format&fit=crop')", backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="gallery-overlay">Volunteer Summit 2024</div></div>
-              <div className="gallery-item" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1519389950473-47ba0277781c?q=80&w=600&auto=format&fit=crop')", backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="gallery-overlay">Driver AI Literacy – Chennai</div></div>
-              <div className="gallery-item" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1559136555-9303baea8ebd?q=80&w=600&auto=format&fit=crop')", backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="gallery-overlay">MSME AI Workshop – Pune</div></div>
+              <div className="gallery-item" style={{ backgroundImage: `url(${sunGrpImg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="gallery-overlay">Volunteer Summit 2024</div></div>
+              <div className="gallery-item" style={{ backgroundImage: `url(${sunChildrenImg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="gallery-overlay">Driver AI Literacy – Chennai</div></div>
+              <div className="gallery-item" style={{ backgroundImage: `url(${editedPicImg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="gallery-overlay">MSME AI Workshop – Pune</div></div>
             </div>
           </div>
-          <div className="gallery-folder-card" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1505373877841-8d25f7d46678?q=80&w=600&auto=format&fit=crop')" }} onClick={() => (window as any).showGalleryFolder('gfol-celebrations', 'Celebrations & Events')}>
+          <div className="gallery-folder-card" style={{ backgroundImage: `url(${incuxLogoImg})` }} onClick={() => (window as any).showGalleryFolder('gfol-celebrations', 'Celebrations & Events')}>
             <span className="gallery-folder-name">Celebrations & Events</span>
             <div id="gfol-celebrations" className="gallery-folder-grid" style={{ display: 'none' }}>
-              <div className="gallery-item" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1505373877841-8d25f7d46678?q=80&w=600&auto=format&fit=crop')", backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="gallery-overlay">Annual Awards Night</div></div>
-              <div className="gallery-item" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1531482615713-2afd69097998?q=80&w=600&auto=format&fit=crop')", backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="gallery-overlay">Rural Connectivity Drive</div></div>
-              <div className="gallery-item" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1513364776144-60967b0f800f?q=80&w=600&auto=format&fit=crop')", backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="gallery-overlay">AI Showcase & Demo Day</div></div>
+              <div className="gallery-item" style={{ backgroundImage: `url(${iasClassesImg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="gallery-overlay">Annual Awards Night</div></div>
+              <div className="gallery-item" style={{ backgroundImage: `url(${rtihAmaravatiImg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="gallery-overlay">Rural Connectivity Drive</div></div>
+              <div className="gallery-item" style={{ backgroundImage: `url(${policehackImg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="gallery-overlay">AI Showcase & Demo Day</div></div>
             </div>
           </div>
         </div>
@@ -1853,51 +2888,35 @@ export default function App() {
         </section>
         <div className="h-programs-list">
           <div className="h-program-card">
-            <div className="h-program-img" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=400&auto=format&fit=crop)' }}></div>
+            <div className="h-program-img" style={{ backgroundImage: `url(${iasClassesImg})` }}></div>
             <div className="h-program-body">
-              <div className="h-program-title">AI Kisan Seva</div>
-              <div className="h-program-text">AI training for farmers covering crop disease detection, weather prediction, market price forecasting, and soil analysis using smartphone AI tools.</div>
-              <div className="h-program-tags"><span className="program-tag">Agriculture</span><span className="program-tag">Free</span></div>
+              <div className="h-program-title">Free IAS Classes</div>
+              <div className="h-program-text">Conducted free 10-day IAS coaching at Hindu College for aspiring civil servants. Expert faculty covered General Studies, current affairs, and interview preparation to empower rural and underprivileged students with quality guidance. Students received study materials, mock tests, and one-on-one mentorship from experienced civil servants. Many participants cleared their preliminary exams and continue to receive guidance for their Mains preparation.</div>
+              <div className="h-program-tags"><span className="program-tag">Civil Services</span><span className="program-tag">Free</span></div>
             </div>
           </div>
           <div className="h-program-card">
-            <div className="h-program-img" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=400&auto=format&fit=crop)' }}></div>
+            <div className="h-program-img" style={{ backgroundImage: `url(${sunGrpImg})` }}></div>
             <div className="h-program-body">
-              <div className="h-program-title">Teacher AI Upskill</div>
-              <div className="h-program-text">Empower educators with AI tools for personalized learning, automated grading, lesson planning, and student performance analytics.</div>
-              <div className="h-program-tags"><span className="program-tag">Education</span><span className="program-tag">Certificate</span></div>
+              <div className="h-program-title">SUN — Student for Nation</div>
+              <div className="h-program-text">A student-driven movement that supports peer learning, community development, and nation-building. SUN empowers students through workshops, mentorship, and social initiatives to become responsible leaders of tomorrow. Regular sessions on leadership, public speaking, and social entrepreneurship are conducted across colleges. Students take up community projects like tree planting, digital literacy drives, and awareness campaigns in rural areas.</div>
+              <div className="h-program-tags"><span className="program-tag">Students</span><span className="program-tag">Leadership</span></div>
             </div>
           </div>
           <div className="h-program-card">
-            <div className="h-program-img" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1559136555-9303baea8ebd?q=80&w=400&auto=format&fit=crop)' }}></div>
+            <div className="h-program-img" style={{ backgroundImage: `url(${rtihAmaravatiImg})` }}></div>
             <div className="h-program-body">
-              <div className="h-program-title">Startup AI Launchpad</div>
-              <div className="h-program-text">10-week intensive program for founders to integrate AI into product development, marketing, customer service, and operations.</div>
-              <div className="h-program-tags"><span className="program-tag">Startups</span><span className="program-tag">Mentorship</span></div>
+              <div className="h-program-title">RTIH — Amaravati</div>
+              <div className="h-program-text">Ratan Tata Innovation Hub Amaravati encourages youth by providing grants, mentorship, and incubation support for startups. It fosters innovation, entrepreneurship, and real-world problem solving among young innovators. Selected startups receive seed funding up to 5 lakhs, access to state-of-the-art labs, and guidance from industry veterans. Regular hackathons and innovation challenges are organized to identify and nurture promising ideas.</div>
+              <div className="h-program-tags"><span className="program-tag">Innovation</span><span className="program-tag">Startup Grants</span></div>
             </div>
           </div>
           <div className="h-program-card">
-            <div className="h-program-img" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1556761175-b413da4baf72?q=80&w=400&auto=format&fit=crop)' }}></div>
+            <div className="h-program-img" style={{ backgroundImage: `url(${policehackImg})` }}></div>
             <div className="h-program-body">
-              <div className="h-program-title">MSME Digital Boost</div>
-              <div className="h-program-text">Help small businesses adopt AI for inventory management, customer engagement, accounting automation, and digital marketing.</div>
-              <div className="h-program-tags"><span className="program-tag">MSME</span><span className="program-tag">Free</span></div>
-            </div>
-          </div>
-          <div className="h-program-card">
-            <div className="h-program-img" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=400&auto=format&fit=crop)' }}></div>
-            <div className="h-program-body">
-              <div className="h-program-title">AI Wonder Kids</div>
-              <div className="h-program-text">Fun, gamified AI education for children aged 6–16. Programming basics, creative AI tools, and critical thinking through play.</div>
-              <div className="h-program-tags"><span className="program-tag">Kids</span><span className="program-tag">Free</span></div>
-            </div>
-          </div>
-          <div className="h-program-card">
-            <div className="h-program-img" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1556911220-bda9f7f7597e?q=80&w=400&auto=format&fit=crop)' }}></div>
-            <div className="h-program-body">
-              <div className="h-program-title">Smart Household AI</div>
-              <div className="h-program-text">Teaching homemakers to use AI for budgeting, health monitoring, cooking optimization, and child education support.</div>
-              <div className="h-program-tags"><span className="program-tag">Household</span><span className="program-tag">Free</span></div>
+              <div className="h-program-title">Police Hackathon</div>
+              <div className="h-program-text">A collaborative hackathon where students identified real-world policing challenges and built tech-driven solutions. From traffic management to crime analytics, students worked alongside police to create practical, impactful tools. Winning solutions included an AI-powered traffic violation detection system and a community policing app. The hackathon strengthened police-student relationships and led to the deployment of three prototypes in pilot districts.</div>
+              <div className="h-program-tags"><span className="program-tag">Hackathon</span><span className="program-tag">Civic Tech</span></div>
             </div>
           </div>
         </div>
@@ -1905,72 +2924,110 @@ export default function App() {
 
       {/* ========== VOLUNTEER PUBLIC PAGE ========== */}
       <div id="volunteer" className="page" style={{ paddingTop: '75px' }}>
-        {/* Registration Form */}
-        <section>
-          <div className="section-header">
-            <span className="section-tag">Volunteer</span>
-            <h2 className="section-title">Register as Volunteer</h2>
-            <p className="section-sub">Join our mission to spread AI education across India</p>
-          </div>
-        </section>
-        <div className="form-wrap" style={{ maxWidth: '700px' }}>
-          <div className="form-card">
-            <div className="form-title">Register as Volunteer</div>
-            <div className="form-sub">Fill in your details below to join our volunteer network.</div>
-            <div className="form-row">
-              <div className="form-group"><label>Full Name</label><input type="text" placeholder="Ravi Kumar" id="vol-fname" /></div>
+        {/* Volunteer Hero */}
+        <div className="volunteer-hero">
+          <div className="volunteer-hero-inner">
+            <motion.div
+              className="volunteer-circle"
+              style={{ width: 300, height: 300, top: '1%', right: '2%', backgroundImage: `url(${editedPicImg})` }}
+              animate={{ y: [0, -16] }}
+              transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut', repeatType: 'reverse' }}
+              whileHover={{ scale: 1.08 }}
+            />
+            <motion.div
+              className="volunteer-circle"
+              style={{ width: 280, height: 280, bottom: '2%', left: '2%', backgroundImage: `url(${sunEduSupportImg})` }}
+              animate={{ y: [0, -16] }}
+              transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', repeatType: 'reverse', delay: 1.8 }}
+              whileHover={{ scale: 1.08 }}
+            />
+            <motion.div
+              className="volunteer-circle"
+              style={{ width: 180, height: 180, top: '34%', left: '2%', backgroundImage: `url(${aiFirImg})` }}
+              animate={{ y: [0, -14] }}
+              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut', repeatType: 'reverse', delay: 0.6 }}
+              whileHover={{ scale: 1.08 }}
+            />
+            <motion.div
+              className="volunteer-circle"
+              style={{ width: 180, height: 180, top: '36%', right: '3%', backgroundImage: `url(${ourMissionImg})` }}
+              animate={{ y: [0, -14] }}
+              transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut', repeatType: 'reverse', delay: 2.4 }}
+              whileHover={{ scale: 1.08 }}
+            />
+            <motion.div
+              className="volunteer-circle"
+              style={{ width: 100, height: 100, top: '6%', left: '10%', backgroundImage: `url(${ourVisionImg})` }}
+              animate={{ y: [0, -12] }}
+              transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut', repeatType: 'reverse', delay: 1.0 }}
+              whileHover={{ scale: 1.08 }}
+            />
+            <motion.div
+              className="volunteer-circle"
+              style={{ width: 100, height: 100, bottom: '8%', right: '10%', backgroundImage: `url(${ourValuesImg})` }}
+              animate={{ y: [0, -12] }}
+              transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut', repeatType: 'reverse', delay: 3.2 }}
+              whileHover={{ scale: 1.08 }}
+            />
+            <motion.div
+              className="volunteer-circle"
+              style={{ width: 120, height: 120, top: '14%', left: '22%', backgroundImage: `url(${ourJourneyImg})` }}
+              animate={{ y: [0, -12] }}
+              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut', repeatType: 'reverse', delay: 1.5 }}
+              whileHover={{ scale: 1.08 }}
+            />
+            <motion.div
+              className="volunteer-circle"
+              style={{ width: 120, height: 120, bottom: '15%', right: '22%', backgroundImage: `url(${sunChildrenImg})` }}
+              animate={{ y: [0, -12] }}
+              transition={{ duration: 2.7, repeat: Infinity, ease: 'easeInOut', repeatType: 'reverse', delay: 0.3 }}
+              whileHover={{ scale: 1.08 }}
+            />
+            <div className="volunteer-hero-content">
+              <motion.span
+                className="volunteer-badge"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+              >
+                TAKE ACTION
+              </motion.span>
+              <motion.h1
+                className="volunteer-hero-title"
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+              >
+                Join Us in Making a Difference
+              </motion.h1>
+              <motion.p
+                className="volunteer-hero-desc"
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.4 }}
+              >
+                Be part of our mission to make AI accessible to every Indian. Together, we can bridge the digital divide and empower communities through technology.
+              </motion.p>
+              <motion.div
+                className="volunteer-hero-buttons"
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.6 }}
+              >
+                <button className="btn-volunteer-primary" onClick={() => (window as any).openSignUpModal()}>Volunteer Now</button>
+                <button className="btn-volunteer-secondary" onClick={() => { const el = document.getElementById('vol-activities'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }}>Learn More</button>
+              </motion.div>
             </div>
-            <div className="form-row">
-              <div className="form-group"><label>Email</label><input type="email" placeholder="ravi@email.com" id="vol-email" /></div>
-              <div className="form-group"><label>Phone</label><input type="tel" placeholder="+91 9XXXXXXXXX" id="vol-phone" /></div>
-            </div>
-            <div className="form-row">
-              <div className="form-group"><label>State</label>
-                <select id="vol-state">
-                  <option value="">Select State / UT</option>
-                  <option>Andhra Pradesh</option><option>Arunachal Pradesh</option><option>Assam</option>
-                  <option>Bihar</option><option>Chhattisgarh</option><option>Goa</option><option>Gujarat</option>
-                  <option>Haryana</option><option>Himachal Pradesh</option><option>Jharkhand</option>
-                  <option>Karnataka</option><option>Kerala</option><option>Madhya Pradesh</option>
-                  <option>Maharashtra</option><option>Manipur</option><option>Meghalaya</option>
-                  <option>Mizoram</option><option>Nagaland</option><option>Odisha</option><option>Punjab</option>
-                  <option>Rajasthan</option><option>Sikkim</option><option>Tamil Nadu</option>
-                  <option>Telangana</option><option>Tripura</option><option>Uttar Pradesh</option>
-                  <option>Uttarakhand</option><option>West Bengal</option>
-                  <option>Andaman & Nicobar</option><option>Chandigarh</option>
-                  <option>Dadra & Nagar Haveli</option><option>Daman & Diu</option>
-                  <option>Delhi</option><option>Jammu & Kashmir</option><option>Ladakh</option>
-                  <option>Lakshadweep</option><option>Puducherry</option>
-                </select>
-              </div>
-              <div className="form-group"><label>District</label><input type="text" placeholder="Your district" id="vol-city" /></div>
-            </div>
-            <div className="form-group">
-              <label>Preferred Departments (select all that apply)</label>
-              <div id="vol-dept-checkboxes" className="dept-checkbox-grid">
-                <label className="dept-checkbox"><input type="checkbox" value="AI Training & Education" /> AI Training & Education</label>
-                <label className="dept-checkbox"><input type="checkbox" value="Content Creation" /> Content Creation</label>
-                <label className="dept-checkbox"><input type="checkbox" value="Field Outreach" /> Field Outreach</label>
-                <label className="dept-checkbox"><input type="checkbox" value="Event Management" /> Event Management</label>
-                <label className="dept-checkbox"><input type="checkbox" value="Technology & Platform" /> Technology & Platform</label>
-                <label className="dept-checkbox"><input type="checkbox" value="Social Media" /> Social Media</label>
-                <label className="dept-checkbox"><input type="checkbox" value="Fund Raising" /> Fund Raising</label>
-              </div>
-            </div>
-            <div className="form-group">
-              <label>Availability (hours/week)</label>
-              <select id="vol-hours">
-                <option>2-5 hours</option><option>5-10 hours</option><option>10-20 hours</option><option>Full-time</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label>Why do you want to volunteer?</label>
-              <textarea rows={3} placeholder="Tell us about your motivation..." id="vol-why" style={{ resize: 'vertical' }}></textarea>
-            </div>
-            <div className="form-group"><label>Create Password</label><input type="password" placeholder="••••••••" id="vol-pass" /></div>
-            <button className="btn-submit" onClick={() => (window as any).registerVolunteer()}>Register & Create Account</button>
           </div>
         </div>
+        {/* Impact Header */}
+        <section style={{ paddingBottom: '1rem' }}>
+          <div className="section-header">
+            <span className="section-tag">Volunteer Network</span>
+            <h2 className="section-title">Our Volunteer Impact</h2>
+            <p className="section-sub">Empowering communities across India through technology education</p>
+          </div>
+        </section>
         {/* Stats */}
         <div className="volunteer-stats" style={{ marginTop: '2rem' }}>
           <div className="vol-stat"><div className="vol-stat-num">5,247</div><div className="vol-stat-label">Total Volunteers</div></div>
@@ -1978,21 +3035,233 @@ export default function App() {
           <div className="vol-stat"><div className="vol-stat-num">1.8L+</div><div className="vol-stat-label">Hours Volunteered</div></div>
           <div className="vol-stat"><div className="vol-stat-num">2L+</div><div className="vol-stat-label">Lives Impacted</div></div>
         </div>
-        {/* Recent Works */}
-        <div className="vol-works">
-          <h2>Recent Volunteer Activities</h2>
-          <div className="vol-work-item"><div className="vol-work-info"><h4>Farmer AI Workshop – Guntur District</h4><p>Team of 12 volunteers conducted 3-day training for 200+ farmers</p></div><span className="vol-work-badge">Completed</span></div>
-          <div className="vol-work-item"><div className="vol-work-info"><h4>School AI Literacy Camp – Vijayawada</h4><p>Reached 800 students across 5 government schools</p></div><span className="vol-work-badge">Completed</span></div>
-          <div className="vol-work-item"><div className="vol-work-info"><h4>MSME Digital Workshop – Visakhapatnam</h4><p>50+ small business owners trained in AI tools</p></div><span className="vol-work-badge">Completed</span></div>
-          <div className="vol-work-item">
-            <div className="vol-work-info"><h4>AI for Drivers – Hyderabad</h4><p>Navigation AI and safety tools training for 300 auto/cab drivers</p></div>
-            <span className="vol-work-badge" style={{ color: 'var(--secondary)', borderColor: 'rgba(212, 76, 119, 0.3)', background: 'rgba(212, 76, 119, 0.1)' }}>Ongoing</span>
+        {/* Learn More - Volunteer Activities & Certificates */}
+        <section id="vol-activities" className="vol-activities-section" style={{ padding: '4rem 2rem', maxWidth: '1200px', margin: '0 auto' }}>
+          <div className="section-header" style={{ marginBottom: '2.5rem' }}>
+            <span className="section-tag">Our Impact</span>
+            <h2 className="section-title">Recent Volunteer Activities</h2>
+            <p className="section-sub">From AI workshops to community outreach — our volunteers make a real difference</p>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
+            <div className="card" style={{ padding: '1.8rem', borderRadius: '16px', border: '1px solid var(--glass-border)', background: 'var(--glass)' }}>
+              <div style={{ fontSize: '2rem', marginBottom: '0.8rem' }}>🤖</div>
+              <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', marginBottom: '0.5rem', color: 'var(--primary)' }}>AI Farmer Workshop — Guntur</h4>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.7' }}>50+ farmers trained on Plantix app and AI-powered crop disease detection tools. Volunteers conducted hands-on sessions in Telugu.</p>
+              <div style={{ marginTop: '0.8rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>📍 Guntur, AP | 🗓 June 2025 | 👥 12 volunteers</div>
+            </div>
+            <div className="card" style={{ padding: '1.8rem', borderRadius: '16px', border: '1px solid var(--glass-border)', background: 'var(--glass)' }}>
+              <div style={{ fontSize: '2rem', marginBottom: '0.8rem' }}>🏫</div>
+              <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', marginBottom: '0.5rem', color: 'var(--primary)' }}>School AI Literacy Drive</h4>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.7' }}>AI literacy sessions for 200+ government school students covering ChatGPT, image generation, and prompt engineering basics.</p>
+              <div style={{ marginTop: '0.8rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>📍 Vijayawada, AP | 🗓 June 2025 | 👥 8 volunteers</div>
+            </div>
+            <div className="card" style={{ padding: '1.8rem', borderRadius: '16px', border: '1px solid var(--glass-border)', background: 'var(--glass)' }}>
+              <div style={{ fontSize: '2rem', marginBottom: '0.8rem' }}>💼</div>
+              <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', marginBottom: '0.5rem', color: 'var(--primary)' }}>MSME Digital AI Workshop</h4>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.7' }}>Small business owners trained on ChatGPT for marketing, Meta AI ads, and AI-powered customer engagement tools.</p>
+              <div style={{ marginTop: '0.8rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>📍 Hyderabad, TG | 🗓 July 2025 | 👥 10 volunteers</div>
+            </div>
+          </div>
+
+          <div className="section-header" style={{ marginBottom: '2rem' }}>
+            <h2 className="section-title">Certificates <span style={{ color: 'var(--secondary)' }}>Awarded</span></h2>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem' }}>
+            <div className="card" style={{ padding: '1.5rem', textAlign: 'center', background: 'linear-gradient(135deg, #fef3c7, #fde68a)', borderRadius: '16px' }}>
+              <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🏅</div>
+              <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', color: '#92400e' }}>AI Training Excellence</h4>
+              <p style={{ fontSize: '0.8rem', color: '#78350f' }}>Awarded to 12 volunteers for outstanding AI workshop delivery</p>
+            </div>
+            <div className="card" style={{ padding: '1.5rem', textAlign: 'center', background: 'linear-gradient(135deg, #dbeafe, #bfdbfe)', borderRadius: '16px' }}>
+              <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🎓</div>
+              <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', color: '#1e40af' }}>Community Outreach</h4>
+              <p style={{ fontSize: '0.8rem', color: '#1e3a5f' }}>8 volunteers recognized for field outreach in rural communities</p>
+            </div>
+            <div className="card" style={{ padding: '1.5rem', textAlign: 'center', background: 'linear-gradient(135deg, #d1fae5, #a7f3d0)', borderRadius: '16px' }}>
+              <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🎯</div>
+              <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', color: '#065f46' }}>Top Performer</h4>
+              <p style={{ fontSize: '0.8rem', color: '#064e3b' }}>5 volunteers with highest impact hours this quarter</p>
+            </div>
+            <div className="card" style={{ padding: '1.5rem', textAlign: 'center', background: 'linear-gradient(135deg, #fce7f3, #fbcfe8)', borderRadius: '16px' }}>
+              <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>📜</div>
+              <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', color: '#831843' }}>Digital Literacy</h4>
+              <p style={{ fontSize: '0.8rem', color: '#6b0f3a' }}>25 volunteers certified in AI digital literacy training</p>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      {/* ========== CONTACT US PAGE ========== */}
+      <div id="contact" className="page" style={{ paddingTop: '85px', background: 'var(--darker)', minHeight: '80vh' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '3rem 2rem' }}>
+          <div className="section-header" style={{ textAlign: 'center', marginBottom: '3.5rem' }}>
+            <span className="section-tag">Get in Touch</span>
+            <h2 className="section-title">Contact <span style={{ color: 'var(--secondary)' }}>Us</span></h2>
+            <p className="section-sub">Have questions or want to collaborate? We'd love to hear from you.</p>
+          </div>
+
+          <div className="contact-layout" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2.5rem', alignItems: 'stretch' }}>
+            {/* Left Column — Info Cards */}
+            <div className="contact-left" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <div className="card" style={{ padding: '2rem', background: 'var(--glass)', border: '1px solid var(--glass-border)', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.02)' }}>
+                <h3 className="card-title" style={{ fontSize: '1.3rem', marginBottom: '1.2rem', color: 'var(--secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                  Our Headquarters
+                </h3>
+                <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: '2' }}>
+                  <strong style={{ color: 'var(--text)' }}>IncuXai Education Trust</strong><br/>
+                  Vijayawada, Andhra Pradesh, India<br/>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+                    info@aiforall.org
+                  </span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.3rem' }}>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+                    +91 866 555 0199
+                  </span>
+                </p>
+              </div>
+
+              <div className="card" style={{ padding: '2rem', background: 'var(--glass)', border: '1px solid var(--glass-border)', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.02)' }}>
+                <h3 className="card-title" style={{ fontSize: '1.3rem', marginBottom: '1.2rem', color: 'var(--secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15v-4H7l5-6 5 6h-4v4h-2z"/></svg>
+                  Connect With Us
+                </h3>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>Follow us on social media for the latest updates:</p>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <a href="https://www.instagram.com/incuxai/" target="_blank" rel="noopener noreferrer" style={{ width: '42px', height: '42px', background: '#ffffff', border: '1.5px solid var(--glass-border)', color: '#e1306c', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', boxShadow: '0 4px 10px rgba(0,0,0,0.03)', transition: 'transform 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+                  </a>
+                  <a href="https://linkedin.com/company/incuxai/posts/?feedView=all" target="_blank" rel="noopener noreferrer" style={{ width: '42px', height: '42px', background: '#ffffff', border: '1.5px solid var(--glass-border)', color: '#0077b5', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', boxShadow: '0 4px 10px rgba(0,0,0,0.03)', transition: 'transform 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+                  </a>
+                  <a href="https://www.facebook.com/profile.php?id=61590436827340" target="_blank" rel="noopener noreferrer" style={{ width: '42px', height: '42px', background: '#ffffff', border: '1.5px solid var(--glass-border)', color: '#1877f2', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', boxShadow: '0 4px 10px rgba(0,0,0,0.03)', transition: 'transform 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                  </a>
+                </div>
+              </div>
+
+              <div className="card" style={{ padding: '2rem', background: 'linear-gradient(135deg, var(--primary), var(--secondary))', border: 'none', borderRadius: '24px', color: '#fff' }}>
+                <h3 style={{ fontSize: '1.1rem', marginBottom: '0.8rem', fontFamily: 'var(--font-display)' }}>Working Hours</h3>
+                <p style={{ fontSize: '0.85rem', lineHeight: '1.8', opacity: '0.9' }}>
+                  Monday — Friday: 9:00 AM — 6:00 PM<br/>
+                  Saturday: 9:00 AM — 1:00 PM<br/>
+                  Sunday: Closed
+                </p>
+              </div>
+            </div>
+
+            {/* Right Column — Map */}
+            <div className="contact-right">
+              <div style={{ background: '#ffffff', padding: '1rem', borderRadius: '32px', border: '1px solid var(--glass-border)', boxShadow: '0 15px 40px rgba(0,0,0,0.04)', height: '100%', minHeight: '450px', display: 'flex' }}>
+                <iframe 
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d122425.22572337603!2d80.5739818!3d16.5061743!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3a35effd15b22cd7%3A0xc314dfa4ab12ab34!2sVijayawada%2C%20Andhra%20Pradesh!5e0!3m2!1sen!2sin!4v1717409200000!5m2!1sen!2sin" 
+                  width="100%" 
+                  height="100%" 
+                  style={{ border: 0, borderRadius: '24px', flex: 1, minHeight: '450px' }} 
+                  allowFullScreen={true} 
+                  loading="lazy" 
+                  referrerPolicy="no-referrer-when-downgrade"
+                ></iframe>
+              </div>
+            </div>
           </div>
         </div>
-        {/* Upcoming Campaigns */}
-        <div className="vol-works" style={{ marginTop: '2rem' }}>
-          <h2>Upcoming Volunteer Campaigns</h2>
-          <div id="public-events-list" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}></div>
+      </div>
+
+      {/* ========== CONTACT US PAGE ========== */}
+      <div id="contact" className="page" style={{ paddingTop: '85px', background: 'var(--darker)', minHeight: '80vh' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '3rem 2rem' }}>
+          <div className="section-header" style={{ textAlign: 'center', marginBottom: '3.5rem' }}>
+            <span className="section-tag">Get in Touch</span>
+            <h2 className="section-title">Contact <span style={{ color: 'var(--secondary)' }}>Us</span></h2>
+            <p className="section-sub">Have questions or want to collaborate? Reach out to us and we'll get back to you shortly.</p>
+          </div>
+
+          <div className="contact-grid">
+            {/* Contact Form */}
+            <div className="form-card" style={{ background: 'var(--glass)', border: '1px solid var(--glass-border)', padding: '2.5rem', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.02)' }}>
+              <h3 className="card-title" style={{ fontSize: '1.6rem', marginBottom: '1.5rem', borderBottom: '2px solid var(--secondary)', display: 'inline-block', paddingBottom: '0.4rem' }}>Send Us a Message</h3>
+              <form onSubmit={(e) => { e.preventDefault(); (window as any).showToast('Thank you! Your message has been sent successfully.'); (e.target as HTMLFormElement).reset(); }} className="contact-form">
+                <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                  <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>First Name</label>
+                    <input type="text" required style={{ padding: '0.8rem 1.1rem', background: '#ffffff', border: '1.5px solid var(--glass-border)', borderRadius: '12px', outline: 'none', transition: 'border-color 0.3s' }} />
+                  </div>
+                  <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>Last Name</label>
+                    <input type="text" required style={{ padding: '0.8rem 1.1rem', background: '#ffffff', border: '1.5px solid var(--glass-border)', borderRadius: '12px', outline: 'none', transition: 'border-color 0.3s' }} />
+                  </div>
+                </div>
+                <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                  <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>Email Address</label>
+                    <input type="email" required style={{ padding: '0.8rem 1.1rem', background: '#ffffff', border: '1.5px solid var(--glass-border)', borderRadius: '12px', outline: 'none', transition: 'border-color 0.3s' }} />
+                  </div>
+                  <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>Phone Number</label>
+                    <input type="tel" style={{ padding: '0.8rem 1.1rem', background: '#ffffff', border: '1.5px solid var(--glass-border)', borderRadius: '12px', outline: 'none', transition: 'border-color 0.3s' }} />
+                  </div>
+                </div>
+                <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>Subject</label>
+                  <input type="text" required style={{ padding: '0.8rem 1.1rem', background: '#ffffff', border: '1.5px solid var(--glass-border)', borderRadius: '12px', outline: 'none', transition: 'border-color 0.3s' }} />
+                </div>
+                <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '2rem' }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>Message</label>
+                  <textarea rows={5} required style={{ padding: '0.8rem 1.1rem', background: '#ffffff', border: '1.5px solid var(--glass-border)', borderRadius: '12px', outline: 'none', transition: 'border-color 0.3s', resize: 'vertical' }}></textarea>
+                </div>
+                <button type="submit" className="btn-modern-primary" style={{ border: 'none', width: '100%' }}>Send Message</button>
+              </form>
+            </div>
+
+            {/* Info Cards */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+              {/* Address card */}
+              <div className="card" style={{ padding: '2rem', height: 'fit-content' }}>
+                <h4 className="card-title" style={{ fontSize: '1.2rem', marginBottom: '1rem', color: 'var(--secondary)' }}>Our Headquarters</h4>
+                <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: '1.8', marginBottom: '1rem' }}>
+                  📍 Vijayawada, Andhra Pradesh, India<br/>
+                  ✉ info@aiforall.org<br/>
+                  📞 +91 866 555 0199
+                </p>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Operating across 22 states with 5000+ local volunteers conducting weekend field courses.</p>
+              </div>
+
+              {/* Social links card */}
+              <div className="card" style={{ padding: '2rem', height: 'fit-content' }}>
+                <h4 className="card-title" style={{ fontSize: '1.2rem', marginBottom: '1rem', color: 'var(--secondary)' }}>Connect With Us</h4>
+                <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1.2rem' }}>Follow our journey and updates on our official social media channels:</p>
+                <div className="social-link-grid" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                  <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="social-link instagram" style={{ width: '45px', height: '45px', background: '#ffffff', border: '1.5px solid var(--glass-border)', color: '#e1306c', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', boxShadow: '0 4px 10px rgba(0,0,0,0.03)', transition: 'all 0.3s' }}>
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+                  </a>
+                  <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="social-link linkedin" style={{ width: '45px', height: '45px', background: '#ffffff', border: '1.5px solid var(--glass-border)', color: '#0077b5', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', boxShadow: '0 4px 10px rgba(0,0,0,0.03)', transition: 'all 0.3s' }}>
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+                  </a>
+                  <a href="https://whatsapp.com" target="_blank" rel="noopener noreferrer" className="social-link whatsapp" style={{ width: '45px', height: '45px', background: '#ffffff', border: '1.5px solid var(--glass-border)', color: '#25d366', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', boxShadow: '0 4px 10px rgba(0,0,0,0.03)', transition: 'all 0.3s' }}>
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.725 1.45 5.489 0 9.952-4.43 9.955-9.885.002-2.643-1.022-5.127-2.885-7c-1.863-1.874-4.343-2.905-6.994-2.906-5.49 0-9.953 4.429-9.957 9.884-.002 1.714.453 3.39 1.32 4.887l-.994 3.634 3.73-.974zm12.002-6.852c-.274-.136-1.62-.801-1.871-.892-.252-.09-.435-.136-.617.136-.183.272-.708.89-.867 1.072-.16.182-.32.205-.594.069-.275-.136-1.16-.427-2.209-1.364-.817-.73-1.368-1.63-1.528-1.905-.16-.273-.017-.421.12-.557.123-.122.274-.32.41-.48.138-.16.183-.273.275-.455.092-.182.046-.341-.023-.477-.068-.136-.617-1.485-.845-2.03-.22-.533-.48-.46-.617-.466-.123-.006-.275-.007-.426-.007-.152 0-.401.057-.61.284-.21.227-.8.781-.8 1.904 0 1.124.816 2.207.93 2.36.114.152 1.606 2.451 3.89 3.435.543.233.967.373 1.3.479.546.173 1.042.149 1.433.09.437-.066 1.62-.662 1.849-1.3.23-.637.23-1.182.16-1.3-.069-.117-.251-.183-.526-.32z"/></svg>
+                  </a>
+                  <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" className="social-link youtube" style={{ width: '45px', height: '45px', background: '#ffffff', border: '1.5px solid var(--glass-border)', color: '#ff0000', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', boxShadow: '0 4px 10px rgba(0,0,0,0.03)', transition: 'all 0.3s' }}>
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon></svg>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Map Section */}
+          <div style={{ marginTop: '3rem', background: '#ffffff', padding: '1rem', borderRadius: '32px', border: '1px solid var(--glass-border)', boxShadow: '0 15px 40px rgba(0,0,0,0.04)' }}>
+            <iframe 
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d122425.22572337603!2d80.5739818!3d16.5061743!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3a35effd15b22cd7%3A0xc314dfa4ab12ab34!2sVijayawada%2C%20Andhra%20Pradesh!5e0!3m2!1sen!2sin!4v1717409200000!5m2!1sen!2sin" 
+              width="100%" 
+              height="450" 
+              style={{ border: 0, borderRadius: '24px', display: 'block' }} 
+              allowFullScreen={true} 
+              loading="lazy" 
+              referrerPolicy="no-referrer-when-downgrade"
+            ></iframe>
+          </div>
         </div>
       </div>
 
@@ -2017,20 +3286,19 @@ export default function App() {
           <button className="portal-nav-btn" onClick={(e) => (window as any).showPortalSection('vol-history', e)}>My History</button>
           <button className="portal-nav-btn" onClick={(e) => (window as any).showPortalSection('vol-tasks', e)}>My Tasks</button>
           <button className="portal-nav-btn" onClick={(e) => (window as any).showPortalSection('vol-attendance', e)}>Attendance</button>
-          <button className="portal-nav-btn" onClick={(e) => (window as any).showPortalSection('vol-donations', e)}>Donations</button>
           <button className="portal-nav-btn" onClick={(e) => (window as any).showPortalSection('st-progress', e)}>My Progress</button>
           <button className="portal-nav-btn" onClick={(e) => (window as any).showPortalSection('st-courses', e)}>Courses</button>
           <button className="portal-nav-btn" onClick={(e) => (window as any).showPortalSection('st-quiz', e)}>Quizzes</button>
           <button className="portal-nav-btn" onClick={(e) => (window as any).showPortalSection('st-leaderboard', e)}>Leaderboard</button>
+          <button className="portal-nav-btn" onClick={(e) => (window as any).showPortalSection('vol-profile', e)}>Profile</button>
         </div>
 
         {/* Dashboard */}
-        <div id="vol-dashboard" className="portal-section active">
+        <div id="vol-dashboard" className="portal-section">
           <div className="hours-display">
             <div className="hours-box"><div className="hours-num" id="total-hours">47</div><div className="hours-label">Total Hours</div></div>
             <div className="hours-box"><div className="hours-num">3</div><div className="hours-label">Events Attended</div></div>
             <div className="hours-box"><div className="hours-num">2</div><div className="hours-label">Upcoming Events</div></div>
-            <div className="hours-box"><div className="hours-num">₹500</div><div className="hours-label">Total Donated</div></div>
           </div>
           <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--primary)', fontSize: '1rem', marginBottom: '1rem' }}>Recent Activities</h3>
           <div className="task-card"><div className="task-title">Farmer Workshop – Guntur</div><div className="task-desc">Completed 3-day AI training session. Helped 50+ farmers understand crop disease AI tools.</div><div className="task-footer"><span className="task-due">12 hours earned</span><span className="badge badge-green">Completed</span></div></div>
@@ -2039,18 +3307,7 @@ export default function App() {
 
         {/* Events */}
         <div id="vol-events" className="portal-section">
-          <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--primary)', fontSize: '1rem', marginBottom: '0.5rem' }}>Select Departments to Participate</h3>
-          <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>Choose your area of interest</p>
-          <div className="dept-grid">
-            <div className="dept-item" onClick={(e) => (window as any).toggleDept(e.currentTarget)}><div className="dept-check">✓</div>AI Training & Education</div>
-            <div className="dept-item" onClick={(e) => (window as any).toggleDept(e.currentTarget)}><div className="dept-check">✓</div>Content Creation</div>
-            <div className="dept-item" onClick={(e) => (window as any).toggleDept(e.currentTarget)}><div className="dept-check">✓</div>Field Outreach</div>
-            <div className="dept-item" onClick={(e) => (window as any).toggleDept(e.currentTarget)}><div className="dept-check">✓</div>Event Management</div>
-            <div className="dept-item" onClick={(e) => (window as any).toggleDept(e.currentTarget)}><div className="dept-check">✓</div>Technology & Platform</div>
-            <div className="dept-item" onClick={(e) => (window as any).toggleDept(e.currentTarget)}><div className="dept-check">✓</div>Social Media</div>
-            <div className="dept-item" onClick={(e) => (window as any).toggleDept(e.currentTarget)}><div className="dept-check">✓</div>Fund Raising</div>
-          </div>
-          <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--primary)', fontSize: '1rem', margin: '1.5rem 0 0.5rem' }}>Upcoming Events</h3>
+          <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--primary)', fontSize: '1rem', margin: '0 0 0.5rem' }}>Upcoming Events</h3>
           <div className="events-grid" id="vol-events-list">
             <div className="event-card"><div className="event-date-bar"><span>June 15, 2025</span><span>Vijayawada</span></div><div className="event-body"><div className="event-title">AI for Farmers Workshop</div><div className="event-dept">Department: <span>AI Training & Education</span></div><div className="event-slots">8 slots remaining</div><button className="btn-register-event" onClick={(e) => (window as any).registerEvent(e.currentTarget)}>Register for This Event</button></div></div>
             <div className="event-card"><div className="event-date-bar"><span>June 22, 2025</span><span>Guntur</span></div><div className="event-body"><div className="event-title">School AI Literacy Drive</div><div className="event-dept">Department: <span>Field Outreach</span></div><div className="event-slots">15 slots remaining</div><button className="btn-register-event" onClick={(e) => (window as any).registerEvent(e.currentTarget)}>Register for This Event</button></div></div>
@@ -2107,27 +3364,7 @@ export default function App() {
         </div>
 
         {/* Donations */}
-        <div id="vol-donations" className="portal-section">
-          <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--primary)', fontSize: '1rem', marginBottom: '1rem' }}>My Donation History</h3>
-          <div className="donation-history">
-            <div className="donation-item"><div><div style={{ fontWeight: '700', fontSize: '0.9rem' }}>AI Kisan Seva Fund</div><div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Apr 1, 2025</div></div><div className="donation-amount">₹200</div></div>
-            <div className="donation-item"><div><div style={{ fontWeight: '700', fontSize: '0.9rem' }}>Kids AI Camp Sponsor</div><div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Mar 15, 2025</div></div><div className="donation-amount">₹300</div></div>
-          </div>
-          <div style={{ marginTop: '1.5rem' }}>
-            <h4 style={{ fontSize: '0.9rem', fontWeight: '700', marginBottom: '1rem', color: 'var(--text)' }}>Make a New Donation</h4>
-            <div className="form-group"><label>Amount (₹)</label><input type="number" placeholder="Enter amount" id="donation-amount" /></div>
-            <div className="form-group">
-              <label>Fund</label>
-              <select id="donation-fund">
-                <option>AI Kisan Seva</option>
-                <option>Kids AI Camp</option>
-                <option>General Fund</option>
-                <option>MSME Support</option>
-              </select>
-            </div>
-            <button className="btn-submit" onClick={() => (window as any).makeDonation()} style={{ marginTop: '0.5rem' }}>Donate Now</button>
-          </div>
-        </div>
+
 
         {/* ========== MERGED STUDENT SECTIONS ========== */}
         <div id="st-progress" className="portal-section">
@@ -2157,6 +3394,185 @@ export default function App() {
             {/* Filled dynamically by window.renderVolunteersAndLeaderboard() */}
           </div>
         </div>
+
+        {/* Settings - Change Password */}
+        <div id="vol-profile" className="portal-section active">
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', color: 'var(--primary)', marginBottom: '1.5rem' }}>My Profile</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '2rem', alignItems: 'start' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div id="vol-profile-photo" style={{ width: '140px', height: '140px', borderRadius: '50%', background: 'linear-gradient(135deg,var(--primary),var(--secondary))', margin: '0 auto 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem', color: '#fff', fontWeight: '700', overflow: 'hidden', position: 'relative', cursor: 'pointer', border: '3px solid var(--glass-border)' }} onClick={() => document.getElementById('vol-photo-input')?.click()}>
+                <span id="vol-profile-photo-text">V</span>
+                <img id="vol-profile-photo-img" style={{ display: 'none', width: '100%', height: '100%', objectFit: 'cover', position: 'absolute' }} alt="Profile" />
+              </div>
+              <input type="file" id="vol-photo-input" accept="image/*" style={{ display: 'none' }} onChange={(e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (file) { const reader = new FileReader(); reader.onload = (ev) => { const img = document.getElementById('vol-profile-photo-img') as HTMLImageElement; const txt = document.getElementById('vol-profile-photo-text'); if (img && txt) { img.src = ev.target?.result as string; img.style.display = 'block'; txt.style.display = 'none'; localStorage.setItem('vol_profile_photo_' + (window as any).currentUserEmail, ev.target?.result as string); } }; reader.readAsDataURL(file); } }} />
+              <button className="btn-small" onClick={() => document.getElementById('vol-photo-input')?.click()} style={{ fontSize: '0.78rem', padding: '0.3rem 0.8rem', marginTop: '0.3rem' }}>Change Photo</button>
+            </div>
+            <div>
+              <div className="card" style={{ padding: '1.5rem', background: 'var(--glass)', border: '1px solid var(--glass-border)', borderRadius: '16px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)' }}>Full Name</label>
+                    <input type="text" id="vol-profile-name" style={{ padding: '0.6rem 0.8rem', fontSize: '0.85rem', border: '1.5px solid var(--glass-border)', borderRadius: '8px', outline: 'none', width: '100%' }} />
+                  </div>
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)' }}>Email</label>
+                    <input type="email" id="vol-profile-email" style={{ padding: '0.6rem 0.8rem', fontSize: '0.85rem', border: '1.5px solid var(--glass-border)', borderRadius: '8px', outline: 'none', width: '100%', background: '#f5f5f5' }} readOnly />
+                  </div>
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)' }}>Phone</label>
+                    <input type="tel" id="vol-profile-phone" style={{ padding: '0.6rem 0.8rem', fontSize: '0.85rem', border: '1.5px solid var(--glass-border)', borderRadius: '8px', outline: 'none', width: '100%' }} />
+                  </div>
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)' }}>Education</label>
+                    <input type="text" id="vol-profile-education" style={{ padding: '0.6rem 0.8rem', fontSize: '0.85rem', border: '1.5px solid var(--glass-border)', borderRadius: '8px', outline: 'none', width: '100%' }} />
+                  </div>
+                </div>
+                <div className="form-group" style={{ marginTop: '1rem' }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)' }}>About / Why I Volunteer</label>
+                  <textarea id="vol-profile-about" rows={2} style={{ padding: '0.6rem 0.8rem', fontSize: '0.85rem', border: '1.5px solid var(--glass-border)', borderRadius: '8px', outline: 'none', width: '100%', resize: 'vertical' }}></textarea>
+                </div>
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '1.25rem' }}>
+                  <button className="btn-submit" style={{ padding: '0.5rem 1.5rem', fontSize: '0.85rem' }} onClick={() => (window as any).saveVolunteerProfile()}>Save Changes</button>
+                  <button className="btn-submit" style={{ padding: '0.5rem 1.5rem', fontSize: '0.85rem', background: 'var(--text-muted)' }} onClick={() => { document.getElementById('vol-profile-password-section')!.style.display = document.getElementById('vol-profile-password-section')!.style.display === 'none' ? 'block' : 'none'; }}>Change Password</button>
+                </div>
+                <div id="vol-profile-password-section" style={{ display: 'none', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--glass-border)' }}>
+                  <h4 style={{ fontSize: '0.9rem', marginBottom: '1rem', color: 'var(--text)' }}>Change Password</h4>
+                  <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)' }}>Current Password</label>
+                    <input type="password" id="vol-current-pass" placeholder="Enter current password" style={{ padding: '0.6rem 0.8rem', fontSize: '0.85rem', border: '1.5px solid var(--glass-border)', borderRadius: '8px', outline: 'none', width: '100%' }} />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)' }}>New Password</label>
+                    <input type="password" id="vol-new-pass" placeholder="Enter new password" style={{ padding: '0.6rem 0.8rem', fontSize: '0.85rem', border: '1.5px solid var(--glass-border)', borderRadius: '8px', outline: 'none', width: '100%' }} />
+                  </div>
+                  <button className="btn-submit" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }} onClick={() => (window as any).changeVolunteerPassword()}>Update Password</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ========== TEACHER PORTAL ========== */}
+      <div id="teacher-portal" className="page">
+        <div className="portal-header">
+          <div>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', color: 'var(--success)' }}>Teacher Portal</h2>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>Welcome back, <span id="tportal-name" style={{ color: 'var(--success)', fontWeight: '700' }}></span></p>
+          </div>
+          <div className="portal-user">
+            <div className="avatar" id="tportal-avatar" style={{ background: 'linear-gradient(135deg,var(--success),var(--primary))' }}>T</div>
+            <div>
+              <div style={{ fontWeight: '700' }} id="tportal-fullname">Teacher</div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>TeachXai Educator</div>
+            </div>
+          </div>
+        </div>
+        <div className="portal-nav">
+          <button className="portal-nav-btn" onClick={(e) => (window as any).showTportalSection('tportal-dashboard', e)}>Dashboard</button>
+          <button className="portal-nav-btn" onClick={(e) => (window as any).showTportalSection('tportal-classes', e)}>My Classes</button>
+          <button className="portal-nav-btn" onClick={(e) => (window as any).showTportalSection('tportal-tasks', e)}>Assignments</button>
+          <button className="portal-nav-btn" onClick={(e) => (window as any).showTportalSection('tportal-attendance', e)}>Attendance</button>
+          <button className="portal-nav-btn" onClick={(e) => (window as any).showTportalSection('tportal-courses', e)}>Courses</button>
+          <button className="portal-nav-btn active" onClick={(e) => (window as any).showTportalSection('tportal-profile', e)}>Profile</button>
+        </div>
+
+        {/* Dashboard */}
+        <div id="tportal-dashboard" className="portal-section">
+          <div className="hours-display">
+            <div className="hours-box"><div className="hours-num" id="tportal-hours">0</div><div className="hours-label">Hours Taught</div></div>
+            <div className="hours-box"><div className="hours-num" id="tportal-upcoming">0</div><div className="hours-label">Upcoming Classes</div></div>
+            <div className="hours-box"><div className="hours-num" id="tportal-assigned">0</div><div className="hours-label">Assigned Lessons</div></div>
+            <div className="hours-box"><div className="hours-num" id="tportal-att-pct">0%</div><div className="hours-label">Attendance</div></div>
+          </div>
+          <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--success)', fontSize: '1rem', marginBottom: '1rem' }}>Your Recent Activity</h3>
+          <div id="tportal-recent-activity"><p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No recent activity yet.</p></div>
+        </div>
+
+        {/* My Classes */}
+        <div id="tportal-classes" className="portal-section">
+          <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--success)', fontSize: '1rem', marginBottom: '1rem' }}>Upcoming & Past Classes</h3>
+          <div id="tportal-classes-list"><p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No classes yet.</p></div>
+        </div>
+
+        {/* Assignments */}
+        <div id="tportal-tasks" className="portal-section">
+          <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--success)', fontSize: '1rem', marginBottom: '1rem' }}>Assigned Lessons</h3>
+          <div id="tportal-tasks-list"><p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No assignments yet.</p></div>
+        </div>
+
+        {/* Attendance */}
+        <div id="tportal-attendance" className="portal-section">
+          <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--success)', fontSize: '1rem', marginBottom: '1rem' }}>Your Attendance</h3>
+          <div id="tportal-attendance-list"><p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No attendance records yet.</p></div>
+        </div>
+
+        {/* Courses */}
+        <div id="tportal-courses" className="portal-section">
+          <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--success)', fontSize: '1rem', marginBottom: '1rem' }}>Suggested Courses for You</h3>
+          <div id="tportal-courses-list"><p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Courses will be suggested based on your registered subjects.</p></div>
+        </div>
+
+        {/* Settings - Change Password */}
+        <div id="tportal-profile" className="portal-section active">
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', color: 'var(--success)', marginBottom: '1.5rem' }}>My Profile</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '2rem', alignItems: 'start' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div id="tch-profile-photo" style={{ width: '140px', height: '140px', borderRadius: '50%', background: 'linear-gradient(135deg,var(--success),var(--primary))', margin: '0 auto 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem', color: '#fff', fontWeight: '700', overflow: 'hidden', position: 'relative', cursor: 'pointer', border: '3px solid var(--glass-border)' }} onClick={() => document.getElementById('tch-photo-input')?.click()}>
+                <span id="tch-profile-photo-text">T</span>
+                <img id="tch-profile-photo-img" style={{ display: 'none', width: '100%', height: '100%', objectFit: 'cover', position: 'absolute' }} alt="Profile" />
+              </div>
+              <input type="file" id="tch-photo-input" accept="image/*" style={{ display: 'none' }} onChange={(e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (file) { const reader = new FileReader(); reader.onload = (ev) => { const img = document.getElementById('tch-profile-photo-img') as HTMLImageElement; const txt = document.getElementById('tch-profile-photo-text'); if (img && txt) { img.src = ev.target?.result as string; img.style.display = 'block'; txt.style.display = 'none'; localStorage.setItem('tch_profile_photo_' + (window as any).currentUserEmail, ev.target?.result as string); } }; reader.readAsDataURL(file); } }} />
+              <button className="btn-small" onClick={() => document.getElementById('tch-photo-input')?.click()} style={{ fontSize: '0.78rem', padding: '0.3rem 0.8rem', marginTop: '0.3rem' }}>Change Photo</button>
+            </div>
+            <div>
+              <div className="card" style={{ padding: '1.5rem', background: 'var(--glass)', border: '1px solid var(--glass-border)', borderRadius: '16px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)' }}>Full Name</label>
+                    <input type="text" id="tch-profile-name" style={{ padding: '0.6rem 0.8rem', fontSize: '0.85rem', border: '1.5px solid var(--glass-border)', borderRadius: '8px', outline: 'none', width: '100%' }} />
+                  </div>
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)' }}>Email</label>
+                    <input type="email" id="tch-profile-email" style={{ padding: '0.6rem 0.8rem', fontSize: '0.85rem', border: '1.5px solid var(--glass-border)', borderRadius: '8px', outline: 'none', width: '100%', background: '#f5f5f5' }} readOnly />
+                  </div>
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)' }}>Phone</label>
+                    <input type="tel" id="tch-profile-phone" style={{ padding: '0.6rem 0.8rem', fontSize: '0.85rem', border: '1.5px solid var(--glass-border)', borderRadius: '8px', outline: 'none', width: '100%' }} />
+                  </div>
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)' }}>Education</label>
+                    <input type="text" id="tch-profile-education" style={{ padding: '0.6rem 0.8rem', fontSize: '0.85rem', border: '1.5px solid var(--glass-border)', borderRadius: '8px', outline: 'none', width: '100%' }} />
+                  </div>
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)' }}>Subjects</label>
+                    <input type="text" id="tch-profile-subjects" placeholder="Comma separated" style={{ padding: '0.6rem 0.8rem', fontSize: '0.85rem', border: '1.5px solid var(--glass-border)', borderRadius: '8px', outline: 'none', width: '100%' }} />
+                  </div>
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)' }}>Languages</label>
+                    <input type="text" id="tch-profile-languages" placeholder="Comma separated" style={{ padding: '0.6rem 0.8rem', fontSize: '0.85rem', border: '1.5px solid var(--glass-border)', borderRadius: '8px', outline: 'none', width: '100%' }} />
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '1.25rem' }}>
+                  <button className="btn-submit" style={{ padding: '0.5rem 1.5rem', fontSize: '0.85rem' }} onClick={() => (window as any).saveTeacherProfile()}>Save Changes</button>
+                  <button className="btn-submit" style={{ padding: '0.5rem 1.5rem', fontSize: '0.85rem', background: 'var(--text-muted)' }} onClick={() => { document.getElementById('tch-profile-password-section')!.style.display = document.getElementById('tch-profile-password-section')!.style.display === 'none' ? 'block' : 'none'; }}>Change Password</button>
+                </div>
+                <div id="tch-profile-password-section" style={{ display: 'none', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--glass-border)' }}>
+                  <h4 style={{ fontSize: '0.9rem', marginBottom: '1rem', color: 'var(--text)' }}>Change Password</h4>
+                  <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)' }}>Current Password</label>
+                    <input type="password" id="tch-current-pass" placeholder="Enter current password" style={{ padding: '0.6rem 0.8rem', fontSize: '0.85rem', border: '1.5px solid var(--glass-border)', borderRadius: '8px', outline: 'none', width: '100%' }} />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)' }}>New Password</label>
+                    <input type="password" id="tch-new-pass" placeholder="Enter new password" style={{ padding: '0.6rem 0.8rem', fontSize: '0.85rem', border: '1.5px solid var(--glass-border)', borderRadius: '8px', outline: 'none', width: '100%' }} />
+                  </div>
+                  <button className="btn-submit" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }} onClick={() => (window as any).changeTeacherPassword()}>Update Password</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* ========== ADMIN PORTAL ========== */}
@@ -2176,10 +3592,12 @@ export default function App() {
           <button className="portal-nav-btn" onClick={(e) => (window as any).showAdminSection('admin-events', e)}>Events</button>
           <button className="portal-nav-btn" onClick={(e) => (window as any).showAdminSection('admin-registrations', e)}>Registrations</button>
           <button className="portal-nav-btn" onClick={(e) => (window as any).showAdminSection('admin-attendance', e)}>Attendance</button>
+          <button className="portal-nav-btn" onClick={(e) => (window as any).showAdminSection('admin-vol-apps', e)}>Vol Apps</button>
           <button className="portal-nav-btn" onClick={(e) => (window as any).showAdminSection('admin-volunteers', e)}>Volunteers</button>
           <button className="portal-nav-btn" onClick={(e) => (window as any).showAdminSection('admin-tasks', e)}>Assign Tasks</button>
           <button className="portal-nav-btn" onClick={(e) => (window as any).showAdminSection('admin-leaderboard', e)}>Leaderboard</button>
           <button className="portal-nav-btn" onClick={(e) => (window as any).showAdminSection('admin-content', e)}>AI4ALL Content</button>
+          <button className="portal-nav-btn" onClick={(e) => (window as any).showAdminSection('admin-teachxai', e)}>TeachXai</button>
           <button className="portal-nav-btn" onClick={(e) => (window as any).showAdminSection('admin-analytics', e)}>Analytics</button>
         </div>
 
@@ -2265,6 +3683,15 @@ export default function App() {
           </div>
         </div>
 
+        {/* Volunteer Applications */}
+        <div id="admin-vol-apps" className="portal-section">
+          <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--secondary)', fontSize: '1rem', marginBottom: '1rem' }}>Volunteer Applications <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>(<span id="admin-vol-apps-count">0</span> pending)</span></h3>
+          <table className="data-table">
+            <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Education</th><th>Action</th></tr></thead>
+            <tbody id="admin-vol-apps-body"></tbody>
+          </table>
+        </div>
+
         {/* Volunteers */}
         <div id="admin-volunteers" className="portal-section">
           <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--secondary)', fontSize: '1rem', marginBottom: '1rem' }}>All Volunteers</h3>
@@ -2328,6 +3755,109 @@ export default function App() {
             </tbody>
           </table>
         </div>
+
+        {/* TeachXai Management */}
+        <div id="admin-teachxai" className="portal-section">
+          <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--secondary)', fontSize: '1rem', marginBottom: '1rem' }}>TeachXai - Educator Management</h3>
+          <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+            <div className="admin-metric" style={{ flex: '1', minWidth: '120px' }}><div className="admin-metric-num" id="tx-pending-count">0</div><div className="admin-metric-label">Pending</div></div>
+            <div className="admin-metric" style={{ flex: '1', minWidth: '120px' }}><div className="admin-metric-num" id="tx-approved-count">0</div><div className="admin-metric-label">Approved</div></div>
+            <div className="admin-metric" style={{ flex: '1', minWidth: '120px' }}><div className="admin-metric-num" id="tx-lessons-count">0</div><div className="admin-metric-label">Lessons Taught</div></div>
+          </div>
+
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+            <button className="btn-submit" style={{ flex: 1, padding: '0.6rem', minWidth: '100px' }} onClick={() => (window as any).showTxTab('pending', event)}>Pending</button>
+            <button className="btn-submit" style={{ flex: 1, padding: '0.6rem', minWidth: '100px', background: 'var(--success)' }} onClick={() => (window as any).showTxTab('approved', event)}>Educators</button>
+            <button className="btn-submit" style={{ flex: 1, padding: '0.6rem', minWidth: '100px', background: 'var(--primary)' }} onClick={() => (window as any).showTxTab('lessons', event)}>Lessons</button>
+            <button className="btn-submit" style={{ flex: 1, padding: '0.6rem', minWidth: '100px', background: '#6b7280' }} onClick={() => (window as any).showTxTab('attendance', event)}>Attendance</button>
+            <button className="btn-submit" style={{ flex: 1, padding: '0.6rem', minWidth: '100px', background: 'linear-gradient(135deg,var(--secondary),var(--primary))' }} onClick={() => (window as any).showTxTab('stats', event)}>Stats</button>
+          </div>
+
+          <div id="tx-pending-panel">
+            <h4 style={{ fontSize: '0.9rem', marginBottom: '0.75rem', color: 'var(--text-muted)' }}>Pending Applications</h4>
+            <table className="data-table">
+              <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Education</th><th>Subjects</th><th>Experience</th><th>Action</th></tr></thead>
+              <tbody id="tx-pending-table"></tbody>
+            </table>
+          </div>
+
+          <div id="tx-approved-panel" style={{ display: 'none' }}>
+            <h4 style={{ fontSize: '0.9rem', marginBottom: '0.75rem', color: 'var(--text-muted)' }}>Approved Educators</h4>
+            <table className="data-table">
+              <thead><tr><th>Name</th><th>Email</th><th>Subjects</th><th>Languages</th><th>Assigned Lessons</th><th>Action</th></tr></thead>
+              <tbody id="tx-approved-table"></tbody>
+            </table>
+          </div>
+
+          <div id="tx-lessons-panel" style={{ display: 'none' }}>
+            <h4 style={{ fontSize: '0.9rem', marginBottom: '0.75rem', color: 'var(--text-muted)' }}>Taught Lessons</h4>
+            <table className="data-table">
+              <thead><tr><th>Educator</th><th>Lesson Title</th><th>Subject</th><th>Date</th><th>Status</th></tr></thead>
+              <tbody id="tx-lessons-table"></tbody>
+            </table>
+            <div style={{ marginTop: '1.5rem', padding: '1.5rem', background: '#fafafa', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+              <h4 style={{ fontSize: '0.9rem', marginBottom: '0.75rem', color: 'var(--secondary)' }}>Assign New Lesson</h4>
+              <div className="assign-row" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                <div className="form-group" style={{ flex: 1, minWidth: '180px' }}>
+                  <label>Select Educator</label>
+                  <select id="tx-lesson-educator"><option value="">-- Select --</option></select>
+                </div>
+                <div className="form-group" style={{ flex: 1, minWidth: '180px' }}>
+                  <label>Lesson Title</label>
+                  <input type="text" id="tx-lesson-title" placeholder="e.g. Intro to AI" />
+                </div>
+                <div className="form-group" style={{ flex: 1, minWidth: '180px' }}>
+                  <label>Subject</label>
+                  <input type="text" id="tx-lesson-subject" placeholder="e.g. Machine Learning" />
+                </div>
+                <div className="form-group" style={{ flex: 0.4, minWidth: '120px' }}>
+                  <label>Date</label>
+                  <input type="date" id="tx-lesson-date" />
+                </div>
+              </div>
+              <button className="btn-submit" style={{ marginTop: '0.75rem' }} onClick={() => (window as any).assignTxLesson()}>Assign Lesson</button>
+            </div>
+          </div>
+
+          {/* Teacher Attendance */}
+          <div id="tx-attendance-panel" style={{ display: 'none' }}>
+            <h4 style={{ fontSize: '0.9rem', marginBottom: '0.75rem', color: 'var(--text-muted)' }}>Teacher Attendance</h4>
+            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              <div className="form-group" style={{ flex: 1, minWidth: '180px' }}>
+                <label>Select Educator</label>
+                <select id="tx-att-educator"><option value="">-- Select --</option></select>
+              </div>
+              <div className="form-group" style={{ flex: 0.4, minWidth: '120px' }}>
+                <label>Date</label>
+                <input type="date" id="tx-att-date" />
+              </div>
+              <div className="form-group" style={{ flex: 0.4, minWidth: '120px' }}>
+                <label>Status</label>
+                <select id="tx-att-status"><option value="Present">Present</option><option value="Absent">Absent</option><option value="Leave">Leave</option></select>
+              </div>
+              <button className="btn-submit" style={{ padding: '0.6rem 1.5rem', height: 'fit-content' }} onClick={() => (window as any).markTxAttendance()}>Mark Attendance</button>
+            </div>
+            <table className="data-table">
+              <thead><tr><th>Educator</th><th>Date</th><th>Status</th></tr></thead>
+              <tbody id="tx-attendance-table"></tbody>
+            </table>
+          </div>
+
+          {/* Teacher Stats */}
+          <div id="tx-stats-panel" style={{ display: 'none' }}>
+            <h4 style={{ fontSize: '0.9rem', marginBottom: '0.75rem', color: 'var(--text-muted)' }}>Teacher Statistics</h4>
+            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+              <div className="admin-metric" style={{ flex: 1, minWidth: '120px' }}><div className="admin-metric-num" id="tx-stats-total">0</div><div className="admin-metric-label">Total Teachers</div></div>
+              <div className="admin-metric" style={{ flex: 1, minWidth: '120px' }}><div className="admin-metric-num" id="tx-stats-active">0</div><div className="admin-metric-label">Active Teachers</div></div>
+              <div className="admin-metric" style={{ flex: 1, minWidth: '120px' }}><div className="admin-metric-num" id="tx-stats-att-rate">0%</div><div className="admin-metric-label">Attendance Rate</div></div>
+              <div className="admin-metric" style={{ flex: 1, minWidth: '120px' }}><div className="admin-metric-num" id="tx-stats-total-lessons">0</div><div className="admin-metric-label">Total Lessons</div></div>
+            </div>
+            <table className="data-table">
+              <thead><tr><th>Teacher</th><th>Email</th><th>Lessons Taught</th><th>Present</th><th>Absent</th><th>Attendance %</th></tr></thead>
+              <tbody id="tx-stats-table"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
 
@@ -2341,6 +3871,7 @@ export default function App() {
           </div>
           <div className="modal-tabs">
             <button className="modal-tab active" onClick={(e) => (window as any).switchTab('volunteer-tab', e)}>Volunteer</button>
+            <button className="modal-tab" onClick={(e) => (window as any).switchTab('teacher-tab', e)}>Teacher</button>
             <button className="modal-tab" onClick={(e) => (window as any).switchTab('admin-tab', e)}>Admin</button>
           </div>
           {/* Volunteer Login */}
@@ -2348,6 +3879,14 @@ export default function App() {
             <div className="form-group"><label>Email</label><input type="email" id="vol-login-email" placeholder="your@email.com" /></div>
             <div className="form-group"><label>Password</label><input type="password" id="vol-login-pass" placeholder="••••••••" /></div>
             <button className="btn-submit" onClick={() => (window as any).loginUser('volunteer')}>Login</button>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: '0.5rem' }}>Default password for approved volunteers: <strong>volunteer123</strong></p>
+          </div>
+          {/* Teacher Login */}
+          <div className="modal-form" id="teacher-tab">
+            <div className="form-group"><label>Email</label><input type="email" id="tch-login-email" placeholder="your@email.com" /></div>
+            <div className="form-group"><label>Password</label><input type="password" id="tch-login-pass" placeholder="••••••••" /></div>
+            <button className="btn-submit" onClick={() => (window as any).loginUser('teacher')} style={{ background: 'linear-gradient(135deg,var(--success),var(--primary))' }}>Login as Teacher</button>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: '0.5rem' }}>Default password for approved teachers: <strong>teacher123</strong></p>
           </div>
           {/* Admin Login */}
           <div className="modal-form" id="admin-tab">
@@ -2361,6 +3900,149 @@ export default function App() {
             <p id="success-msg">Redirecting to your portal...</p>
           </div>
         </div>
+      </div>
+
+      {/* ========== VOLUNTEER APPLICATION MODAL ========== */}
+      <div className="modal-overlay" id="signup-modal">
+        <div className="modal">
+          <button className="modal-close" onClick={() => (window as any).closeSignUpModal()}>✕</button>
+          <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--primary)', fontWeight: '700' }}>Volunteer Application</h2>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>Submit your details — an admin will review and approve your application.</p>
+          </div>
+
+          <div className="modal-form active" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>Full Name <span style={{ color: '#dc2626' }}>*</span></label>
+              <input type="text" placeholder="Enter your full name" id="vol-app-fname" style={{ padding: '0.7rem 1rem', fontSize: '0.9rem', border: '1.5px solid var(--glass-border)', borderRadius: '10px', outline: 'none', width: '100%' }} />
+            </div>
+            <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>Mobile Number <span style={{ color: '#dc2626' }}>*</span></label>
+              <input type="tel" placeholder="+91 XXXXXXXXXX" id="vol-app-phone" style={{ padding: '0.7rem 1rem', fontSize: '0.9rem', border: '1.5px solid var(--glass-border)', borderRadius: '10px', outline: 'none', width: '100%' }} />
+            </div>
+            <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>Email Address <span style={{ color: '#dc2626' }}>*</span></label>
+              <input type="email" placeholder="yourname@email.com" id="vol-app-email" style={{ padding: '0.7rem 1rem', fontSize: '0.9rem', border: '1.5px solid var(--glass-border)', borderRadius: '10px', outline: 'none', width: '100%' }} />
+            </div>
+            <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>Education Qualification <span style={{ color: '#dc2626' }}>*</span></label>
+              <select id="vol-app-education" style={{ padding: '0.7rem 1rem', fontSize: '0.9rem', border: '1.5px solid var(--glass-border)', borderRadius: '10px', outline: 'none', width: '100%', background: '#fff' }}>
+                <option value="">Select your qualification</option>
+                <option>High School</option><option>Intermediate / Diploma</option>
+                <option>Bachelor's Degree</option><option>Master's Degree</option>
+                <option>PhD</option><option>Other</option>
+              </select>
+            </div>
+            <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>Why do you want to volunteer? <span style={{ color: '#dc2626' }}>*</span></label>
+              <textarea rows={3} placeholder="Tell us about your motivation..." id="vol-app-why" style={{ padding: '0.7rem 1rem', fontSize: '0.9rem', border: '1.5px solid var(--glass-border)', borderRadius: '10px', outline: 'none', resize: 'vertical', width: '100%' }}></textarea>
+            </div>
+            <button className="btn-submit" onClick={() => (window as any).submitVolunteerApplication()} style={{ padding: '0.85rem', marginTop: '0.5rem', fontSize: '0.95rem', width: '100%' }}>Submit Application</button>
+          </div>
+        </div>
+      </div>
+
+      {/* ========== TEACHXAI PAGE ========== */}
+      <div id="teachxai" className="page">
+        <section className="teachxai-section">
+          <div className="section-header">
+            <span className="section-tag">Teach with Us</span>
+            <h2 className="section-title">Become a <span style={{ color: 'var(--secondary)' }}>TeachXai</span> Educator</h2>
+            <p className="section-sub">Share your knowledge and help us make AI education accessible to every Indian</p>
+          </div>
+          <div className="teachxai-form-container">
+            <form className="teachxai-form" onSubmit={(e) => { e.preventDefault(); (window as any).submitTeachXai(); }}>
+              <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="form-group">
+                  <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>Full Name <span style={{ color: '#dc2626' }}>*</span></label>
+                  <input type="text" id="tx-name" placeholder="Enter your full name" required style={{ padding: '0.7rem 1rem', fontSize: '0.9rem', border: '1.5px solid var(--glass-border)', borderRadius: '10px', outline: 'none', transition: 'border-color 0.3s', width: '100%' }} />
+                </div>
+                <div className="form-group">
+                  <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>Email Address <span style={{ color: '#dc2626' }}>*</span></label>
+                  <input type="email" id="tx-email" placeholder="your@email.com" required style={{ padding: '0.7rem 1rem', fontSize: '0.9rem', border: '1.5px solid var(--glass-border)', borderRadius: '10px', outline: 'none', transition: 'border-color 0.3s', width: '100%' }} />
+                </div>
+              </div>
+              <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="form-group">
+                  <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>Phone Number <span style={{ color: '#dc2626' }}>*</span></label>
+                  <input type="tel" id="tx-phone" placeholder="+91 98765 43210" required style={{ padding: '0.7rem 1rem', fontSize: '0.9rem', border: '1.5px solid var(--glass-border)', borderRadius: '10px', outline: 'none', transition: 'border-color 0.3s', width: '100%' }} />
+                </div>
+                <div className="form-group">
+                  <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>Highest Education Qualification <span style={{ color: '#dc2626' }}>*</span></label>
+                  <select id="tx-education" required style={{ padding: '0.7rem 1rem', fontSize: '0.9rem', border: '1.5px solid var(--glass-border)', borderRadius: '10px', outline: 'none', width: '100%', background: '#fff' }}>
+                    <option value="">Select qualification</option>
+                    <option value="highschool">High School</option>
+                    <option value="diploma">Diploma</option>
+                    <option value="bachelors">Bachelor's Degree</option>
+                    <option value="masters">Master's Degree</option>
+                    <option value="phd">PhD / Doctorate</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+              </div>
+              <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="form-group">
+                  <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>Institution / College</label>
+                  <input type="text" id="tx-institution" placeholder="Name of institution" style={{ padding: '0.7rem 1rem', fontSize: '0.9rem', border: '1.5px solid var(--glass-border)', borderRadius: '10px', outline: 'none', transition: 'border-color 0.3s', width: '100%' }} />
+                </div>
+                <div className="form-group">
+                  <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>Years of Teaching Experience</label>
+                  <select id="tx-experience" style={{ padding: '0.7rem 1rem', fontSize: '0.9rem', border: '1.5px solid var(--glass-border)', borderRadius: '10px', outline: 'none', width: '100%', background: '#fff' }}>
+                    <option value="0">0 (No experience)</option>
+                    <option value="1-2">1-2 years</option>
+                    <option value="3-5">3-5 years</option>
+                    <option value="6-10">6-10 years</option>
+                    <option value="10+">10+ years</option>
+                  </select>
+                </div>
+              </div>
+              <div className="form-group">
+                <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>Subjects Interested in Teaching <span style={{ color: '#dc2626' }}>*</span></label>
+                <div className="dept-checkbox-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', padding: '0.75rem', border: '1.5px solid var(--glass-border)', borderRadius: '10px', background: '#fafafa' }}>
+                  <label className="dept-checkbox" style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}><input type="checkbox" value="AI Fundamentals" /> AI Fundamentals</label>
+                  <label className="dept-checkbox" style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}><input type="checkbox" value="Machine Learning" /> Machine Learning</label>
+                  <label className="dept-checkbox" style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}><input type="checkbox" value="Data Science" /> Data Science</label>
+                  <label className="dept-checkbox" style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}><input type="checkbox" value="Python Programming" /> Python Programming</label>
+                  <label className="dept-checkbox" style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}><input type="checkbox" value="AI for Farmers" /> AI for Farmers</label>
+                  <label className="dept-checkbox" style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}><input type="checkbox" value="AI for Teachers" /> AI for Teachers</label>
+                  <label className="dept-checkbox" style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}><input type="checkbox" value="AI for Students" /> AI for Students</label>
+                  <label className="dept-checkbox" style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}><input type="checkbox" value="AI for Kids" /> AI for Kids</label>
+                  <label className="dept-checkbox" style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}><input type="checkbox" value="Robotics & IoT" /> Robotics & IoT</label>
+                </div>
+              </div>
+              <div className="form-group">
+                <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>Languages You Can Teach In <span style={{ color: '#dc2626' }}>*</span></label>
+                <div className="dept-checkbox-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', padding: '0.75rem', border: '1.5px solid var(--glass-border)', borderRadius: '10px', background: '#fafafa' }}>
+                  <label className="dept-checkbox" style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}><input type="checkbox" value="English" /> English</label>
+                  <label className="dept-checkbox" style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}><input type="checkbox" value="Hindi" /> Hindi</label>
+                  <label className="dept-checkbox" style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}><input type="checkbox" value="Telugu" /> Telugu</label>
+                  <label className="dept-checkbox" style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}><input type="checkbox" value="Tamil" /> Tamil</label>
+                  <label className="dept-checkbox" style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}><input type="checkbox" value="Kannada" /> Kannada</label>
+                  <label className="dept-checkbox" style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}><input type="checkbox" value="Other" /> Other</label>
+                </div>
+              </div>
+              <div className="form-group">
+                <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>Relevant Certifications (if any)</label>
+                <input type="text" id="tx-certifications" placeholder="e.g. Google AI Certification, NPTEL, Coursera" style={{ padding: '0.7rem 1rem', fontSize: '0.9rem', border: '1.5px solid var(--glass-border)', borderRadius: '10px', outline: 'none', transition: 'border-color 0.3s', width: '100%' }} />
+              </div>
+              <div className="form-group">
+                <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>Why do you want to teach with TeachXai? <span style={{ color: '#dc2626' }}>*</span></label>
+                <textarea id="tx-why" rows={3} required placeholder="Share your motivation and how you can contribute..." style={{ padding: '0.7rem 1rem', fontSize: '0.9rem', border: '1.5px solid var(--glass-border)', borderRadius: '10px', outline: 'none', transition: 'border-color 0.3s', resize: 'vertical', width: '100%' }}></textarea>
+              </div>
+              <div className="form-group">
+                <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>Availability <span style={{ color: '#dc2626' }}>*</span></label>
+                <select id="tx-availability" required style={{ padding: '0.7rem 1rem', fontSize: '0.9rem', border: '1.5px solid var(--glass-border)', borderRadius: '10px', outline: 'none', width: '100%', background: '#fff' }}>
+                  <option value="">Select availability</option>
+                  <option value="weekdays">Weekdays (Mon-Fri)</option>
+                  <option value="weekends">Weekends (Sat-Sun)</option>
+                  <option value="evenings">Evenings only</option>
+                  <option value="flexible">Flexible</option>
+                </select>
+              </div>
+              <button type="submit" className="btn-submit" style={{ padding: '0.85rem', marginTop: '0.5rem', fontSize: '0.95rem', width: '100%' }}>Submit Application</button>
+            </form>
+          </div>
+        </section>
       </div>
 
       {/* ========== AI CHAT MODAL ========== */}
@@ -2388,6 +4070,11 @@ export default function App() {
         </div>
       </div>
 
+      {/* ========== FLOATING WHATSAPP ICON ========== */}
+      <a href="https://wa.me/918665550199" target="_blank" rel="noopener noreferrer" className="whatsapp-float" title="Chat on WhatsApp">
+        <svg viewBox="0 0 24 24" width="28" height="28" fill="white"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.725 1.45 5.489 0 9.952-4.43 9.955-9.885.002-2.643-1.022-5.127-2.885-7c-1.863-1.874-4.343-2.905-6.994-2.906-5.49 0-9.953 4.429-9.957 9.884-.002 1.714.453 3.39 1.32 4.887l-.994 3.634 3.73-.974zm12.002-6.852c-.274-.136-1.62-.801-1.871-.892-.252-.09-.435-.136-.617.136-.183.272-.708.89-.867 1.072-.16.182-.32.205-.594.069-.275-.136-1.16-.427-2.209-1.364-.817-.73-1.368-1.63-1.528-1.905-.16-.273-.017-.421.12-.557.123-.122.274-.32.41-.48.138-.16.183-.273.275-.455.092-.182.046-.341-.023-.477-.068-.136-.617-1.485-.845-2.03-.22-.533-.48-.46-.617-.466-.123-.006-.275-.007-.426-.007-.152 0-.401.057-.61.284-.21.227-.8.781-.8 1.904 0 1.124.816 2.207.93 2.36.114.152 1.606 2.451 3.89 3.435.543.233.967.373 1.3.479.546.173 1.042.149 1.433.09.437-.066 1.62-.662 1.849-1.3.23-.637.23-1.182.16-1.3-.069-.117-.251-.183-.526-.32z"/></svg>
+      </a>
+
       {/* ========== FOOTER ========== */}
       <footer id="main-footer">
         <div className="footer-grid">
@@ -2409,6 +4096,7 @@ export default function App() {
               <li><a onClick={() => (window as any).showPage('ai4all')}>AI 4 ALL</a></li>
               <li><a onClick={() => (window as any).showPage('gallery')}>Gallery</a></li>
               <li><a onClick={() => (window as any).showPage('volunteer')}>Volunteer</a></li>
+              <li><a onClick={() => (window as any).showPage('contact')}>Contact Us</a></li>
             </ul>
           </div>
           <div className="footer-col">
@@ -2426,7 +4114,7 @@ export default function App() {
             <h4>Contact Info</h4>
             <ul>
               <li style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.85rem', display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}><span style={{ color: 'var(--secondary)', fontSize: '0.8rem' }}>✉</span> info@aiforall.org</li>
-              <li style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.85rem', display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}><span style={{ color: 'var(--secondary)', fontSize: '0.8rem' }}>📞</span> +91 9XXXXXXXXX</li>
+              <li style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.85rem', display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}><span style={{ color: 'var(--secondary)', fontSize: '0.8rem' }}>📞</span> +91 866 555 0199</li>
               <li style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.85rem', display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}><span style={{ color: 'var(--secondary)', fontSize: '0.8rem' }}>📍</span> Vijayawada, Andhra Pradesh</li>
               <li style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.85rem', display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}><span style={{ color: 'var(--secondary)', fontSize: '0.8rem' }}>🌐</span> www.aiforall.org</li>
             </ul>
@@ -2434,11 +4122,19 @@ export default function App() {
         </div>
         <div className="footer-bottom">
           <p>© 2025 AI For All Educational Trust. All rights reserved. | Non-Profit | Registered Trust</p>
-          <div className="social-links">
-            <a className="social-link">f</a>
-            <a className="social-link">in</a>
-            <a className="social-link">𝕏</a>
-            <a className="social-link">▶</a>
+          <div className="social-links" style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
+            <a href="https://www.instagram.com/incuxai/" target="_blank" rel="noopener noreferrer" className="social-link" title="Instagram" style={{ color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+            </a>
+            <a href="https://linkedin.com/company/incuxai/posts/?feedView=all" target="_blank" rel="noopener noreferrer" className="social-link" title="LinkedIn" style={{ color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+            </a>
+            <a href="https://whatsapp.com" target="_blank" rel="noopener noreferrer" className="social-link" title="WhatsApp" style={{ color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.725 1.45 5.489 0 9.952-4.43 9.955-9.885.002-2.643-1.022-5.127-2.885-7c-1.863-1.874-4.343-2.905-6.994-2.906-5.49 0-9.953 4.429-9.957 9.884-.002 1.714.453 3.39 1.32 4.887l-.994 3.634 3.73-.974zm12.002-6.852c-.274-.136-1.62-.801-1.871-.892-.252-.09-.435-.136-.617.136-.183.272-.708.89-.867 1.072-.16.182-.32.205-.594.069-.275-.136-1.16-.427-2.209-1.364-.817-.73-1.368-1.63-1.528-1.905-.16-.273-.017-.421.12-.557.123-.122.274-.32.41-.48.138-.16.183-.273.275-.455.092-.182.046-.341-.023-.477-.068-.136-.617-1.485-.845-2.03-.22-.533-.48-.46-.617-.466-.123-.006-.275-.007-.426-.007-.152 0-.401.057-.61.284-.21.227-.8.781-.8 1.904 0 1.124.816 2.207.93 2.36.114.152 1.606 2.451 3.89 3.435.543.233.967.373 1.3.479.546.173 1.042.149 1.433.09.437-.066 1.62-.662 1.849-1.3.23-.637.23-1.182.16-1.3-.069-.117-.251-.183-.526-.32z"/></svg>
+            </a>
+            <a href="https://youtube.com/@incuxai?si=1KB19n7w3B0xmrBc" target="_blank" rel="noopener noreferrer" className="social-link" title="YouTube" style={{ color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon></svg>
+            </a>
           </div>
         </div>
       </footer>

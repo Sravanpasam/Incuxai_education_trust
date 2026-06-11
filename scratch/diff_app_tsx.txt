@@ -1,0 +1,675 @@
+﻿diff --git a/src/App.tsx b/src/App.tsx
+index 0d5970f..b933c85 100644
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -11,6 +11,14 @@ import healthImg from './assets/slider_health.jpg';
+ import ourPlanetImg from './assets/slider_our_planet.jpg';
+ import whoWeAreImg from './assets/about_who_we_are.jpg';
+ 
++// Partner Logos
++import jvvLogo from './assets/JVV.jpeg';
++import sunLogo from './assets/SUN.jpeg';
++import covidfightersLogo from './assets/covidfighters.jpeg';
++import elivatxLogo from './assets/elivatx.jpeg';
++import hcetLogo from './assets/hcet.jpeg';
++import jobreciepeLogo from './assets/jobreciepe.jpeg';
++
+ // Slides details (Futuristic city, AI students, robotics, technology, smart agritech)
+ const slideImages = [
+   smartCitiesImg,
+@@ -291,22 +299,16 @@ export default function App() {
+       }
+     }, 500);
+ 
+-    // Floating Particles Setup (Identical metrics)
++    // Floating Particles Setup (Disabled per user request)
+     const container = document.getElementById('particles');
+     if (container) {
+       container.innerHTML = '';
+-      for (let i = 0; i < 40; i++) {
+-        const p = document.createElement('div');
+-        p.className = 'particle';
+-        p.style.cssText = `left:${Math.random() * 100}%;--dur:${6 + Math.random() * 12}s;--x:${-30 + Math.random() * 60}px;--dx:${-20 + Math.random() * 40}px;--op:${0.2 + Math.random() * 0.5};animation-delay:-${Math.random() * 15}s;`;
+-        container.appendChild(p);
+-      }
+     }
+ 
+     // Type tagline animation
+-    const taglineEl = document.getElementById('tagline-text');
+     let typingInterval: ReturnType<typeof setInterval> | null = null;
+     const typeTagline = (text: string) => {
++      const taglineEl = document.getElementById('tagline-text');
+       if (!taglineEl) return;
+       if (typingInterval) clearInterval(typingInterval);
+       taglineEl.textContent = '';
+@@ -321,22 +323,9 @@ export default function App() {
+       }, 40);
+     };
+ 
+-    // Slideshow Dots dynamic population
+-    const slides = document.querySelectorAll('.slide');
+-    const dotsContainer = document.getElementById('slider-dots');
+-    if (dotsContainer && slides.length > 0) {
+-      dotsContainer.innerHTML = '';
+-      slides.forEach((_, i) => {
+-        const d = document.createElement('div');
+-        d.className = 'dot' + (i === 0 ? ' active' : '');
+-        d.onclick = () => w.goToSlide(i);
+-        dotsContainer.appendChild(d);
+-      });
+-    }
+-
+     w.goToSlide = (n: number) => {
+       const activeSlides = document.querySelectorAll('.slide');
+-      const activeDots = document.getElementById('slider-dots')?.children;
++      const activeDots = document.querySelectorAll('.slider-dots .dot');
+       if (activeSlides.length > 0) {
+         activeSlides[currentSlide]?.classList.remove('active');
+         if (activeDots && activeDots[currentSlide]) {
+@@ -374,21 +363,40 @@ export default function App() {
+ 
+ 
+ 
+-    // Toggle about details (mission/vision/programs)
+-    w.toggleAboutDetail = (id: string, event?: any) => {
+-      const el = document.getElementById(id);
+-      if (!el) return;
+-      
+-      if (event && event.currentTarget) {
+-        document.querySelectorAll('.about-pill-btn').forEach(btn => btn.classList.remove('active'));
+-        event.currentTarget.classList.add('active');
++    // 3D Cube Rotation Logic (mission/vision/values/journey)
++    let lastManualCubeClick = 0;
++    let currentActiveCubeIndex = 0;
++    w.rotateCubeToIndex = (index: number, isManualClick = false) => {
++      const cube = document.getElementById('about-cube');
++      if (!cube) return;
++
++      if (isManualClick) {
++        lastManualCubeClick = Date.now();
++        currentActiveCubeIndex = index;
++      } else {
++        // Prevent scroll listener from interrupting manual clicks for 1.8 seconds
++        if (Date.now() - lastManualCubeClick < 1800) return;
+       }
+ 
+-      ['about-mission', 'about-vision', 'about-values', 'about-journey'].forEach(sid => {
+-        const s = document.getElementById(sid);
+-        if (s) s.style.display = 'none';
++      // Rotate Y coordinate (index 0 is 0deg, 1 is -90deg, 2 is -180deg, 3 is -270deg)
++      const angleY = index * -90;
++      let translateZVal = -425;
++      if (window.innerWidth <= 650) {
++        translateZVal = -160;
++      } else if (window.innerWidth <= 900) {
++        translateZVal = -300;
++      }
++      cube.style.transform = `rotateX(-6deg) rotateY(${angleY}deg) translateZ(${translateZVal}px)`;
++
++      // Update button active state
++      const buttons = document.querySelectorAll('.about-pill-btn');
++      buttons.forEach((btn, idx) => {
++        if (idx === index) {
++          btn.classList.add('active');
++        } else {
++          btn.classList.remove('active');
++        }
+       });
+-      el.style.display = 'grid';
+     };
+ 
+     // Toggle compact values
+@@ -428,7 +436,7 @@ export default function App() {
+       }
+       document.querySelectorAll('nav > a, nav > .nav-item > a').forEach(a => a.classList.remove('active'));
+       const navItems = document.querySelectorAll('nav > a, nav > .nav-item > a');
+-      const navMap: Record<string, number> = { home: 0, about: 1, ai4all: 2, programs: 3, gallery: 4 };
++      const navMap: Record<string, number> = { home: 0, about: 1, ai4all: 2, programs: 3, gallery: 4, contact: 5 };
+       if (navMap[id] !== undefined && navItems[navMap[id]]) {
+         navItems[navMap[id]].classList.add('active');
+       }
+@@ -1359,11 +1367,87 @@ export default function App() {
+           header.classList.remove('scrolled');
+         }
+       }
++
++      // 3D Cube Scroll Rotation Spy
++      const aboutSection = document.getElementById('about-section');
++      if (aboutSection) {
++        const rect = aboutSection.getBoundingClientRect();
++        const viewportHeight = window.innerHeight;
++        
++        // Check if the section is in viewport
++        if (rect.top < viewportHeight && rect.bottom > 0) {
++          // Calculate scroll progress within the about section
++          // 0 when section enters, 1 when section exits
++          const scrollRange = rect.height + viewportHeight;
++          const progress = Math.max(0, Math.min(1, (viewportHeight - rect.top) / scrollRange));
++          
++          // Map progress (0 to 1) to index (0 to 3)
++          let activeIndex = 0;
++          if (progress < 0.28) {
++            activeIndex = 0;
++          } else if (progress < 0.52) {
++            activeIndex = 1;
++          } else if (progress < 0.76) {
++            activeIndex = 2;
++          } else {
++            activeIndex = 3;
++          }
++          
++          if (activeIndex !== currentActiveCubeIndex) {
++            currentActiveCubeIndex = activeIndex;
++            if (typeof (w as any).rotateCubeToIndex === 'function') {
++              (w as any).rotateCubeToIndex(activeIndex, false);
++            }
++          }
++        }
++      }
+     };
+     window.addEventListener('scroll', handleScroll, { passive: true });
+     // Run once on load to establish correct state
+     handleScroll();
+ 
++    // Intersection Observer for Partnerships staggered reveal
++    const collabSection = document.getElementById('collaboration-section');
++    if (collabSection) {
++      const observer = new IntersectionObserver((entries) => {
++        entries.forEach(entry => {
++          if (entry.isIntersecting) {
++            collabSection.classList.add('reveal-active');
++            observer.unobserve(entry.target);
++          }
++        });
++      }, { threshold: 0.05 });
++      observer.observe(collabSection);
++    }
++
++    // Fallback: automatically reveal collaboration section after 1.5 seconds if not already done
++    const revealTimeout = setTimeout(() => {
++      const el = document.getElementById('collaboration-section');
++      if (el) el.classList.add('reveal-active');
++    }, 1500);
++
++    // 3D Tilt Hover Handlers for Partnerships Cards
++    w.handleLogoMouseMove = (e: any) => {
++      const card = e.currentTarget;
++      const rect = card.getBoundingClientRect();
++      const x = e.clientX - rect.left;
++      const y = e.clientY - rect.top;
++      const centerX = rect.width / 2;
++      const centerY = rect.height / 2;
++      const rotX = ((centerY - y) / centerY) * 10;
++      const rotY = ((x - centerX) / centerX) * 10;
++      card.style.transform = `perspective(800px) translateY(-10px) scale(1.06) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
++      card.style.boxShadow = `0 20px 45px rgba(150, 116, 45, 0.18), 0 0 25px rgba(150, 116, 45, 0.22)`;
++      card.style.borderColor = `rgba(150, 116, 45, 0.3)`;
++    };
++
++    w.handleLogoMouseLeave = (e: any) => {
++      const card = e.currentTarget;
++      card.style.transform = `perspective(800px) translateY(0) scale(1) rotateX(0deg) rotateY(0deg)`;
++      card.style.boxShadow = ``;
++      card.style.borderColor = ``;
++    };
++
+     // Chat functionality
+     w.toggleChat = () => {
+       const modal = document.getElementById('chat-modal');
+@@ -1519,6 +1603,7 @@ export default function App() {
+ 
+     return () => {
+       clearTimeout(initTimeout);
++      clearTimeout(revealTimeout);
+       if (typingInterval) clearInterval(typingInterval);
+       clearInterval(sliderInterval);
+       clearInterval(labelInterval);
+@@ -1548,7 +1633,7 @@ export default function App() {
+             </div>
+           </div>
+           <div className="nav-item">
+-            <a onClick={() => (window as any).showPage('ai4all')}>AI 4 ALL</a>
++            <a onClick={() => (window as any).showPage('ai4all')} className="nav-highlight-btn">AI 4 ALL</a>
+             <div className="dropdown">
+               <a onClick={() => { (window as any).showPage('ai4all'); setTimeout(() => document.getElementById('ai4all-top')?.scrollIntoView({ behavior: 'smooth' }), 100); }}>Free AI Course</a>
+               <a onClick={() => { (window as any).showPage('ai4all'); setTimeout(() => { const el = document.querySelector('.cat-card[data-cat="farmers"]'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }, 100); }}>AI for Farmers</a>
+@@ -1568,6 +1653,7 @@ export default function App() {
+               <a onClick={() => { (window as any).showPage('gallery'); setTimeout(() => { const cards = document.querySelectorAll('.gallery-folder-card'); if (cards[3]) cards[3].scrollIntoView({ behavior: 'smooth' }); }, 100); }}>Celebrations</a>
+             </div>
+           </div>
++          <a onClick={() => (window as any).showPage('contact')}>Contact</a>
+         </nav>
+         <div className="header-right">
+           <span id="logged-user" style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.8)', fontWeight: '600', display: 'none' }}></span>
+@@ -1598,13 +1684,41 @@ export default function App() {
+           {/* Hero Content */}
+           <div className="hero-content">
+             <div className="hero-text">
+-              <h1 className="hero-title">AI FOR ALL</h1>
++              <h1 className="hero-title creative-hero-title">
++                <span className="char">A</span>
++                <span className="char">I</span>
++                <span className="space">&nbsp;</span>
++                <span className="char">F</span>
++                <span className="char">O</span>
++                <span className="char">R</span>
++                <span className="space">&nbsp;</span>
++                <span className="char">A</span>
++                <span className="char">L</span>
++                <span className="char">L</span>
++              </h1>
+               <div className="hero-tagline" id="hero-tagline">
+                 <span id="tagline-text"></span>
+               </div>
+               <div className="hero-btns">
+-                <button className="btn-primary" onClick={() => (window as any).showPage('ai4all')}>Explore AI Courses</button>
+-                <button className="btn-outline" onClick={() => (window as any).showPage('volunteer')}>Become a Volunteer</button>
++                <button className="btn-modern-primary" onClick={() => (window as any).showPage('ai4all')}>
++                  <span className="btn-text">Explore AI Courses</span>
++                  <span className="btn-icon">
++                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
++                      <line x1="5" y1="12" x2="19" y2="12"></line>
++                      <polyline points="12 5 19 12 12 19"></polyline>
++                    </svg>
++                  </span>
++                  <span className="btn-glow-wrapper"></span>
++                </button>
++                <button className="btn-modern-secondary" onClick={() => (window as any).showPage('volunteer')}>
++                  <span className="btn-text">Become a Volunteer</span>
++                  <span className="btn-icon">
++                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
++                      <line x1="5" y1="12" x2="19" y2="12"></line>
++                      <polyline points="12 5 19 12 12 19"></polyline>
++                    </svg>
++                  </span>
++                </button>
+               </div>
+             </div>
+           </div>
+@@ -1614,8 +1728,16 @@ export default function App() {
+             <span className="chat-bubble-icon">≡ƒÆ¼</span>
+           </button>
+ 
+-          {/* Slider dots */}
+-          <div className="slider-dots" id="slider-dots"></div>
++          {/* Minimal Slider dots */}
++          <div className="slider-dots" id="slider-dots">
++            {slideImages.map((_, idx) => (
++              <div
++                key={idx}
++                className={`dot ${idx === 0 ? 'active' : ''}`}
++                onClick={() => (window as any).goToSlide(idx)}
++              ></div>
++            ))}
++          </div>
+ 
+           {/* Scroll indicator */}
+           <div className="scroll-indicator">
+@@ -1640,61 +1762,122 @@ export default function App() {
+ 
+           <div className="about-extras">
+             <div className="about-tabs-container">
+-              <button className="about-pill-btn active" onClick={(e) => (window as any).toggleAboutDetail('about-mission', e)}>Our Mission</button>
+-              <button className="about-pill-btn" onClick={(e) => (window as any).toggleAboutDetail('about-vision', e)}>Our Vision</button>
+-              <button className="about-pill-btn" onClick={(e) => (window as any).toggleAboutDetail('about-values', e)}>Our Values</button>
+-              <button className="about-pill-btn" onClick={(e) => (window as any).toggleAboutDetail('about-journey', e)}>Our Journey</button>
++              <button className="about-pill-btn active" onClick={() => (window as any).rotateCubeToIndex(0, true)}>Our Mission</button>
++              <button className="about-pill-btn" onClick={() => (window as any).rotateCubeToIndex(1, true)}>Our Vision</button>
++              <button className="about-pill-btn" onClick={() => (window as any).rotateCubeToIndex(2, true)}>Our Values</button>
++              <button className="about-pill-btn" onClick={() => (window as any).rotateCubeToIndex(3, true)}>Our Journey</button>
+             </div>
+             
+-            <div id="about-mission" className="about-detail" style={{ display: 'grid' }}>
+-              <div className="about-detail-matter">
+-                <h4 className="tab-title">Democratizing AI Education</h4>
+-                <p>To make AI knowledge accessible, affordable, and actionable for every Indian citizen regardless of their education, age, or economic background.</p>
+-                <p>We believe that artificial intelligence should not be a privilege for the few, but a fundamental tool for the many. By breaking down language barriers and simplifying complex concepts, our mission is to empower rural communities, local businesses, and students to actively shape the future of technology rather than just consuming it.</p>
+-              </div>
+-              <div className="about-detail-photo">
+-                <img src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=400&auto=format&fit=crop" alt="Our Mission" />
++            <div className="cube-viewport">
++              <div className="about-cube" id="about-cube">
++                {/* Face 1: Mission (Front) */}
++                <div className="cube-face cube-front">
++                  <div className="about-detail-matter">
++                    <h4 className="tab-title">Democratizing AI Education</h4>
++                    <p>To make AI knowledge accessible, affordable, and actionable for every Indian citizen regardless of their education, age, or economic background.</p>
++                    <p>We believe that artificial intelligence should not be a privilege for the few, but a fundamental tool for the many. By breaking down language barriers and simplifying complex concepts, our mission is to empower rural communities, local businesses, and students to actively shape the future of technology rather than just consuming it.</p>
++                  </div>
++                  <div className="about-detail-photo">
++                    <img src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=400&auto=format&fit=crop" alt="Our Mission" />
++                  </div>
++                </div>
++                
++                {/* Face 2: Vision (Right) */}
++                <div className="cube-face cube-right">
++                  <div className="about-detail-matter">
++                    <h4 className="tab-title">A Digitally Empowered India</h4>
++                    <p>To create a future where every Indian has the knowledge and tools to harness AI for personal and community growth.</p>
++                    <p>We envision a nationwide ecosystem where farmers optimize their yields using predictive AI, teachers personalize learning for every student, and small businesses scale efficiently. By fostering a culture of innovation and digital literacy, we aim to position India as a global leader in inclusive AI adoption.</p>
++                  </div>
++                  <div className="about-detail-photo">
++                    <img src="https://images.unsplash.com/photo-1531482615713-2afd69097998?q=80&w=400&auto=format&fit=crop" alt="Our Vision" />
++                  </div>
++                </div>
++
++                {/* Face 3: Values (Back) */}
++                <div className="cube-face cube-back">
++                  <div className="about-detail-matter">
++                    <h4 className="tab-title">What Drives Us Every Day</h4>
++                    <p><strong>Inclusivity:</strong> We design our programs for every person, breaking through barriers of language, caste, and geography.</p>
++                    <p><strong>Open Access:</strong> Education should be free forever. We enforce no paywalls and no hidden barriers.</p>
++                    <p><strong>Community-First:</strong> We build a supportive ecosystem of learners who teach and uplift one another, measuring our success by the tangible impact we create in real lives.</p>
++                  </div>
++                  <div className="about-detail-photo">
++                    <img src="https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=400&auto=format&fit=crop" alt="Our Values" />
++                  </div>
++                </div>
++
++                {/* Face 4: Journey (Left) */}
++                <div className="cube-face cube-left">
++                  <div className="about-detail-matter">
++                    <h4 className="tab-title">From Concept to Movement</h4>
++                    <p>Starting with a handful of volunteers in a single district, our journey began with a simple idea: tech literacy is a fundamental right. Over the years, we've expanded our reach to 22 states, translating complex AI concepts into regional languages.</p>
++                    <p>Today, with a strong network of over 5,000 passionate volunteers, we have transformed from a small local initiative into a nationwide movement that has already impacted hundreds of thousands of lives.</p>
++                  </div>
++                  <div className="about-detail-photo">
++                    <img src="https://images.unsplash.com/photo-1517457373958-b7bdd4587205?q=80&w=400&auto=format&fit=crop" alt="Our Journey" />
++                  </div>
++                </div>
+               </div>
+             </div>
+-            
+-            <div id="about-vision" className="about-detail">
+-              <div className="about-detail-matter">
+-                <h4 className="tab-title">A Digitally Empowered India</h4>
+-                <p>To create a future where every Indian has the knowledge and tools to harness AI for personal and community growth.</p>
+-                <p>We envision a nationwide ecosystem where farmers optimize their yields using predictive AI, teachers personalize learning for every student, and small businesses scale efficiently. By fostering a culture of innovation and digital literacy, we aim to position India as a global leader in inclusive AI adoption.</p>
++          </div>
++        </section>
++
++        {/* ========== COLLABORATION SECTION ========== */}
++        <section id="collaboration-section" style={{ background: 'var(--darker)', borderTop: '1px solid var(--glass-border)', padding: '5rem 8%' }}>
++          <div className="section-header">
++            <span className="section-tag">Partnerships</span>
++            <h2 className="section-title">Our <span style={{ color: 'var(--secondary)' }}>Collaboration</span> Network</h2>
++            <p className="section-sub">Empowering rural and urban communities in partnership with India's leading organizations</p>
++          </div>
++          
++          <div className="partners-grid">
++            {/* Tile 1: JVV */}
++            <div className="partner-card">
++              <div className="partner-logo-wrapper">
++                <img src={jvvLogo} alt="JVV Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+               </div>
+-              <div className="about-detail-photo">
+-                <img src="https://images.unsplash.com/photo-1531482615713-2afd69097998?q=80&w=400&auto=format&fit=crop" alt="Our Vision" />
++            </div>
++
++            {/* Tile 2: SUN */}
++            <div className="partner-card">
++              <div className="partner-logo-wrapper">
++                <img src={sunLogo} alt="SUN Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+               </div>
+             </div>
+ 
+-            <div id="about-values" className="about-detail">
+-              <div className="about-detail-matter">
+-                <h4 className="tab-title">What Drives Us Every Day</h4>
+-                <p><strong>Inclusivity:</strong> We design our programs for every person, breaking through barriers of language, caste, and geography.</p>
+-                <p><strong>Open Access:</strong> Education should be free forever. We enforce no paywalls and no hidden barriers.</p>
+-                <p><strong>Community-First:</strong> We build a supportive ecosystem of learners who teach and uplift one another, measuring our success by the tangible impact we create in real lives.</p>
++            {/* Tile 3: Covid Fighters */}
++            <div className="partner-card">
++              <div className="partner-logo-wrapper">
++                <img src={covidfightersLogo} alt="Covid Fighters Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+               </div>
+-              <div className="about-detail-photo">
+-                <img src="https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=400&auto=format&fit=crop" alt="Our Values" />
++            </div>
++
++            {/* Tile 4: Elivatx */}
++            <div className="partner-card">
++              <div className="partner-logo-wrapper">
++                <img src={elivatxLogo} alt="Elivatx Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+               </div>
+             </div>
+ 
+-            <div id="about-journey" className="about-detail">
+-              <div className="about-detail-matter">
+-                <h4 className="tab-title">From Concept to Movement</h4>
+-                <p>Starting with a handful of volunteers in a single district, our journey began with a simple idea: tech literacy is a fundamental right. Over the years, we've expanded our reach to 22 states, translating complex AI concepts into regional languages.</p>
+-                <p>Today, with a strong network of over 5,000 passionate volunteers, we have transformed from a small local initiative into a nationwide movement that has already impacted hundreds of thousands of lives.</p>
++            {/* Tile 5: HCET */}
++            <div className="partner-card">
++              <div className="partner-logo-wrapper">
++                <img src={hcetLogo} alt="HCET Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+               </div>
+-              <div className="about-detail-photo">
+-                <img src="https://images.unsplash.com/photo-1517457373958-b7bdd4587205?q=80&w=400&auto=format&fit=crop" alt="Our Journey" />
++            </div>
++
++            {/* Tile 6: Job Recipe */}
++            <div className="partner-card">
++              <div className="partner-logo-wrapper">
++                <img src={jobreciepeLogo} alt="Job Recipe Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+               </div>
+             </div>
+           </div>
+         </section>
+ 
+         {/* Testimonials */}
+-        <section style={{ background: '#f8f7f3', padding: '5rem 8%' }}>
++        <section style={{ background: 'var(--dark)', padding: '5rem 8%' }}>
+           <div className="section-header">
+             <span className="section-tag">Testimonials</span>
+             <h2 className="section-title">Words That Inspire Us</h2>
+@@ -1729,35 +1912,35 @@ export default function App() {
+         </section>
+ 
+         {/* Team */}
+-        <section>
++        <section id="team-section">
+           <div className="section-header">
+-            <span className="section-tag">Leadership</span>
+-            <h2 className="section-title">Our Team</h2>
++            <span className="section-tag">Volunteers</span>
++            <h2 className="section-title">Our Volunteer Network</h2>
+           </div>
+           <div className="cards-grid cards-grid-4">
+             <div className="card" style={{ textAlign: 'center' }}>
+-              <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=200&auto=format&fit=crop" alt="Dr. Arjun Reddy" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
+-              <div className="card-title">Dr. Arjun Reddy</div>
+-              <div style={{ fontSize: '0.8rem', color: 'var(--secondary)', fontWeight: 600, marginBottom: '0.5rem' }}>Founder & CEO</div>
+-              <div className="card-text">IIT Hyderabad alumnus. 15+ years in AI research and rural education.</div>
++              <img src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?q=80&w=200&auto=format&fit=crop" alt="Rohan Sharma" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
++              <div className="card-title">Rohan Sharma</div>
++              <div style={{ fontSize: '0.8rem', color: 'var(--secondary)', fontWeight: 600, marginBottom: '0.5rem' }}>Regional Lead, North India</div>
++              <div className="card-text">IIT Delhi graduate. Spearheads vernacular AI prompt engineering bootcamps across 40+ villages.</div>
+             </div>
+             <div className="card" style={{ textAlign: 'center' }}>
+-              <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&auto=format&fit=crop" alt="Dr. Priya Sharma" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
+-              <div className="card-title">Dr. Priya Sharma</div>
+-              <div style={{ fontSize: '0.8rem', color: 'var(--secondary)', fontWeight: 600, marginBottom: '0.5rem' }}>Chief Learning Officer</div>
+-              <div className="card-text">Curriculum design expert. Former professor at Delhi University.</div>
++              <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=200&auto=format&fit=crop" alt="Sneha Patel" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
++              <div className="card-title">Sneha Patel</div>
++              <div style={{ fontSize: '0.8rem', color: 'var(--secondary)', fontWeight: 600, marginBottom: '0.5rem' }}>Outreach Coordinator, West India</div>
++              <div className="card-text">Social work specialist. Mapped agricultural cooperative partnerships to train 20,000+ farmers in AI.</div>
+             </div>
+             <div className="card" style={{ textAlign: 'center' }}>
+-              <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200&auto=format&fit=crop" alt="Sai Krishna" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
+-              <div className="card-title">Sai Krishna</div>
+-              <div style={{ fontSize: '0.8rem', color: 'var(--secondary)', fontWeight: 600, marginBottom: '0.5rem' }}>CTO</div>
+-              <div className="card-text">Full-stack AI engineer. Built our platform from scratch.</div>
++              <img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=200&auto=format&fit=crop" alt="Karthik Raja" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
++              <div className="card-title">Karthik Raja</div>
++              <div style={{ fontSize: '0.8rem', color: 'var(--secondary)', fontWeight: 600, marginBottom: '0.5rem' }}>AI Curriculum Lead, South India</div>
++              <div className="card-text">Software engineer. Designs interactive vernacular code templates for rural government schools.</div>
+             </div>
+             <div className="card" style={{ textAlign: 'center' }}>
+-              <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=200&auto=format&fit=crop" alt="Meera Nair" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
+-              <div className="card-title">Meera Nair</div>
+-              <div style={{ fontSize: '0.8rem', color: 'var(--secondary)', fontWeight: 600, marginBottom: '0.5rem' }}>Head of Volunteers</div>
+-              <div className="card-text">Manages our 5000+ volunteer network across 22 states.</div>
++              <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop" alt="Ananya Das" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
++              <div className="card-title">Ananya Das</div>
++              <div style={{ fontSize: '0.8rem', color: 'var(--secondary)', fontWeight: 600, marginBottom: '0.5rem' }}>Literacy Coordinator, East India</div>
++              <div className="card-text">Rural education activist. Established 60+ mobile-learning resource centers across remote districts.</div>
+             </div>
+           </div>
+         </section>
+@@ -1996,6 +2179,102 @@ export default function App() {
+         </div>
+       </div>
+ 
++      {/* ========== CONTACT US PAGE ========== */}
++      <div id="contact" className="page" style={{ paddingTop: '85px', background: 'var(--darker)', minHeight: '80vh' }}>
++        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '3rem 2rem' }}>
++          <div className="section-header" style={{ textAlign: 'center', marginBottom: '3.5rem' }}>
++            <span className="section-tag">Get in Touch</span>
++            <h2 className="section-title">Contact <span style={{ color: 'var(--secondary)' }}>Us</span></h2>
++            <p className="section-sub">Have questions or want to collaborate? Reach out to us and we'll get back to you shortly.</p>
++          </div>
++
++          <div className="contact-grid">
++            {/* Contact Form */}
++            <div className="form-card" style={{ background: 'var(--glass)', border: '1px solid var(--glass-border)', padding: '2.5rem', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.02)' }}>
++              <h3 className="card-title" style={{ fontSize: '1.6rem', marginBottom: '1.5rem', borderBottom: '2px solid var(--secondary)', display: 'inline-block', paddingBottom: '0.4rem' }}>Send Us a Message</h3>
++              <form onSubmit={(e) => { e.preventDefault(); (window as any).showToast('Thank you! Your message has been sent successfully.'); (e.target as HTMLFormElement).reset(); }} className="contact-form">
++                <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
++                  <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
++                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>First Name</label>
++                    <input type="text" required style={{ padding: '0.8rem 1.1rem', background: '#ffffff', border: '1.5px solid var(--glass-border)', borderRadius: '12px', outline: 'none', transition: 'border-color 0.3s' }} />
++                  </div>
++                  <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
++                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>Last Name</label>
++                    <input type="text" required style={{ padding: '0.8rem 1.1rem', background: '#ffffff', border: '1.5px solid var(--glass-border)', borderRadius: '12px', outline: 'none', transition: 'border-color 0.3s' }} />
++                  </div>
++                </div>
++                <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
++                  <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
++                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>Email Address</label>
++                    <input type="email" required style={{ padding: '0.8rem 1.1rem', background: '#ffffff', border: '1.5px solid var(--glass-border)', borderRadius: '12px', outline: 'none', transition: 'border-color 0.3s' }} />
++                  </div>
++                  <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
++                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>Phone Number</label>
++                    <input type="tel" style={{ padding: '0.8rem 1.1rem', background: '#ffffff', border: '1.5px solid var(--glass-border)', borderRadius: '12px', outline: 'none', transition: 'border-color 0.3s' }} />
++                  </div>
++                </div>
++                <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
++                  <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>Subject</label>
++                  <input type="text" required style={{ padding: '0.8rem 1.1rem', background: '#ffffff', border: '1.5px solid var(--glass-border)', borderRadius: '12px', outline: 'none', transition: 'border-color 0.3s' }} />
++                </div>
++                <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '2rem' }}>
++                  <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>Message</label>
++                  <textarea rows={5} required style={{ padding: '0.8rem 1.1rem', background: '#ffffff', border: '1.5px solid var(--glass-border)', borderRadius: '12px', outline: 'none', transition: 'border-color 0.3s', resize: 'vertical' }}></textarea>
++                </div>
++                <button type="submit" className="btn-modern-primary" style={{ border: 'none', width: '100%' }}>Send Message</button>
++              </form>
++            </div>
++
++            {/* Info Cards */}
++            <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
++              {/* Address card */}
++              <div className="card" style={{ padding: '2rem', height: 'fit-content' }}>
++                <h4 className="card-title" style={{ fontSize: '1.2rem', marginBottom: '1rem', color: 'var(--secondary)' }}>Our Headquarters</h4>
++                <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: '1.8', marginBottom: '1rem' }}>
++                  ≡ƒôì Vijayawada, Andhra Pradesh, India<br/>
++                  Γ£ë info@aiforall.org<br/>
++                  ≡ƒô₧ +91 866 555 0199
++                </p>
++                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Operating across 22 states with 5000+ local volunteers conducting weekend field courses.</p>
++              </div>
++
++              {/* Social links card */}
++              <div className="card" style={{ padding: '2rem', height: 'fit-content' }}>
++                <h4 className="card-title" style={{ fontSize: '1.2rem', marginBottom: '1rem', color: 'var(--secondary)' }}>Connect With Us</h4>
++                <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1.2rem' }}>Follow our journey and updates on our official social media channels:</p>
++                <div className="social-link-grid" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
++                  <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="social-link instagram" style={{ width: '45px', height: '45px', background: '#ffffff', border: '1.5px solid var(--glass-border)', color: '#e1306c', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', boxShadow: '0 4px 10px rgba(0,0,0,0.03)', transition: 'all 0.3s' }}>
++                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
++                  </a>
++                  <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="social-link linkedin" style={{ width: '45px', height: '45px', background: '#ffffff', border: '1.5px solid var(--glass-border)', color: '#0077b5', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', boxShadow: '0 4px 10px rgba(0,0,0,0.03)', transition: 'all 0.3s' }}>
++                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
++                  </a>
++                  <a href="https://whatsapp.com" target="_blank" rel="noopener noreferrer" className="social-link whatsapp" style={{ width: '45px', height: '45px', background: '#ffffff', border: '1.5px solid var(--glass-border)', color: '#25d366', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', boxShadow: '0 4px 10px rgba(0,0,0,0.03)', transition: 'all 0.3s' }}>
++                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.725 1.45 5.489 0 9.952-4.43 9.955-9.885.002-2.643-1.022-5.127-2.885-7c-1.863-1.874-4.343-2.905-6.994-2.906-5.49 0-9.953 4.429-9.957 9.884-.002 1.714.453 3.39 1.32 4.887l-.994 3.634 3.73-.974zm12.002-6.852c-.274-.136-1.62-.801-1.871-.892-.252-.09-.435-.136-.617.136-.183.272-.708.89-.867 1.072-.16.182-.32.205-.594.069-.275-.136-1.16-.427-2.209-1.364-.817-.73-1.368-1.63-1.528-1.905-.16-.273-.017-.421.12-.557.123-.122.274-.32.41-.48.138-.16.183-.273.275-.455.092-.182.046-.341-.023-.477-.068-.136-.617-1.485-.845-2.03-.22-.533-.48-.46-.617-.466-.123-.006-.275-.007-.426-.007-.152 0-.401.057-.61.284-.21.227-.8.781-.8 1.904 0 1.124.816 2.207.93 2.36.114.152 1.606 2.451 3.89 3.435.543.233.967.373 1.3.479.546.173 1.042.149 1.433.09.437-.066 1.62-.662 1.849-1.3.23-.637.23-1.182.16-1.3-.069-.117-.251-.183-.526-.32z"/></svg>
++                  </a>
++                  <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" className="social-link youtube" style={{ width: '45px', height: '45px', background: '#ffffff', border: '1.5px solid var(--glass-border)', color: '#ff0000', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', boxShadow: '0 4px 10px rgba(0,0,0,0.03)', transition: 'all 0.3s' }}>
++                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon></svg>
++                  </a>
++                </div>
++              </div>
++            </div>
++          </div>
++
++          {/* Map Section */}
++          <div style={{ marginTop: '3rem', background: '#ffffff', padding: '1rem', borderRadius: '32px', border: '1px solid var(--glass-border)', boxShadow: '0 15px 40px rgba(0,0,0,0.04)' }}>
++            <iframe 
++              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d122425.22572337603!2d80.5739818!3d16.5061743!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3a35effd15b22cd7%3A0xc314dfa4ab12ab34!2sVijayawada%2C%20Andhra%20Pradesh!5e0!3m2!1sen!2sin!4v1717409200000!5m2!1sen!2sin" 
++              width="100%" 
++              height="450" 
++              style={{ border: 0, borderRadius: '24px', display: 'block' }} 
++              allowFullScreen={true} 
++              loading="lazy" 
++              referrerPolicy="no-referrer-when-downgrade"
++            ></iframe>
++          </div>
++        </div>
++      </div>
++
+       {/* ========== VOLUNTEER PORTAL ========== */}
+       <div id="vol-portal" className="page">
+         <div className="portal-header">
+@@ -2396,7 +2675,7 @@ export default function App() {
+               <img src={logoImg} alt="IncuxAI Logo" className="logo-icon" style={{ height: '45px', width: 'auto', borderRadius: '6px' }} />
+               <div className="logo-text-group" style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.1' }}>
+                 <span style={{ color: '#fff', fontWeight: '700', fontSize: '1.1rem' }}>IncuXai</span>
+-                <span style={{ color: 'rgba(245,158,11,0.85)', fontWeight: '500', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Education Trust</span>
++                <span style={{ color: 'rgba(6,182,212,0.85)', fontWeight: '500', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Education Trust</span>
+               </div>
+             </div>
+             <p style={{ marginTop: '0.5rem' }}>An educational trust dedicated to making AI knowledge accessible to every Indian citizen regardless of background, language, or economic status.</p>
+@@ -2409,6 +2688,7 @@ export default function App() {
+               <li><a onClick={() => (window as any).showPage('ai4all')}>AI 4 ALL</a></li>
+               <li><a onClick={() => (window as any).showPage('gallery')}>Gallery</a></li>
+               <li><a onClick={() => (window as any).showPage('volunteer')}>Volunteer</a></li>
++              <li><a onClick={() => (window as any).showPage('contact')}>Contact Us</a></li>
+             </ul>
+           </div>
+           <div className="footer-col">
+@@ -2426,7 +2706,7 @@ export default function App() {
+             <h4>Contact Info</h4>
+             <ul>
+               <li style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.85rem', display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}><span style={{ color: 'var(--secondary)', fontSize: '0.8rem' }}>Γ£ë</span> info@aiforall.org</li>
+-              <li style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.85rem', display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}><span style={{ color: 'var(--secondary)', fontSize: '0.8rem' }}>≡ƒô₧</span> +91 9XXXXXXXXX</li>
++              <li style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.85rem', display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}><span style={{ color: 'var(--secondary)', fontSize: '0.8rem' }}>≡ƒô₧</span> +91 866 555 0199</li>
+               <li style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.85rem', display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}><span style={{ color: 'var(--secondary)', fontSize: '0.8rem' }}>≡ƒôì</span> Vijayawada, Andhra Pradesh</li>
+               <li style={{ color: 'rgba(255,255,255,0.55)', fontSize: '0.85rem', display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}><span style={{ color: 'var(--secondary)', fontSize: '0.8rem' }}>≡ƒîÉ</span> www.aiforall.org</li>
+             </ul>
+@@ -2434,11 +2714,19 @@ export default function App() {
+         </div>
+         <div className="footer-bottom">
+           <p>┬⌐ 2025 AI For All Educational Trust. All rights reserved. | Non-Profit | Registered Trust</p>
+-          <div className="social-links">
+-            <a className="social-link">f</a>
+-            <a className="social-link">in</a>
+-            <a className="social-link">≡¥òÅ</a>
+-            <a className="social-link">Γû╢</a>
++          <div className="social-links" style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
++            <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="social-link" title="Instagram" style={{ color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
++              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
++            </a>
++            <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="social-link" title="LinkedIn" style={{ color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
++              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
++            </a>
++            <a href="https://whatsapp.com" target="_blank" rel="noopener noreferrer" className="social-link" title="WhatsApp" style={{ color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
++              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.725 1.45 5.489 0 9.952-4.43 9.955-9.885.002-2.643-1.022-5.127-2.885-7c-1.863-1.874-4.343-2.905-6.994-2.906-5.49 0-9.953 4.429-9.957 9.884-.002 1.714.453 3.39 1.32 4.887l-.994 3.634 3.73-.974zm12.002-6.852c-.274-.136-1.62-.801-1.871-.892-.252-.09-.435-.136-.617.136-.183.272-.708.89-.867 1.072-.16.182-.32.205-.594.069-.275-.136-1.16-.427-2.209-1.364-.817-.73-1.368-1.63-1.528-1.905-.16-.273-.017-.421.12-.557.123-.122.274-.32.41-.48.138-.16.183-.273.275-.455.092-.182.046-.341-.023-.477-.068-.136-.617-1.485-.845-2.03-.22-.533-.48-.46-.617-.466-.123-.006-.275-.007-.426-.007-.152 0-.401.057-.61.284-.21.227-.8.781-.8 1.904 0 1.124.816 2.207.93 2.36.114.152 1.606 2.451 3.89 3.435.543.233.967.373 1.3.479.546.173 1.042.149 1.433.09.437-.066 1.62-.662 1.849-1.3.23-.637.23-1.182.16-1.3-.069-.117-.251-.183-.526-.32z"/></svg>
++            </a>
++            <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" className="social-link" title="YouTube" style={{ color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
++              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon></svg>
++            </a>
+           </div>
+         </div>
+       </footer>
