@@ -10,6 +10,16 @@ import whoWeAreImg from './assets/about_who_we_are.jpg';
 import editedPicImg from '../picss/edited_pic.jpeg';
 import sunChildrenImg from '../picss/sun_children.jpg';
 import sunGrpImg from '../picss/sun_grp.jpg';
+import iit1Img from '../picss/iit1.png';
+import iit2Img from '../picss/iit2.jpeg';
+import veeraImg from '../picss/veera.jpeg';
+import hariniImg from '../picss/harini.jpeg';
+import rajuImg from '../picss/raju.jpeg';
+import raziaImg from '../picss/razia.jpeg';
+import divyaImg from '../picss/divya.jpeg';
+import varunImg from '../picss/varun.jpeg';
+import naziaImg from '../picss/nazia.jpeg';
+import chandraImg from '../picss/chandra.jpeg';
 import iasClassesImg from '../picss/IAS_classes.jpeg';
 import rtihAmaravatiImg from '../picss/rtih_amaravati.jpeg';
 import policehackImg from '../picss/policehack.png';
@@ -36,11 +46,11 @@ import jobreciepeLogo from './assets/jobreciepe.jpeg';
 // Slides details (Futuristic city, AI students, robotics, technology, smart agritech)
 const slideImages = [
   editedPicImg,
-  sunChildrenImg,
-  sunGrpImg,
+  iit2Img,
+  iit1Img,
   editedPicImg,
-  sunChildrenImg,
-  sunGrpImg
+  iit2Img,
+  iit1Img
 ];
 
 const taglines = [
@@ -2737,27 +2747,23 @@ export default function App() {
           </div>
           <div className="cards-grid cards-grid-4">
             <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
-              <img src="https://images.unsplash.com/photo-1599566150163-29194dcaad36?q=80&w=200&auto=format&fit=crop" alt="Ramesh Patel" style={{ width: '70px', height: '70px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
-              <div className="card-title" style={{ fontSize: '1rem' }}>Ramesh Patel</div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--secondary)', fontWeight: 600, marginBottom: '0.6rem' }}>Farmer, Gujarat</div>
+              <img src={veeraImg} alt="Veera" style={{ width: '70px', height: '70px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
+              <div className="card-title" style={{ fontSize: '1rem' }}>Veera</div>
               <div className="card-text" style={{ fontSize: '0.85rem', fontStyle: 'italic' }}>IncuxAI&apos;s crop disease detection training helped me save my entire season&apos;s yield. I now teach other farmers in my village how to use AI on their phones.</div>
             </div>
             <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
-              <img src="https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=200&auto=format&fit=crop" alt="Sunita Devi" style={{ width: '70px', height: '70px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
-              <div className="card-title" style={{ fontSize: '1rem' }}>Sunita Devi</div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--secondary)', fontWeight: 600, marginBottom: '0.6rem' }}>Teacher, Bihar</div>
+              <img src={hariniImg} alt="Harini" style={{ width: '70px', height: '70px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
+              <div className="card-title" style={{ fontSize: '1rem' }}>Harini</div>
               <div className="card-text" style={{ fontSize: '0.85rem', fontStyle: 'italic' }}>The AI teacher training program transformed my classroom. My students are more engaged and I can now create personalized lessons for each child.</div>
             </div>
             <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
-              <img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=200&auto=format&fit=crop" alt="Arun Kumar" style={{ width: '70px', height: '70px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
-              <div className="card-title" style={{ fontSize: '1rem' }}>Arun Kumar</div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--secondary)', fontWeight: 600, marginBottom: '0.6rem' }}>Small Business Owner, Tamil Nadu</div>
+              <img src={rajuImg} alt="Raju" style={{ width: '70px', height: '70px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
+              <div className="card-title" style={{ fontSize: '1rem' }}>Raju</div>
               <div className="card-text" style={{ fontSize: '0.85rem', fontStyle: 'italic' }}>I doubled my sales after applying AI tools I learned at IncuxAI&apos;s MSME workshop. Best decision I ever made for my business.</div>
             </div>
             <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
-              <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=200&auto=format&fit=crop" alt="Priya Singh" style={{ width: '70px', height: '70px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
-              <div className="card-title" style={{ fontSize: '1rem' }}>Priya Singh</div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--secondary)', fontWeight: 600, marginBottom: '0.6rem' }}>Student, Uttar Pradesh</div>
+              <img src={raziaImg} alt="Razia" style={{ width: '70px', height: '70px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
+              <div className="card-title" style={{ fontSize: '1rem' }}>Razia</div>
               <div className="card-text" style={{ fontSize: '0.85rem', fontStyle: 'italic' }}>I never thought I could learn AI in Hindi. IncuxAI made it possible. I&apos;ve now built my own chatbot and won the school science fair!</div>
             </div>
           </div>
@@ -2771,27 +2777,23 @@ export default function App() {
           </div>
           <div className="cards-grid cards-grid-4">
             <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
-              <img src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?q=80&w=200&auto=format&fit=crop" alt="Rohan Sharma" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
-              <div className="card-title">Rohan Sharma</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--secondary)', fontWeight: 600, marginBottom: '0.5rem' }}>Regional Lead, North India</div>
+              <img src={divyaImg} alt="Divya" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
+              <div className="card-title">Divya</div>
               <div className="card-text">IIT Delhi graduate. Spearheads vernacular AI prompt engineering bootcamps across 40+ villages.</div>
             </div>
             <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
-              <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=200&auto=format&fit=crop" alt="Sneha Patel" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
-              <div className="card-title">Sneha Patel</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--secondary)', fontWeight: 600, marginBottom: '0.5rem' }}>Outreach Coordinator, West India</div>
+              <img src={varunImg} alt="Varun" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
+              <div className="card-title">Varun</div>
               <div className="card-text">Social work specialist. Mapped agricultural cooperative partnerships to train 20,000+ farmers in AI.</div>
             </div>
             <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
-              <img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=200&auto=format&fit=crop" alt="Karthik Raja" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
-              <div className="card-title">Karthik Raja</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--secondary)', fontWeight: 600, marginBottom: '0.5rem' }}>AI Curriculum Lead, South India</div>
+              <img src={naziaImg} alt="Nazia" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
+              <div className="card-title">Nazia</div>
               <div className="card-text">Software engineer. Designs interactive vernacular code templates for rural government schools.</div>
             </div>
             <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
-              <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=200&auto=format&fit=crop" alt="Ananya Das" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
-              <div className="card-title">Ananya Das</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--secondary)', fontWeight: 600, marginBottom: '0.5rem' }}>Literacy Coordinator, East India</div>
+              <img src={chandraImg} alt="Chandra" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
+              <div className="card-title">Chandra</div>
               <div className="card-text">Rural education activist. Established 60+ mobile-learning resource centers across remote districts.</div>
             </div>
           </div>
