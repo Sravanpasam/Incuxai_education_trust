@@ -2437,6 +2437,14 @@ export default function App() {
           <span id="logged-user" style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.8)', fontWeight: '600', display: 'none' }}></span>
           <button className="btn-donate" id="signup-btn" onClick={() => (window as any).openSignUpModal()}>Sign Up</button>
           <button className="btn-login" onClick={() => (window as any).handleLoginBtn()} id="login-btn">Login</button>
+          <button className="mobile-menu-toggle" onClick={() => {
+            const nav = document.getElementById('main-nav');
+            const toggle = document.querySelector('.mobile-menu-toggle');
+            nav?.classList.toggle('mobile-open');
+            toggle?.classList.toggle('active');
+          }}>
+            <span></span><span></span><span></span>
+          </button>
         </div>
       </header>
 
