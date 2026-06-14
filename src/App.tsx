@@ -570,6 +570,14 @@ export default function App() {
         name = found.name || email.split('@')[0];
         w.currentUserEmail = email;
       } else {
+        const email = (document.getElementById('ad-login-email') as HTMLInputElement)?.value;
+        const pass = (document.getElementById('ad-login-pass') as HTMLInputElement)?.value;
+        if (email !== 'sravanpasam74@gmail.com' || pass !== 'admin123') {
+          w.showToast('Invalid admin credentials');
+          document.querySelectorAll('.modal-form').forEach(f => { (f as HTMLElement).style.display = ''; });
+          if (success) success.style.display = 'none';
+          return;
+        }
         name = 'Admin';
       }
 
@@ -3881,18 +3889,16 @@ export default function App() {
             <div className="form-group"><label>Email</label><input type="email" id="vol-login-email" placeholder="your@email.com" /></div>
             <div className="form-group"><label>Password</label><input type="password" id="vol-login-pass" placeholder="••••••••" /></div>
             <button className="btn-submit" onClick={() => (window as any).loginUser('volunteer')}>Login</button>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: '0.5rem' }}>Default password for approved volunteers: <strong>volunteer123</strong></p>
           </div>
           {/* Teacher Login */}
           <div className="modal-form" id="teacher-tab">
             <div className="form-group"><label>Email</label><input type="email" id="tch-login-email" placeholder="your@email.com" /></div>
             <div className="form-group"><label>Password</label><input type="password" id="tch-login-pass" placeholder="••••••••" /></div>
             <button className="btn-submit" onClick={() => (window as any).loginUser('teacher')} style={{ background: 'linear-gradient(135deg,var(--success),var(--primary))' }}>Login as Teacher</button>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: '0.5rem' }}>Default password for approved teachers: <strong>teacher123</strong></p>
           </div>
           {/* Admin Login */}
           <div className="modal-form" id="admin-tab">
-            <div className="form-group"><label>Admin Email</label><input type="email" id="ad-login-email" placeholder="admin@aiforall.org" /></div>
+            <div className="form-group"><label>Admin Email</label><input type="email" id="ad-login-email" placeholder="sravanpasam74@gmail.com" /></div>
             <div className="form-group"><label>Admin Password</label><input type="password" id="ad-login-pass" placeholder="••••••••" /></div>
             <button className="btn-submit" onClick={() => (window as any).loginUser('admin')} style={{ background: 'linear-gradient(135deg,var(--primary),var(--secondary))' }}>Login as Admin</button>
           </div>
