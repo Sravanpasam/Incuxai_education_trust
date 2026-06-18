@@ -31,7 +31,7 @@ import ourValuesImg from '../picss/ourvalues.jpeg';
 import ourJourneyImg from '../picss/ourjouney.jpeg';
 
 // Incux Logo
-import incuxLogoImg from '../picss/Incux logo.jpg';
+import incuxLogoImg from '../picss/iet logo.png';
 
 // Partner Logos
 import jvvLogo from './assets/JVV.jpeg';
@@ -3172,7 +3172,7 @@ export default function App() {
             <div className="contact-right">
               <div style={{ background: '#ffffff', padding: '1rem', borderRadius: '32px', border: '1px solid var(--glass-border)', boxShadow: '0 15px 40px rgba(0,0,0,0.04)', height: '100%', minHeight: '450px', display: 'flex' }}>
                 <iframe 
-                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3825.2!2d80.4378!3d16.3067!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3a35b5c7d8e9f0a1%3A0x1234567890abcdef!2sGuntur%2C%20Andhra%20Pradesh%20522034!5e0!3m2!1sen!2sin!4v1717409200000!5m2!1sen!2sin" 
+                  src="https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=134-1-317+Pandu+Ranga+Nagar+Muthyala+Reddy+Nagar+Guntur+Andhra+Pradesh+522034&zoom=16" 
                   width="100%" 
                   height="100%" 
                   style={{ border: 0, borderRadius: '24px', flex: 1, minHeight: '450px' }} 
@@ -3270,7 +3270,7 @@ export default function App() {
           {/* Map Section */}
           <div style={{ marginTop: '3rem', background: '#ffffff', padding: '1rem', borderRadius: '32px', border: '1px solid var(--glass-border)', boxShadow: '0 15px 40px rgba(0,0,0,0.04)' }}>
             <iframe 
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3825.2!2d80.4378!3d16.3067!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3a35b5c7d8e9f0a1%3A0x1234567890abcdef!2sGuntur%2C%20Andhra%20Pradesh%20522034!5e0!3m2!1sen!2sin!4v1717409200000!5m2!1sen!2sin" 
+              src="https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=134-1-317+Pandu+Ranga+Nagar+Muthyala+Reddy+Nagar+Guntur+Andhra+Pradesh+522034&zoom=16" 
               width="100%" 
               height="450" 
               style={{ border: 0, borderRadius: '24px', display: 'block' }} 
