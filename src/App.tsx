@@ -8,10 +8,9 @@ import { motion } from 'motion/react';
 import logoImg from './assets/logo.jpeg';
 import whoWeAreImg from './assets/about_who_we_are.jpg';
 import editedPicImg from '../picss/edited_pic.jpeg';
-import sunChildrenImg from '../picss/sun_children.jpg';
-import sunGrpImg from '../picss/sun_grp.jpg';
 import iit1Img from '../picss/iit1.png';
 import iit2Img from '../picss/iit2.jpeg';
+import iit3Img from '../picss/iit3.jpeg';
 import veeraImg from '../picss/veera.jpeg';
 import hariniImg from '../picss/harini.jpeg';
 import rajuImg from '../picss/raju.jpeg';
@@ -23,7 +22,6 @@ import chandraImg from '../picss/chandra.jpeg';
 import iasClassesImg from '../picss/IAS_classes.jpeg';
 import rtihAmaravatiImg from '../picss/rtih_amaravati.jpeg';
 import policehackImg from '../picss/policehack.png';
-import sunEduSupportImg from '../picss/sun_education support.jpeg';
 import aiFirImg from '../picss/AI_FIR.jpeg';
 
 // About section images
@@ -2851,7 +2849,7 @@ export default function App() {
           <div className="gallery-folder-card" style={{ backgroundImage: `url(${iasClassesImg})` }} onClick={() => (window as any).showGalleryFolder('gfol-farmers', 'Farmer Workshops')}>
             <span className="gallery-folder-name">Farmer Workshops</span>
             <div id="gfol-farmers" className="gallery-folder-grid" style={{ display: 'none' }}>
-              <div className="gallery-item" style={{ backgroundImage: `url(${sunEduSupportImg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="gallery-overlay">Farmer AI Workshop – Andhra Pradesh</div></div>
+              <div className="gallery-item" style={{ backgroundImage: `url(${iit3Img})`, backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="gallery-overlay">Farmer AI Workshop – Andhra Pradesh</div></div>
               <div className="gallery-item" style={{ backgroundImage: `url(${aiFirImg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="gallery-overlay">Crop Disease Detection Camp</div></div>
               <div className="gallery-item" style={{ backgroundImage: `url(${rtihAmaravatiImg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="gallery-overlay">Soil Analysis Training – Guntur</div></div>
             </div>
@@ -2867,8 +2865,8 @@ export default function App() {
           <div className="gallery-folder-card" style={{ backgroundImage: `url(${policehackImg})` }} onClick={() => (window as any).showGalleryFolder('gfol-volunteer', 'Volunteer Events')}>
             <span className="gallery-folder-name">Volunteer Events</span>
             <div id="gfol-volunteer" className="gallery-folder-grid" style={{ display: 'none' }}>
-              <div className="gallery-item" style={{ backgroundImage: `url(${sunGrpImg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="gallery-overlay">Volunteer Summit 2024</div></div>
-              <div className="gallery-item" style={{ backgroundImage: `url(${sunChildrenImg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="gallery-overlay">Driver AI Literacy – Chennai</div></div>
+              <div className="gallery-item" style={{ backgroundImage: `url(${iit2Img})`, backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="gallery-overlay">Volunteer Summit 2024</div></div>
+              <div className="gallery-item" style={{ backgroundImage: `url(${iit1Img})`, backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="gallery-overlay">Driver AI Literacy – Chennai</div></div>
               <div className="gallery-item" style={{ backgroundImage: `url(${editedPicImg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="gallery-overlay">MSME AI Workshop – Pune</div></div>
             </div>
           </div>
@@ -2914,7 +2912,7 @@ export default function App() {
             </div>
           </div>
           <div className="h-program-card">
-            <div className="h-program-img" style={{ backgroundImage: `url(${sunGrpImg})` }}></div>
+            <div className="h-program-img" style={{ backgroundImage: `url(${iit2Img})` }}></div>
             <div className="h-program-body">
               <div className="h-program-title">SUN — Student for Nation</div>
               <div className="h-program-text">A student-driven movement that supports peer learning, community development, and nation-building. SUN empowers students through workshops, mentorship, and social initiatives to become responsible leaders of tomorrow. Regular sessions on leadership, public speaking, and social entrepreneurship are conducted across colleges. Students take up community projects like tree planting, digital literacy drives, and awareness campaigns in rural areas.</div>
@@ -2954,7 +2952,7 @@ export default function App() {
             />
             <motion.div
               className="volunteer-circle"
-              style={{ width: 280, height: 280, bottom: '2%', left: '2%', backgroundImage: `url(${sunEduSupportImg})` }}
+              style={{ width: 280, height: 280, bottom: '2%', left: '2%', backgroundImage: `url(${iit3Img})` }}
               animate={{ y: [0, -16] }}
               transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', repeatType: 'reverse', delay: 1.8 }}
               whileHover={{ scale: 1.08 }}
@@ -2996,7 +2994,7 @@ export default function App() {
             />
             <motion.div
               className="volunteer-circle"
-              style={{ width: 120, height: 120, bottom: '15%', right: '22%', backgroundImage: `url(${sunChildrenImg})` }}
+              style={{ width: 120, height: 120, bottom: '15%', right: '22%', backgroundImage: `url(${iit1Img})` }}
               animate={{ y: [0, -12] }}
               transition={{ duration: 2.7, repeat: Infinity, ease: 'easeInOut', repeatType: 'reverse', delay: 0.3 }}
               whileHover={{ scale: 1.08 }}
@@ -3174,7 +3172,7 @@ export default function App() {
             <div className="contact-right">
               <div style={{ background: '#ffffff', padding: '1rem', borderRadius: '32px', border: '1px solid var(--glass-border)', boxShadow: '0 15px 40px rgba(0,0,0,0.04)', height: '100%', minHeight: '450px', display: 'flex' }}>
                 <iframe 
-                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d122425.22572337603!2d80.5739818!3d16.5061743!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3a35effd15b22cd7%3A0xc314dfa4ab12ab34!2sVijayawada%2C%20Andhra%20Pradesh!5e0!3m2!1sen!2sin!4v1717409200000!5m2!1sen!2sin" 
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3825.2!2d80.4378!3d16.3067!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3a35b5c7d8e9f0a1%3A0x1234567890abcdef!2sGuntur%2C%20Andhra%20Pradesh%20522034!5e0!3m2!1sen!2sin!4v1717409200000!5m2!1sen!2sin" 
                   width="100%" 
                   height="100%" 
                   style={{ border: 0, borderRadius: '24px', flex: 1, minHeight: '450px' }} 
@@ -3272,7 +3270,7 @@ export default function App() {
           {/* Map Section */}
           <div style={{ marginTop: '3rem', background: '#ffffff', padding: '1rem', borderRadius: '32px', border: '1px solid var(--glass-border)', boxShadow: '0 15px 40px rgba(0,0,0,0.04)' }}>
             <iframe 
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d122425.22572337603!2d80.5739818!3d16.5061743!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3a35effd15b22cd7%3A0xc314dfa4ab12ab34!2sVijayawada%2C%20Andhra%20Pradesh!5e0!3m2!1sen!2sin!4v1717409200000!5m2!1sen!2sin" 
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3825.2!2d80.4378!3d16.3067!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3a35b5c7d8e9f0a1%3A0x1234567890abcdef!2sGuntur%2C%20Andhra%20Pradesh%20522034!5e0!3m2!1sen!2sin!4v1717409200000!5m2!1sen!2sin" 
               width="100%" 
               height="450" 
               style={{ border: 0, borderRadius: '24px', display: 'block' }} 
@@ -3907,7 +3905,7 @@ export default function App() {
           </div>
           {/* Admin Login */}
           <div className="modal-form" id="admin-tab">
-            <div className="form-group"><label>Admin Email</label><input type="email" id="ad-login-email" placeholder="sravanpasam74@gmail.com" /></div>
+            <div className="form-group"><label>Admin Email</label><input type="email" id="ad-login-email" placeholder="Enter admin email" /></div>
             <div className="form-group"><label>Admin Password</label><input type="password" id="ad-login-pass" placeholder="••••••••" /></div>
             <button className="btn-submit" onClick={() => (window as any).loginUser('admin')} style={{ background: 'linear-gradient(135deg,var(--primary),var(--secondary))' }}>Login as Admin</button>
           </div>
