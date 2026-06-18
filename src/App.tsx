@@ -28,7 +28,7 @@ import aiFirImg from '../picss/AI_FIR.jpeg';
 import ourMissionImg from '../picss/ourmission.jpeg';
 import ourVisionImg from '../picss/ourvision.jpeg';
 import ourValuesImg from '../picss/ourvalues.jpeg';
-import ourJourneyImg from '../picss/ourjouney.jpeg';
+import ourJourneyImg from '../picss/iit4.jpeg';
 
 // Incux Logo
 import incuxLogoImg from '../picss/iet logo.png';
@@ -2761,22 +2761,22 @@ export default function App() {
           </div>
           <div className="cards-grid cards-grid-4">
             <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
-              <img src={veeraImg} alt="Veera" style={{ width: '70px', height: '70px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
+              <img src={veeraImg} alt="Veera" style={{ width: '70px', height: '70px', borderRadius: '50%', objectFit: 'cover', objectPosition: 'top', marginBottom: '0.5rem', display: 'inline-block' }} />
               <div className="card-title" style={{ fontSize: '1rem' }}>Veera</div>
               <div className="card-text" style={{ fontSize: '0.85rem', fontStyle: 'italic' }}>IncuxAI&apos;s crop disease detection training helped me save my entire season&apos;s yield. I now teach other farmers in my village how to use AI on their phones.</div>
             </div>
             <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
-              <img src={hariniImg} alt="Harini" style={{ width: '70px', height: '70px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
+              <img src={hariniImg} alt="Harini" style={{ width: '70px', height: '70px', borderRadius: '50%', objectFit: 'cover', objectPosition: 'top', marginBottom: '0.5rem', display: 'inline-block' }} />
               <div className="card-title" style={{ fontSize: '1rem' }}>Harini</div>
               <div className="card-text" style={{ fontSize: '0.85rem', fontStyle: 'italic' }}>The AI teacher training program transformed my classroom. My students are more engaged and I can now create personalized lessons for each child.</div>
             </div>
             <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
-              <img src={rajuImg} alt="Raju" style={{ width: '70px', height: '70px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
+              <img src={rajuImg} alt="Raju" style={{ width: '70px', height: '70px', borderRadius: '50%', objectFit: 'cover', objectPosition: 'top', marginBottom: '0.5rem', display: 'inline-block' }} />
               <div className="card-title" style={{ fontSize: '1rem' }}>Raju</div>
               <div className="card-text" style={{ fontSize: '0.85rem', fontStyle: 'italic' }}>I doubled my sales after applying AI tools I learned at IncuxAI&apos;s MSME workshop. Best decision I ever made for my business.</div>
             </div>
             <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
-              <img src={raziaImg} alt="Razia" style={{ width: '70px', height: '70px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
+              <img src={raziaImg} alt="Razia" style={{ width: '70px', height: '70px', borderRadius: '50%', objectFit: 'cover', objectPosition: 'top', marginBottom: '0.5rem', display: 'inline-block' }} />
               <div className="card-title" style={{ fontSize: '1rem' }}>Razia</div>
               <div className="card-text" style={{ fontSize: '0.85rem', fontStyle: 'italic' }}>I never thought I could learn AI in Hindi. IncuxAI made it possible. I&apos;ve now built my own chatbot and won the school science fair!</div>
             </div>
@@ -2791,22 +2791,22 @@ export default function App() {
           </div>
           <div className="cards-grid cards-grid-4">
             <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
-              <img src={divyaImg} alt="Divya" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
+              <img src={divyaImg} alt="Divya" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', objectPosition: 'top', marginBottom: '0.5rem', display: 'inline-block' }} />
               <div className="card-title">Divya</div>
               <div className="card-text">IIT Delhi graduate. Spearheads vernacular AI prompt engineering bootcamps across 40+ villages.</div>
             </div>
             <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
-              <img src={varunImg} alt="Varun" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
+              <img src={varunImg} alt="Varun" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', objectPosition: 'top', marginBottom: '0.5rem', display: 'inline-block' }} />
               <div className="card-title">Varun</div>
               <div className="card-text">Social work specialist. Mapped agricultural cooperative partnerships to train 20,000+ farmers in AI.</div>
             </div>
             <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
-              <img src={naziaImg} alt="Nazia" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
+              <img src={naziaImg} alt="Nazia" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', objectPosition: 'top', marginBottom: '0.5rem', display: 'inline-block' }} />
               <div className="card-title">Nazia</div>
               <div className="card-text">Software engineer. Designs interactive vernacular code templates for rural government schools.</div>
             </div>
             <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
-              <img src={chandraImg} alt="Chandra" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
+              <img src={chandraImg} alt="Chandra" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', objectPosition: 'top', marginBottom: '0.5rem', display: 'inline-block' }} />
               <div className="card-title">Chandra</div>
               <div className="card-text">Rural education activist. Established 60+ mobile-learning resource centers across remote districts.</div>
             </div>
