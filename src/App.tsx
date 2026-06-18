@@ -5,7 +5,7 @@
 
 import { useEffect } from 'react';
 import { motion } from 'motion/react';
-import logoImg from './assets/logo.jpeg';
+import logoImg from '../picss/iet logo.png';
 import whoWeAreImg from './assets/about_who_we_are.jpg';
 import editedPicImg from '../picss/edited_pic.jpeg';
 import iit1Img from '../picss/iit1.png';
