@@ -457,7 +457,7 @@ export default function App() {
       }
       document.querySelectorAll('nav > a, nav > .nav-item > a').forEach(a => a.classList.remove('active'));
       const navItems = document.querySelectorAll('nav > a, nav > .nav-item > a');
-      const navMap: Record<string, number> = { home: 0, about: 1, ai4all: 2, programs: 3, volunteer: 4, teachxai: 5, gallery: 6, contact: 7 };
+      const navMap: Record<string, number> = { home: 0, about: 1, ai4all: 2, programs: 3, volunteer: 4, teachxai: 5, gallery: 6, contact: 7, donate: 8 };
       if (navMap[id] !== undefined && navItems[navMap[id]]) {
         navItems[navMap[id]].classList.add('active');
       }
@@ -2433,7 +2433,7 @@ export default function App() {
         </nav>
         <div className="header-right">
           <span id="logged-user" style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.8)', fontWeight: '600', display: 'none' }}></span>
-          <button className="btn-donate" id="signup-btn" onClick={() => (window as any).openSignUpModal()}>Sign Up</button>
+          <button className="btn-donate" id="signup-btn" onClick={() => (window as any).showPage('donate')}>Donate</button>
           <button className="btn-login" onClick={() => (window as any).handleLoginBtn()} id="login-btn">Login</button>
           <button className="mobile-menu-toggle" onClick={() => {
             const nav = document.getElementById('main-nav');
@@ -4085,6 +4085,110 @@ export default function App() {
         </div>
       </div>
 
+      {/* ========== DONATE PAGE ========== */}
+      <div id="donate" className="page" style={{ paddingTop: '85px', background: 'var(--darker)', minHeight: '100vh' }}>
+        <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '3rem 1.5rem' }}>
+          <div className="section-header" style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <span className="section-tag">Support Our Mission</span>
+            <h2 className="section-title">Make a <span style={{ color: 'var(--secondary)' }}>Donation</span></h2>
+            <p className="section-sub">Your contribution helps us bring AI education to thousands of underserved communities across India.</p>
+          </div>
+
+          {/* Donation Amount Options */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.2rem', marginBottom: '2.5rem' }}>
+            {[
+              { amount: '₹500', desc: 'Feed one student for a month' },
+              { amount: '₹1,000', desc: 'Provide AI learning kit' },
+              { amount: '₹2,500', desc: 'Sponsor a village workshop' },
+              { amount: '₹5,000', desc: 'Train a volunteer teacher' },
+              { amount: '₹10,000', desc: 'Set up a rural AI lab' },
+              { amount: 'Custom', desc: 'Choose your own amount' }
+            ].map((opt, i) => (
+              <div key={i} onClick={(e) => {
+                const el = document.getElementById('custom-amount');
+                if (opt.amount === 'Custom' && el) { el.focus(); }
+                document.querySelectorAll('.donate-option').forEach(d => (d as HTMLElement).style.borderColor = 'var(--glass-border)');
+                (e.currentTarget as HTMLElement).style.borderColor = 'var(--secondary)';
+              }} className="donate-option" style={{
+                background: 'var(--glass)', border: '2px solid var(--glass-border)', borderRadius: '18px',
+                padding: '1.5rem', textAlign: 'center', cursor: 'pointer',
+                transition: 'all 0.3s ease', boxShadow: '0 4px 15px rgba(0,0,0,0.03)'
+              }}>
+                <div style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--secondary)', fontFamily: 'var(--font-display)', marginBottom: '0.4rem' }}>{opt.amount}</div>
+                <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>{opt.desc}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Custom Amount */}
+          <div style={{ maxWidth: '400px', margin: '0 auto 3rem', textAlign: 'center' }}>
+            <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem' }}>Enter Custom Amount (INR)</label>
+            <input id="custom-amount" type="number" placeholder="e.g. 3000" style={{
+              width: '100%', padding: '0.9rem 1.2rem', borderRadius: '14px', border: '1.5px solid var(--glass-border)',
+              background: 'var(--glass)', color: 'var(--text)', fontSize: '1rem', fontFamily: 'var(--font-body)',
+              outline: 'none', boxSizing: 'border-box'
+            }} />
+          </div>
+
+          {/* Bank Details Card */}
+          <div style={{
+            background: 'linear-gradient(135deg, var(--primary), var(--secondary))', borderRadius: '24px',
+            padding: '2.5rem', color: '#fff', boxShadow: '0 15px 40px rgba(155,122,62,0.2)'
+          }}>
+            <h3 style={{ fontSize: '1.3rem', fontFamily: 'var(--font-display)', marginBottom: '1.5rem', textAlign: 'center' }}>
+              Bank Transfer Details
+            </h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
+              <div>
+                <div style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: '0.3rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Account Holder</div>
+                <div style={{ fontSize: '1.05rem', fontWeight: '600' }}>INCUXAI Educational Trust</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: '0.3rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Account Number</div>
+                <div style={{ fontSize: '1.05rem', fontWeight: '600', fontFamily: 'monospace', letterSpacing: '0.05em' }}>9494808589</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: '0.3rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Account Type</div>
+                <div style={{ fontSize: '1.05rem', fontWeight: '600' }}>Current</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: '0.3rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>IFSC Code</div>
+                <div style={{ fontSize: '1.05rem', fontWeight: '600', fontFamily: 'monospace' }}>KKBK0007905</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: '0.3rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Branch</div>
+                <div style={{ fontSize: '1.05rem', fontWeight: '600' }}>GUNTUR - GORANTLA</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: '0.3rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Bank Name</div>
+                <div style={{ fontSize: '1.05rem', fontWeight: '600' }}>Kotak Mahindra Bank</div>
+              </div>
+            </div>
+            <div style={{ marginTop: '2rem', textAlign: 'center' }}>
+              <p style={{ fontSize: '0.85rem', opacity: 0.75, lineHeight: '1.6' }}>
+                After transferring, please share your payment screenshot on WhatsApp at <strong>+91 9494808589</strong> so we can send you a receipt.
+              </p>
+            </div>
+          </div>
+
+          {/* Tax Benefits Note */}
+          <div style={{ marginTop: '2rem', padding: '1.5rem', background: 'var(--glass)', border: '1px solid var(--glass-border)', borderRadius: '16px', textAlign: 'center' }}>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.7' }}>
+              <strong style={{ color: 'var(--secondary)' }}>Tax Benefits:</strong> IncuXai Education Trust is a registered non-profit. All donations are eligible for tax exemption under Section 80G of the Income Tax Act. Receipts will be provided upon request.
+            </p>
+          </div>
+
+          {/* Back to Home */}
+          <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+            <button onClick={() => (window as any).showPage('home')} style={{
+              padding: '0.8rem 2rem', borderRadius: '14px', border: '1.5px solid var(--glass-border)',
+              background: 'var(--glass)', color: 'var(--text)', fontSize: '0.9rem', fontWeight: '600',
+              cursor: 'pointer', transition: 'all 0.3s'
+            }}>← Back to Home</button>
+          </div>
+        </div>
+      </div>
+
       {/* ========== FLOATING WHATSAPP ICON ========== */}
       <a href="https://wa.me/919494808589" target="_blank" rel="noopener noreferrer" className="whatsapp-float" title="Chat on WhatsApp">
         <svg viewBox="0 0 24 24" width="28" height="28" fill="white"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.725 1.45 5.489 0 9.952-4.43 9.955-9.885.002-2.643-1.022-5.127-2.885-7c-1.863-1.874-4.343-2.905-6.994-2.906-5.49 0-9.953 4.429-9.957 9.884-.002 1.714.453 3.39 1.32 4.887l-.994 3.634 3.73-.974zm12.002-6.852c-.274-.136-1.62-.801-1.871-.892-.252-.09-.435-.136-.617.136-.183.272-.708.89-.867 1.072-.16.182-.32.205-.594.069-.275-.136-1.16-.427-2.209-1.364-.817-.73-1.368-1.63-1.528-1.905-.16-.273-.017-.421.12-.557.123-.122.274-.32.41-.48.138-.16.183-.273.275-.455.092-.182.046-.341-.023-.477-.068-.136-.617-1.485-.845-2.03-.22-.533-.48-.46-.617-.466-.123-.006-.275-.007-.426-.007-.152 0-.401.057-.61.284-.21.227-.8.781-.8 1.904 0 1.124.816 2.207.93 2.36.114.152 1.606 2.451 3.89 3.435.543.233.967.373 1.3.479.546.173 1.042.149 1.433.09.437-.066 1.62-.662 1.849-1.3.23-.637.23-1.182.16-1.3-.069-.117-.251-.183-.526-.32z"/></svg>
@@ -4112,6 +4216,7 @@ export default function App() {
               <li><a onClick={() => (window as any).showPage('gallery')}>Gallery</a></li>
               <li><a onClick={() => (window as any).showPage('volunteer')}>Volunteer</a></li>
               <li><a onClick={() => (window as any).showPage('contact')}>Contact Us</a></li>
+              <li><a onClick={() => (window as any).showPage('donate')}>Donate</a></li>
             </ul>
           </div>
           <div className="footer-col">
