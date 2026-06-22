@@ -2226,12 +2226,12 @@ export default function App() {
 
       // Greetings
       if (/^(hi|hello|hey|hlo|good\s*(morning|afternoon|evening)|yo|sup|namaste|vanakam|🙏|namaskar)/.test(lower)) {
-        return 'Hello! 👋 Welcome to AI For All Educational Trust. I\'m here to help you with any questions. Ask me about our programs, how to volunteer, login help, or anything else!';
+        return 'Hello! 👋 Welcome to IncuXai Education Trust. I\'m here to help you with any questions. Ask me about our programs, how to volunteer, login help, or anything else!';
       }
 
       // Who are you / about
       if (/who\s*(are|is)\s*(you|this)|about|what\s*(is|are)\s*(this|you)|tell\s*me\s*about/.test(lower) && !/program/.test(lower) && !/mission/.test(lower)) {
-        return 'I\'m the AI Assistant for <b>AI For All Educational Trust</b>. We\'re a non-profit organization on a mission to make AI knowledge accessible to every Indian citizen. We operate across 22 states with 5000+ volunteers!';
+        return 'I\'m the AI Assistant for <b>IncuXai Education Trust</b>. We\'re a non-profit organization on a mission to make AI knowledge accessible to every Indian citizen. We operate across 22 states with 5000+ volunteers!';
       }
 
       // Mission
@@ -2281,7 +2281,7 @@ export default function App() {
 
       // Contact
       if (/contact|phone|email|address|reach|call|mail/.test(lower)) {
-        return 'You can reach us at:<br>📧 <b>info@aiforall.org</b><br>📞 <b>+91 9XXXXXXXXX</b><br>📍 <b>Vijayawada, Andhra Pradesh</b><br>Or visit our website: www.aiforall.org';
+        return 'You can reach us at:<br>📧 <b>info@incuxaieducationtrust.org</b><br>📞 <b>+91 9494808589</b><br>📍 <b>INCUXAI PRIVATE LIMITED, 134-1-317, Pandu Ranga Nagar, Muthyala Reddy Nagar, Guntur, Andhra Pradesh 522034</b><br>Or visit our website: www.incuxaieducationtrust.org';
       }
 
       // Location
@@ -2296,7 +2296,7 @@ export default function App() {
 
       // Donate / donation
       if (/donate|donation|contribute|support|fund/.test(lower)) {
-        return 'Thank you for wanting to support us! 🙏 You can contribute by volunteering your time, donating to our cause, or spreading the word. Logged-in volunteers can make donations through the Volunteer Portal. Contact us at <b>info@aiforall.org</b> for more details.';
+        return 'Thank you for wanting to support us! 🙏 You can contribute by volunteering your time, donating to our cause, or spreading the word. Visit our Donate page or contact us at <b>info@incuxaieducationtrust.org</b> for more details.';
       }
 
       // Thanks
@@ -2315,7 +2315,7 @@ export default function App() {
       }
 
       // Default
-      return 'I\'m not sure I understood that. Could you rephrase? 😊 You can ask me about:<br>• Our programs & courses<br>• How to volunteer<br>• Login help<br>• About the organization<br>• Or just say "help" to see what I can do!';
+      return 'I\'d love to help with that! Could you rephrase your question? 😊 Here are some things I can assist with:<br>• Our programs & courses<br>• How to volunteer<br>• Login help<br>• About the organization<br>• Or just say "help" to see what I can do!';
     };
 
     // Dynamic database and UI synchronization mount triggers
@@ -2561,7 +2561,7 @@ export default function App() {
             </div>
             <div className="about-text">
               <h3>Who We Are</h3>
-              <p>AI For All Educational Trust was founded by a group of technologists, educators, and social workers who saw a growing digital divide between those who understand AI and those who don't.</p>
+              <p>IncuXai Education Trust was founded by a group of technologists, educators, and social workers who saw a growing digital divide between those who understand AI and those who do not.</p>
               <p>We operate across 22 states in India, with a network of over 5,000 trained volunteers delivering AI literacy programs in local languages — Hindi, Telugu, Tamil, Kannada, Marathi, Bengali, and more.</p>
               <p>Our programs have reached over 2 lakh learners including farmers who now use AI for crop disease detection, teachers who use AI tools to personalize education, and small business owners who use AI to grow their enterprises.</p>
             </div>
@@ -2630,6 +2630,40 @@ export default function App() {
                 </div>
               </div>
             </div>
+           </div>
+        </section>
+
+        {/* ========== OUR SERVICES SECTION ========== */}
+        <section style={{ background: 'var(--darker)', padding: '5rem 8%' }}>
+          <div className="section-header">
+            <span className="section-tag">What We Offer</span>
+            <h2 className="section-title">Our <span style={{ color: 'var(--secondary)' }}>Services</span></h2>
+            <p className="section-sub">Comprehensive AI education programs designed for every community across India</p>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginTop: '2rem' }}>
+            {[
+              { icon: '🎓', title: 'AI for Students', desc: 'Free AI courses, study tools, career guidance, and interactive learning for students from school to university.', link: 'ai4all' },
+              { icon: '🌾', title: 'AI for Farmers', desc: 'Crop disease detection, smart agriculture tools, and AI-powered farming techniques in local languages.', link: 'ai4all' },
+              { icon: '👩‍🏫', title: 'AI for Teachers', desc: 'Personalized teaching tools, AI lesson planning, student assessment automation, and classroom innovation.', link: 'ai4all' },
+              { icon: '💼', title: 'AI for MSMEs', desc: 'Business automation, AI marketing, customer engagement tools, and digital transformation for small businesses.', link: 'ai4all' },
+              { icon: '🧒', title: 'AI for Kids', desc: 'Fun, interactive AI learning through games, creative projects, and age-appropriate technology exposure.', link: 'ai4all' },
+              { icon: '📚', title: 'Free Online Courses', desc: 'Self-paced courses on ChatGPT, Canva AI, Prompt Engineering, Google Tools, and more — completely free.', link: 'ai4all' },
+              { icon: '🤝', title: 'Volunteer Network', desc: 'Join 5,000+ volunteers across 22 states delivering AI literacy in Hindi, Telugu, Tamil, Kannada, and more.', link: 'volunteer' },
+              { icon: '🏫', title: 'TeachXai', desc: 'AI training program for educators — earn certificates, build lesson plans, and bring AI into your classroom.', link: 'teachxai' }
+            ].map((service, i) => (
+              <div key={i} onClick={() => (window as any).showPage(service.link)} style={{
+                background: 'var(--glass)', border: '1px solid var(--glass-border)', borderRadius: '20px',
+                padding: '1.8rem', cursor: 'pointer', transition: 'all 0.3s ease',
+                boxShadow: '0 4px 15px rgba(0,0,0,0.03)'
+              }} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 30px rgba(155,122,62,0.1)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.03)'; }}>
+                <div style={{ fontSize: '2.2rem', marginBottom: '0.8rem' }}>{service.icon}</div>
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', fontWeight: '700', color: 'var(--text)', marginBottom: '0.5rem' }}>{service.title}</h3>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.7' }}>{service.desc}</p>
+                <div style={{ marginTop: '1rem', fontSize: '0.82rem', fontWeight: '600', color: 'var(--secondary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  Learn More <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                </div>
+              </div>
+            ))}
           </div>
         </section>
 
@@ -3238,9 +3272,9 @@ export default function App() {
               <div className="card" style={{ padding: '2rem', height: 'fit-content' }}>
                 <h4 className="card-title" style={{ fontSize: '1.2rem', marginBottom: '1rem', color: 'var(--secondary)' }}>Our Headquarters</h4>
                 <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: '1.8', marginBottom: '1rem' }}>
-                  📍 Vijayawada, Andhra Pradesh, India<br/>
-                  ✉ info@aiforall.org<br/>
-                  📞 +91 866 555 0199
+                  📍 INCUXAI PRIVATE LIMITED, 134-1-317, Pandu Ranga Nagar, Muthyala Reddy Nagar, Guntur, AP 522034<br/>
+                  ✉ info@incuxaieducationtrust.org<br/>
+                  📞 +91 9494808589
                 </p>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Operating across 22 states with 5000+ local volunteers conducting weekend field courses.</p>
               </div>
@@ -4075,7 +4109,7 @@ export default function App() {
           </div>
           <div className="chat-messages" id="chat-messages">
             <div className="chat-msg bot">
-              <div className="chat-msg-content">Hi! I'm the AI assistant. How can I help you today? You can ask me about our programs, volunteering, login help, or anything about AI For All Educational Trust.</div>
+              <div className="chat-msg-content">Hi! I'm the AI assistant. How can I help you today? You can ask me about our programs, volunteering, login help, or anything about IncuXai Education Trust.</div>
             </div>
           </div>
           <div className="chat-input-area">
