@@ -4172,26 +4172,6 @@ export default function App() {
             boxShadow: '0 8px 25px rgba(155,122,62,0.3)', transition: 'all 0.3s', letterSpacing: '0.03em'
           }}>Donate Now</button>
 
-          {/* Bank Transfer Details */}
-          <div style={{ marginTop: '2rem', background: 'var(--glass)', border: '1px solid var(--glass-border)', borderRadius: '20px', padding: '2rem' }}>
-            <h3 style={{ fontSize: '1.05rem', fontFamily: 'var(--font-display)', fontWeight: '700', color: 'var(--text)', marginBottom: '1rem', textAlign: 'center' }}>Or Transfer Directly to Bank</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-              {[
-                { label: 'Account Holder', value: 'INCUXAI Educational Trust' },
-                { label: 'Account Number', value: '9494808589' },
-                { label: 'Account Type', value: 'Current' },
-                { label: 'IFSC Code', value: 'KKBK0007905' },
-                { label: 'Branch', value: 'GUNTUR - GORANTLA' },
-                { label: 'Bank', value: 'Kotak Mahindra Bank' }
-              ].map((item, i) => (
-                <div key={i}>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.2rem' }}>{item.label}</div>
-                  <div style={{ fontSize: '0.95rem', fontWeight: '600', color: 'var(--text)', fontFamily: item.label === 'Account Number' || item.label === 'IFSC Code' ? 'monospace' : 'inherit' }}>{item.value}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
           {/* Tax Benefits */}
           <div style={{ marginTop: '1.5rem', padding: '1.2rem', background: 'var(--glass)', border: '1px solid var(--glass-border)', borderRadius: '14px', textAlign: 'center' }}>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.7' }}>
