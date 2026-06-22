@@ -330,21 +330,10 @@ export default function App() {
     }
 
     // Type tagline animation
-    let typingInterval: ReturnType<typeof setInterval> | null = null;
     const typeTagline = (text: string) => {
       const taglineEl = document.getElementById('tagline-text');
       if (!taglineEl) return;
-      if (typingInterval) clearInterval(typingInterval);
-      taglineEl.textContent = '';
-      let idx = 0;
-      typingInterval = setInterval(() => {
-        if (idx < text.length) {
-          taglineEl.textContent += text[idx++];
-        } else {
-          clearInterval(typingInterval!);
-          typingInterval = null;
-        }
-      }, 40);
+      taglineEl.textContent = text;
     };
 
     w.goToSlide = (n: number) => {
@@ -2374,7 +2363,6 @@ export default function App() {
     return () => {
       clearTimeout(initTimeout);
       clearTimeout(revealTimeout);
-      if (typingInterval) clearInterval(typingInterval);
       clearInterval(sliderInterval);
       clearInterval(labelInterval);
       window.removeEventListener('scroll', handleScroll);
@@ -2468,20 +2456,11 @@ export default function App() {
           {/* Hero Content */}
           <div className="hero-content">
             <div className="hero-text">
-              <h1 className="hero-title creative-hero-title">
-                <span className="char">A</span>
-                <span className="char">I</span>
-                <span className="space">&nbsp;</span>
-                <span className="char">F</span>
-                <span className="char">O</span>
-                <span className="char">R</span>
-                <span className="space">&nbsp;</span>
-                <span className="char">A</span>
-                <span className="char">L</span>
-                <span className="char">L</span>
+              <h1 className="hero-title" style={{ color: '#fff', fontSize: 'clamp(2.5rem, 6vw, 4.5rem)', fontWeight: '800', fontFamily: 'var(--font-display)', textShadow: '0 2px 20px rgba(0,0,0,0.4)', letterSpacing: '-0.02em', lineHeight: '1.1', textAlign: 'center' }}>
+                AI FOR ALL
               </h1>
-              <div className="hero-tagline" id="hero-tagline">
-                <span id="tagline-text"></span>
+              <div className="hero-tagline" id="hero-tagline" style={{ textAlign: 'center' }}>
+                <span id="tagline-text" style={{ color: 'rgba(255,255,255,0.85)', fontSize: 'clamp(0.9rem, 2vw, 1.15rem)', fontWeight: '400', letterSpacing: '0.02em' }}></span>
               </div>
               <div className="hero-btns">
                 <button className="btn-modern-primary" onClick={() => (window as any).showPage('ai4all')}>
@@ -4116,105 +4095,139 @@ export default function App() {
 
       {/* ========== DONATE PAGE ========== */}
       <div id="donate" className="page" style={{ paddingTop: '85px', background: 'var(--darker)', minHeight: '100vh' }}>
-        <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '3rem 1.5rem' }}>
+        <div style={{ maxWidth: '800px', margin: '0 auto', padding: '3rem 1.5rem' }}>
           <div className="section-header" style={{ textAlign: 'center', marginBottom: '3rem' }}>
             <span className="section-tag">Support Our Mission</span>
             <h2 className="section-title">Make a <span style={{ color: 'var(--secondary)' }}>Donation</span></h2>
             <p className="section-sub">Your contribution helps us bring AI education to thousands of underserved communities across India.</p>
           </div>
 
-          {/* Donation Amount Options */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.2rem', marginBottom: '2.5rem' }}>
-            {[
-              { amount: '₹500', desc: 'Feed one student for a month' },
-              { amount: '₹1,000', desc: 'Provide AI learning kit' },
-              { amount: '₹2,500', desc: 'Sponsor a village workshop' },
-              { amount: '₹5,000', desc: 'Train a volunteer teacher' },
-              { amount: '₹10,000', desc: 'Set up a rural AI lab' },
-              { amount: 'Custom', desc: 'Choose your own amount' }
-            ].map((opt, i) => (
-              <div key={i} onClick={(e) => {
-                const el = document.getElementById('custom-amount');
-                if (opt.amount === 'Custom' && el) { el.focus(); }
-                document.querySelectorAll('.donate-option').forEach(d => (d as HTMLElement).style.borderColor = 'var(--glass-border)');
-                (e.currentTarget as HTMLElement).style.borderColor = 'var(--secondary)';
-              }} className="donate-option" style={{
-                background: 'var(--glass)', border: '2px solid var(--glass-border)', borderRadius: '18px',
-                padding: '1.5rem', textAlign: 'center', cursor: 'pointer',
-                transition: 'all 0.3s ease', boxShadow: '0 4px 15px rgba(0,0,0,0.03)'
-              }}>
-                <div style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--secondary)', fontFamily: 'var(--font-display)', marginBottom: '0.4rem' }}>{opt.amount}</div>
-                <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>{opt.desc}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Custom Amount */}
-          <div style={{ maxWidth: '400px', margin: '0 auto 3rem', textAlign: 'center' }}>
-            <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem' }}>Enter Custom Amount (INR)</label>
-            <input id="custom-amount" type="number" placeholder="e.g. 3000" style={{
-              width: '100%', padding: '0.9rem 1.2rem', borderRadius: '14px', border: '1.5px solid var(--glass-border)',
-              background: 'var(--glass)', color: 'var(--text)', fontSize: '1rem', fontFamily: 'var(--font-body)',
-              outline: 'none', boxSizing: 'border-box'
-            }} />
-          </div>
-
-          {/* Bank Details Card */}
-          <div style={{
-            background: 'linear-gradient(135deg, var(--primary), var(--secondary))', borderRadius: '24px',
-            padding: '2.5rem', color: '#fff', boxShadow: '0 15px 40px rgba(155,122,62,0.2)'
-          }}>
-            <h3 style={{ fontSize: '1.3rem', fontFamily: 'var(--font-display)', marginBottom: '1.5rem', textAlign: 'center' }}>
-              Bank Transfer Details
-            </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
-              <div>
-                <div style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: '0.3rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Account Holder</div>
-                <div style={{ fontSize: '1.05rem', fontWeight: '600' }}>INCUXAI Educational Trust</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: '0.3rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Account Number</div>
-                <div style={{ fontSize: '1.05rem', fontWeight: '600', fontFamily: 'monospace', letterSpacing: '0.05em' }}>9494808589</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: '0.3rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Account Type</div>
-                <div style={{ fontSize: '1.05rem', fontWeight: '600' }}>Current</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: '0.3rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>IFSC Code</div>
-                <div style={{ fontSize: '1.05rem', fontWeight: '600', fontFamily: 'monospace' }}>KKBK0007905</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: '0.3rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Branch</div>
-                <div style={{ fontSize: '1.05rem', fontWeight: '600' }}>GUNTUR - GORANTLA</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: '0.3rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Bank Name</div>
-                <div style={{ fontSize: '1.05rem', fontWeight: '600' }}>Kotak Mahindra Bank</div>
-              </div>
+          {/* Donation Amount */}
+          <div style={{ background: 'var(--glass)', border: '1px solid var(--glass-border)', borderRadius: '20px', padding: '2rem', marginBottom: '1.5rem' }}>
+            <h3 style={{ fontSize: '1.1rem', fontFamily: 'var(--font-display)', fontWeight: '700', color: 'var(--text)', marginBottom: '1.2rem' }}>Donation Amount</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.8rem', marginBottom: '1.2rem' }}>
+              {[500, 1000, 2500, 5000, 10000].map(amt => (
+                <button key={amt} onClick={(e) => {
+                  document.querySelectorAll('.amt-btn').forEach(b => { (b as HTMLElement).style.borderColor = 'var(--glass-border)'; (b as HTMLElement).style.background = 'var(--glass)'; });
+                  (e.currentTarget as HTMLElement).style.borderColor = 'var(--secondary)';
+                  (e.currentTarget as HTMLElement).style.background = 'rgba(155,122,62,0.08)';
+                  const input = document.getElementById('donate-amount') as HTMLInputElement;
+                  if (input) input.value = String(amt);
+                }} className="amt-btn" style={{ padding: '0.8rem', borderRadius: '12px', border: '1.5px solid var(--glass-border)', background: 'var(--glass)', color: 'var(--text)', fontSize: '1rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'var(--font-display)' }}>₹{amt.toLocaleString('en-IN')}</button>
+              ))}
             </div>
-            <div style={{ marginTop: '2rem', textAlign: 'center' }}>
-              <p style={{ fontSize: '0.85rem', opacity: 0.75, lineHeight: '1.6' }}>
-                After transferring, please share your payment screenshot on WhatsApp at <strong>+91 9494808589</strong> so we can send you a receipt.
-              </p>
+            <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.4rem' }}>Or enter custom amount</label>
+            <div style={{ position: 'relative' }}>
+              <span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', fontSize: '1.1rem', fontWeight: '700', color: 'var(--text-muted)' }}>₹</span>
+              <input id="donate-amount" type="number" min="1" placeholder="Enter amount" style={{
+                width: '100%', padding: '0.9rem 1.2rem 0.9rem 2.2rem', borderRadius: '12px', border: '1.5px solid var(--glass-border)',
+                background: 'rgba(255,255,255,0.04)', color: 'var(--text)', fontSize: '1rem', fontFamily: 'var(--font-body)',
+                outline: 'none', boxSizing: 'border-box'
+              }} />
             </div>
           </div>
 
-          {/* Tax Benefits Note */}
-          <div style={{ marginTop: '2rem', padding: '1.5rem', background: 'var(--glass)', border: '1px solid var(--glass-border)', borderRadius: '16px', textAlign: 'center' }}>
+          {/* Payment Method */}
+          <div style={{ background: 'var(--glass)', border: '1px solid var(--glass-border)', borderRadius: '20px', padding: '2rem', marginBottom: '1.5rem' }}>
+            <h3 style={{ fontSize: '1.1rem', fontFamily: 'var(--font-display)', fontWeight: '700', color: 'var(--text)', marginBottom: '1.2rem' }}>Select Payment Method</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem' }}>
+              {[
+                { id: 'upi', label: 'UPI', icon: '📱', desc: 'Google Pay, PhonePe, Paytm' },
+                { id: 'card', label: 'Credit / Debit Card', icon: '💳', desc: 'Visa, Mastercard, Rupay' },
+                { id: 'netbanking', label: 'Net Banking', icon: '🏦', desc: 'All major banks' },
+                { id: 'wallet', label: 'Wallets', icon: '👛', desc: 'Paytm, Amazon Pay' }
+              ].map(method => (
+                <div key={method.id} onClick={(e) => {
+                  document.querySelectorAll('.pay-method').forEach(d => { (d as HTMLElement).style.borderColor = 'var(--glass-border)'; (d as HTMLElement).style.background = 'rgba(255,255,255,0.02)'; });
+                  (e.currentTarget as HTMLElement).style.borderColor = 'var(--secondary)';
+                  (e.currentTarget as HTMLElement).style.background = 'rgba(155,122,62,0.06)';
+                }} className="pay-method" style={{
+                  border: '1.5px solid var(--glass-border)', borderRadius: '14px', padding: '1.2rem', cursor: 'pointer',
+                  transition: 'all 0.2s', background: 'rgba(255,255,255,0.02)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
+                    <span style={{ fontSize: '1.5rem' }}>{method.icon}</span>
+                    <div>
+                      <div style={{ fontWeight: '700', color: 'var(--text)', fontSize: '0.95rem' }}>{method.label}</div>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{method.desc}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Donate Button */}
+          <button onClick={() => {
+            const amt = (document.getElementById('donate-amount') as HTMLInputElement)?.value;
+            if (!amt || Number(amt) <= 0) { (window as any).showToast('Please enter a valid donation amount'); return; }
+            const selected = document.querySelector('.pay-method[style*="var(--secondary)"]');
+            if (!selected) { (window as any).showToast('Please select a payment method'); return; }
+            const popup = document.getElementById('donate-popup');
+            if (popup) popup.style.display = 'flex';
+          }} style={{
+            width: '100%', padding: '1rem', borderRadius: '14px', border: 'none',
+            background: 'linear-gradient(135deg, var(--primary), var(--secondary))', color: '#fff',
+            fontSize: '1.1rem', fontWeight: '700', fontFamily: 'var(--font-display)', cursor: 'pointer',
+            boxShadow: '0 8px 25px rgba(155,122,62,0.3)', transition: 'all 0.3s', letterSpacing: '0.03em'
+          }}>Donate Now</button>
+
+          {/* Bank Transfer Details */}
+          <div style={{ marginTop: '2rem', background: 'var(--glass)', border: '1px solid var(--glass-border)', borderRadius: '20px', padding: '2rem' }}>
+            <h3 style={{ fontSize: '1.05rem', fontFamily: 'var(--font-display)', fontWeight: '700', color: 'var(--text)', marginBottom: '1rem', textAlign: 'center' }}>Or Transfer Directly to Bank</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              {[
+                { label: 'Account Holder', value: 'INCUXAI Educational Trust' },
+                { label: 'Account Number', value: '9494808589' },
+                { label: 'Account Type', value: 'Current' },
+                { label: 'IFSC Code', value: 'KKBK0007905' },
+                { label: 'Branch', value: 'GUNTUR - GORANTLA' },
+                { label: 'Bank', value: 'Kotak Mahindra Bank' }
+              ].map((item, i) => (
+                <div key={i}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.2rem' }}>{item.label}</div>
+                  <div style={{ fontSize: '0.95rem', fontWeight: '600', color: 'var(--text)', fontFamily: item.label === 'Account Number' || item.label === 'IFSC Code' ? 'monospace' : 'inherit' }}>{item.value}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Tax Benefits */}
+          <div style={{ marginTop: '1.5rem', padding: '1.2rem', background: 'var(--glass)', border: '1px solid var(--glass-border)', borderRadius: '14px', textAlign: 'center' }}>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.7' }}>
-              <strong style={{ color: 'var(--secondary)' }}>Tax Benefits:</strong> IncuXai Education Trust is a registered non-profit. All donations are eligible for tax exemption under Section 80G of the Income Tax Act. Receipts will be provided upon request.
+              <strong style={{ color: 'var(--secondary)' }}>Tax Benefits:</strong> All donations are eligible for tax exemption under Section 80G of the Income Tax Act.
             </p>
           </div>
 
           {/* Back to Home */}
-          <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+          <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
             <button onClick={() => (window as any).showPage('home')} style={{
-              padding: '0.8rem 2rem', borderRadius: '14px', border: '1.5px solid var(--glass-border)',
-              background: 'var(--glass)', color: 'var(--text)', fontSize: '0.9rem', fontWeight: '600',
+              padding: '0.7rem 2rem', borderRadius: '12px', border: '1.5px solid var(--glass-border)',
+              background: 'transparent', color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: '600',
               cursor: 'pointer', transition: 'all 0.3s'
             }}>← Back to Home</button>
           </div>
+        </div>
+      </div>
+
+      {/* ========== DONATE SUCCESS POPUP ========== */}
+      <div id="donate-popup" style={{ display: 'none', position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.6)', zIndex: 9999, alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }}>
+        <div style={{ background: '#fff', borderRadius: '24px', padding: '3rem 2.5rem', maxWidth: '420px', width: '90%', textAlign: 'center', boxShadow: '0 25px 60px rgba(0,0,0,0.3)', position: 'relative' }}>
+          <button onClick={() => { const p = document.getElementById('donate-popup'); if (p) p.style.display = 'none'; }} style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', fontSize: '1.4rem', cursor: 'pointer', color: '#999' }}>✕</button>
+          <div style={{ width: '70px', height: '70px', borderRadius: '50%', background: 'linear-gradient(135deg, #10b981, #059669)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </div>
+          <h3 style={{ fontSize: '1.4rem', fontWeight: '800', color: '#1a1a2e', marginBottom: '0.5rem', fontFamily: 'var(--font-display)' }}>Transaction Initiated</h3>
+          <p style={{ fontSize: '0.95rem', color: '#666', lineHeight: '1.6', marginBottom: '0.5rem' }}>Your payment is being processed securely.</p>
+          <p style={{ fontSize: '0.85rem', color: '#999', lineHeight: '1.6', marginBottom: '1.5rem' }}>You will receive a confirmation on your registered mobile number and email once the transaction is complete.</p>
+          <div style={{ padding: '1rem', background: '#f0fdf4', borderRadius: '12px', border: '1px solid #bbf7d0', marginBottom: '1.5rem' }}>
+            <p style={{ fontSize: '0.82rem', color: '#166534', lineHeight: '1.5' }}>For any queries, contact us at <strong>+91 9494808589</strong> or email <strong>info@incuxaieducationtrust.org</strong></p>
+          </div>
+          <button onClick={() => { const p = document.getElementById('donate-popup'); if (p) p.style.display = 'none'; (window as any).showPage('home'); }} style={{
+            padding: '0.8rem 2.5rem', borderRadius: '12px', border: 'none',
+            background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff',
+            fontSize: '0.95rem', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 15px rgba(16,185,129,0.3)'
+          }}>Done</button>
         </div>
       </div>
 
