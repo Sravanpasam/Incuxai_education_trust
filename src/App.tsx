@@ -330,21 +330,10 @@ export default function App() {
     }
 
     // Type tagline animation
-    let typingInterval: ReturnType<typeof setInterval> | null = null;
     const typeTagline = (text: string) => {
       const taglineEl = document.getElementById('tagline-text');
       if (!taglineEl) return;
-      if (typingInterval) clearInterval(typingInterval);
-      taglineEl.textContent = '';
-      let idx = 0;
-      typingInterval = setInterval(() => {
-        if (idx < text.length) {
-          taglineEl.textContent += text[idx++];
-        } else {
-          clearInterval(typingInterval!);
-          typingInterval = null;
-        }
-      }, 40);
+      taglineEl.textContent = text;
     };
 
     w.goToSlide = (n: number) => {
@@ -457,7 +446,7 @@ export default function App() {
       }
       document.querySelectorAll('nav > a, nav > .nav-item > a').forEach(a => a.classList.remove('active'));
       const navItems = document.querySelectorAll('nav > a, nav > .nav-item > a');
-      const navMap: Record<string, number> = { home: 0, about: 1, ai4all: 2, programs: 3, volunteer: 4, teachxai: 5, gallery: 6, contact: 7 };
+      const navMap: Record<string, number> = { home: 0, about: 1, ai4all: 2, programs: 3, volunteer: 4, teachxai: 5, gallery: 6, contact: 7, donate: 8 };
       if (navMap[id] !== undefined && navItems[navMap[id]]) {
         navItems[navMap[id]].classList.add('active');
       }
@@ -2226,12 +2215,12 @@ export default function App() {
 
       // Greetings
       if (/^(hi|hello|hey|hlo|good\s*(morning|afternoon|evening)|yo|sup|namaste|vanakam|🙏|namaskar)/.test(lower)) {
-        return 'Hello! 👋 Welcome to AI For All Educational Trust. I\'m here to help you with any questions. Ask me about our programs, how to volunteer, login help, or anything else!';
+        return 'Hello! 👋 Welcome to IncuXai Education Trust. I\'m here to help you with any questions. Ask me about our programs, how to volunteer, login help, or anything else!';
       }
 
       // Who are you / about
       if (/who\s*(are|is)\s*(you|this)|about|what\s*(is|are)\s*(this|you)|tell\s*me\s*about/.test(lower) && !/program/.test(lower) && !/mission/.test(lower)) {
-        return 'I\'m the AI Assistant for <b>AI For All Educational Trust</b>. We\'re a non-profit organization on a mission to make AI knowledge accessible to every Indian citizen. We operate across 22 states with 5000+ volunteers!';
+        return 'I\'m the AI Assistant for <b>IncuXai Education Trust</b>. We\'re a non-profit organization on a mission to make AI knowledge accessible to every Indian citizen. We operate across 22 states with 5000+ volunteers!';
       }
 
       // Mission
@@ -2281,7 +2270,7 @@ export default function App() {
 
       // Contact
       if (/contact|phone|email|address|reach|call|mail/.test(lower)) {
-        return 'You can reach us at:<br>📧 <b>info@aiforall.org</b><br>📞 <b>+91 9XXXXXXXXX</b><br>📍 <b>Vijayawada, Andhra Pradesh</b><br>Or visit our website: www.aiforall.org';
+        return 'You can reach us at:<br>📧 <b>info@incuxaieducationtrust.org</b><br>📞 <b>+91 9494808589</b><br>📍 <b>INCUXAI PRIVATE LIMITED, 134-1-317, Pandu Ranga Nagar, Muthyala Reddy Nagar, Guntur, Andhra Pradesh 522034</b><br>Or visit our website: www.incuxaieducationtrust.org';
       }
 
       // Location
@@ -2296,7 +2285,7 @@ export default function App() {
 
       // Donate / donation
       if (/donate|donation|contribute|support|fund/.test(lower)) {
-        return 'Thank you for wanting to support us! 🙏 You can contribute by volunteering your time, donating to our cause, or spreading the word. Logged-in volunteers can make donations through the Volunteer Portal. Contact us at <b>info@aiforall.org</b> for more details.';
+        return 'Thank you for wanting to support us! 🙏 You can contribute by volunteering your time, donating to our cause, or spreading the word. Visit our Donate page or contact us at <b>info@incuxaieducationtrust.org</b> for more details.';
       }
 
       // Thanks
@@ -2315,7 +2304,7 @@ export default function App() {
       }
 
       // Default
-      return 'I\'m not sure I understood that. Could you rephrase? 😊 You can ask me about:<br>• Our programs & courses<br>• How to volunteer<br>• Login help<br>• About the organization<br>• Or just say "help" to see what I can do!';
+      return 'I\'d love to help with that! Could you rephrase your question? 😊 Here are some things I can assist with:<br>• Our programs & courses<br>• How to volunteer<br>• Login help<br>• About the organization<br>• Or just say "help" to see what I can do!';
     };
 
     // Dynamic database and UI synchronization mount triggers
@@ -2374,7 +2363,6 @@ export default function App() {
     return () => {
       clearTimeout(initTimeout);
       clearTimeout(revealTimeout);
-      if (typingInterval) clearInterval(typingInterval);
       clearInterval(sliderInterval);
       clearInterval(labelInterval);
       window.removeEventListener('scroll', handleScroll);
@@ -2433,7 +2421,7 @@ export default function App() {
         </nav>
         <div className="header-right">
           <span id="logged-user" style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.8)', fontWeight: '600', display: 'none' }}></span>
-          <button className="btn-donate" id="signup-btn" onClick={() => (window as any).openSignUpModal()}>Sign Up</button>
+          <button className="btn-donate" id="signup-btn" onClick={() => (window as any).showPage('donate')}>Donate</button>
           <button className="btn-login" onClick={() => (window as any).handleLoginBtn()} id="login-btn">Login</button>
           <button className="mobile-menu-toggle" onClick={() => {
             const nav = document.getElementById('main-nav');
@@ -2468,20 +2456,11 @@ export default function App() {
           {/* Hero Content */}
           <div className="hero-content">
             <div className="hero-text">
-              <h1 className="hero-title creative-hero-title">
-                <span className="char">A</span>
-                <span className="char">I</span>
-                <span className="space">&nbsp;</span>
-                <span className="char">F</span>
-                <span className="char">O</span>
-                <span className="char">R</span>
-                <span className="space">&nbsp;</span>
-                <span className="char">A</span>
-                <span className="char">L</span>
-                <span className="char">L</span>
+              <h1 className="hero-title" style={{ color: '#fff', fontSize: 'clamp(2.5rem, 6vw, 4.5rem)', fontWeight: '800', fontFamily: 'var(--font-display)', textShadow: '0 2px 20px rgba(0,0,0,0.4)', letterSpacing: '-0.02em', lineHeight: '1.1', textAlign: 'center' }}>
+                AI FOR ALL
               </h1>
-              <div className="hero-tagline" id="hero-tagline">
-                <span id="tagline-text"></span>
+              <div className="hero-tagline" id="hero-tagline" style={{ textAlign: 'center' }}>
+                <span id="tagline-text" style={{ color: 'rgba(255,255,255,0.85)', fontSize: 'clamp(0.9rem, 2vw, 1.15rem)', fontWeight: '400', letterSpacing: '0.02em' }}></span>
               </div>
               <div className="hero-btns">
                 <button className="btn-modern-primary" onClick={() => (window as any).showPage('ai4all')}>
@@ -2561,7 +2540,7 @@ export default function App() {
             </div>
             <div className="about-text">
               <h3>Who We Are</h3>
-              <p>AI For All Educational Trust was founded by a group of technologists, educators, and social workers who saw a growing digital divide between those who understand AI and those who don't.</p>
+              <p>IncuXai Education Trust was founded by a group of technologists, educators, and social workers who saw a growing digital divide between those who understand AI and those who do not.</p>
               <p>We operate across 22 states in India, with a network of over 5,000 trained volunteers delivering AI literacy programs in local languages — Hindi, Telugu, Tamil, Kannada, Marathi, Bengali, and more.</p>
               <p>Our programs have reached over 2 lakh learners including farmers who now use AI for crop disease detection, teachers who use AI tools to personalize education, and small business owners who use AI to grow their enterprises.</p>
             </div>
@@ -2630,6 +2609,35 @@ export default function App() {
                 </div>
               </div>
             </div>
+           </div>
+        </section>
+
+        {/* ========== OUR SERVICES SECTION ========== */}
+        <section style={{ background: 'var(--darker)', padding: '5rem 8%' }}>
+          <div className="section-header">
+            <span className="section-tag">What We Offer</span>
+            <h2 className="section-title">Our <span style={{ color: 'var(--secondary)' }}>Services</span></h2>
+            <p className="section-sub">Comprehensive AI education programs designed for every community across India</p>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginTop: '2rem' }}>
+            {[
+              { icon: '📚', title: 'Free Online Courses', desc: 'Self-paced courses on ChatGPT, Canva AI, Prompt Engineering, Google Tools, and more — completely free.', link: 'ai4all' },
+              { icon: '🤝', title: 'Volunteer Network', desc: 'Join 5,000+ volunteers across 22 states delivering AI literacy in Hindi, Telugu, Tamil, Kannada, and more.', link: 'volunteer' },
+              { icon: '🏫', title: 'TeachXai', desc: 'AI training program for educators — earn certificates, build lesson plans, and bring AI into your classroom.', link: 'teachxai' }
+            ].map((service, i) => (
+              <div key={i} onClick={() => (window as any).showPage(service.link)} style={{
+                background: 'var(--glass)', border: '1px solid var(--glass-border)', borderRadius: '20px',
+                padding: '1.8rem', cursor: 'pointer', transition: 'all 0.3s ease',
+                boxShadow: '0 4px 15px rgba(0,0,0,0.03)'
+              }} onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 12px 30px rgba(155,122,62,0.1)'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.03)'; }}>
+                <div style={{ fontSize: '2.2rem', marginBottom: '0.8rem' }}>{service.icon}</div>
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.15rem', fontWeight: '700', color: 'var(--text)', marginBottom: '0.5rem' }}>{service.title}</h3>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.7' }}>{service.desc}</p>
+                <div style={{ marginTop: '1rem', fontSize: '0.82rem', fontWeight: '600', color: 'var(--secondary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  Learn More <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                </div>
+              </div>
+            ))}
           </div>
         </section>
 
@@ -3238,9 +3246,9 @@ export default function App() {
               <div className="card" style={{ padding: '2rem', height: 'fit-content' }}>
                 <h4 className="card-title" style={{ fontSize: '1.2rem', marginBottom: '1rem', color: 'var(--secondary)' }}>Our Headquarters</h4>
                 <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: '1.8', marginBottom: '1rem' }}>
-                  📍 Vijayawada, Andhra Pradesh, India<br/>
-                  ✉ info@aiforall.org<br/>
-                  📞 +91 866 555 0199
+                  📍 INCUXAI PRIVATE LIMITED, 134-1-317, Pandu Ranga Nagar, Muthyala Reddy Nagar, Guntur, AP 522034<br/>
+                  ✉ info@incuxaieducationtrust.org<br/>
+                  📞 +91 9494808589
                 </p>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Operating across 22 states with 5000+ local volunteers conducting weekend field courses.</p>
               </div>
@@ -4075,13 +4083,131 @@ export default function App() {
           </div>
           <div className="chat-messages" id="chat-messages">
             <div className="chat-msg bot">
-              <div className="chat-msg-content">Hi! I'm the AI assistant. How can I help you today? You can ask me about our programs, volunteering, login help, or anything about AI For All Educational Trust.</div>
+              <div className="chat-msg-content">Hi! I'm the AI assistant. How can I help you today? You can ask me about our programs, volunteering, login help, or anything about IncuXai Education Trust.</div>
             </div>
           </div>
           <div className="chat-input-area">
             <input type="text" id="chat-input" className="chat-input" placeholder="Type your message..." onKeyDown={(e) => { if (e.key === 'Enter') (window as any).sendChatMessage(); }} />
             <button className="chat-send" onClick={() => (window as any).sendChatMessage()}>➤</button>
           </div>
+        </div>
+      </div>
+
+      {/* ========== DONATE PAGE ========== */}
+      <div id="donate" className="page" style={{ paddingTop: '85px', background: 'var(--darker)', minHeight: '100vh' }}>
+        <div style={{ maxWidth: '800px', margin: '0 auto', padding: '3rem 1.5rem' }}>
+          <div className="section-header" style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <span className="section-tag">Support Our Mission</span>
+            <h2 className="section-title">Make a <span style={{ color: 'var(--secondary)' }}>Donation</span></h2>
+            <p className="section-sub">Your contribution helps us bring AI education to thousands of underserved communities across India.</p>
+          </div>
+
+          {/* Donation Amount */}
+          <div style={{ background: 'var(--glass)', border: '1px solid var(--glass-border)', borderRadius: '20px', padding: '2rem', marginBottom: '1.5rem' }}>
+            <h3 style={{ fontSize: '1.1rem', fontFamily: 'var(--font-display)', fontWeight: '700', color: 'var(--text)', marginBottom: '1.2rem' }}>Donation Amount</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.8rem', marginBottom: '1.2rem' }}>
+              {[500, 1000, 2500, 5000, 10000].map(amt => (
+                <button key={amt} onClick={(e) => {
+                  document.querySelectorAll('.amt-btn').forEach(b => { (b as HTMLElement).style.borderColor = 'var(--glass-border)'; (b as HTMLElement).style.background = 'var(--glass)'; });
+                  (e.currentTarget as HTMLElement).style.borderColor = 'var(--secondary)';
+                  (e.currentTarget as HTMLElement).style.background = 'rgba(155,122,62,0.08)';
+                  const input = document.getElementById('donate-amount') as HTMLInputElement;
+                  if (input) input.value = String(amt);
+                }} className="amt-btn" style={{ padding: '0.8rem', borderRadius: '12px', border: '1.5px solid var(--glass-border)', background: 'var(--glass)', color: 'var(--text)', fontSize: '1rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'var(--font-display)' }}>₹{amt.toLocaleString('en-IN')}</button>
+              ))}
+            </div>
+            <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.4rem' }}>Or enter custom amount</label>
+            <div style={{ position: 'relative' }}>
+              <span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', fontSize: '1.1rem', fontWeight: '700', color: 'var(--text-muted)' }}>₹</span>
+              <input id="donate-amount" type="number" min="1" placeholder="Enter amount" style={{
+                width: '100%', padding: '0.9rem 1.2rem 0.9rem 2.2rem', borderRadius: '12px', border: '1.5px solid var(--glass-border)',
+                background: 'rgba(255,255,255,0.04)', color: 'var(--text)', fontSize: '1rem', fontFamily: 'var(--font-body)',
+                outline: 'none', boxSizing: 'border-box'
+              }} />
+            </div>
+          </div>
+
+          {/* Payment Method */}
+          <div style={{ background: 'var(--glass)', border: '1px solid var(--glass-border)', borderRadius: '20px', padding: '2rem', marginBottom: '1.5rem' }}>
+            <h3 style={{ fontSize: '1.1rem', fontFamily: 'var(--font-display)', fontWeight: '700', color: 'var(--text)', marginBottom: '1.2rem' }}>Select Payment Method</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem' }}>
+              {[
+                { id: 'upi', label: 'UPI', icon: '📱', desc: 'Google Pay, PhonePe, Paytm' },
+                { id: 'card', label: 'Credit / Debit Card', icon: '💳', desc: 'Visa, Mastercard, Rupay' },
+                { id: 'netbanking', label: 'Net Banking', icon: '🏦', desc: 'All major banks' },
+                { id: 'wallet', label: 'Wallets', icon: '👛', desc: 'Paytm, Amazon Pay' }
+              ].map(method => (
+                <div key={method.id} onClick={(e) => {
+                  document.querySelectorAll('.pay-method').forEach(d => { (d as HTMLElement).style.borderColor = 'var(--glass-border)'; (d as HTMLElement).style.background = 'rgba(255,255,255,0.02)'; });
+                  (e.currentTarget as HTMLElement).style.borderColor = 'var(--secondary)';
+                  (e.currentTarget as HTMLElement).style.background = 'rgba(155,122,62,0.06)';
+                }} className="pay-method" style={{
+                  border: '1.5px solid var(--glass-border)', borderRadius: '14px', padding: '1.2rem', cursor: 'pointer',
+                  transition: 'all 0.2s', background: 'rgba(255,255,255,0.02)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
+                    <span style={{ fontSize: '1.5rem' }}>{method.icon}</span>
+                    <div>
+                      <div style={{ fontWeight: '700', color: 'var(--text)', fontSize: '0.95rem' }}>{method.label}</div>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{method.desc}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Donate Button */}
+          <button onClick={() => {
+            const amt = (document.getElementById('donate-amount') as HTMLInputElement)?.value;
+            if (!amt || Number(amt) <= 0) { (window as any).showToast('Please enter a valid donation amount'); return; }
+            const selected = document.querySelector('.pay-method[style*="var(--secondary)"]');
+            if (!selected) { (window as any).showToast('Please select a payment method'); return; }
+            const popup = document.getElementById('donate-popup');
+            if (popup) popup.style.display = 'flex';
+          }} style={{
+            width: '100%', padding: '1rem', borderRadius: '14px', border: 'none',
+            background: 'linear-gradient(135deg, var(--primary), var(--secondary))', color: '#fff',
+            fontSize: '1.1rem', fontWeight: '700', fontFamily: 'var(--font-display)', cursor: 'pointer',
+            boxShadow: '0 8px 25px rgba(155,122,62,0.3)', transition: 'all 0.3s', letterSpacing: '0.03em'
+          }}>Donate Now</button>
+
+          {/* Tax Benefits */}
+          <div style={{ marginTop: '1.5rem', padding: '1.2rem', background: 'var(--glass)', border: '1px solid var(--glass-border)', borderRadius: '14px', textAlign: 'center' }}>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.7' }}>
+              <strong style={{ color: 'var(--secondary)' }}>Tax Benefits:</strong> All donations are eligible for tax exemption under Section 80G of the Income Tax Act.
+            </p>
+          </div>
+
+          {/* Back to Home */}
+          <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
+            <button onClick={() => (window as any).showPage('home')} style={{
+              padding: '0.7rem 2rem', borderRadius: '12px', border: '1.5px solid var(--glass-border)',
+              background: 'transparent', color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: '600',
+              cursor: 'pointer', transition: 'all 0.3s'
+            }}>← Back to Home</button>
+          </div>
+        </div>
+      </div>
+
+      {/* ========== DONATE SUCCESS POPUP ========== */}
+      <div id="donate-popup" style={{ display: 'none', position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.6)', zIndex: 9999, alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }}>
+        <div style={{ background: '#fff', borderRadius: '24px', padding: '3rem 2.5rem', maxWidth: '420px', width: '90%', textAlign: 'center', boxShadow: '0 25px 60px rgba(0,0,0,0.3)', position: 'relative' }}>
+          <button onClick={() => { const p = document.getElementById('donate-popup'); if (p) p.style.display = 'none'; }} style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', fontSize: '1.4rem', cursor: 'pointer', color: '#999' }}>✕</button>
+          <div style={{ width: '70px', height: '70px', borderRadius: '50%', background: 'linear-gradient(135deg, #10b981, #059669)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </div>
+          <h3 style={{ fontSize: '1.4rem', fontWeight: '800', color: '#1a1a2e', marginBottom: '0.5rem', fontFamily: 'var(--font-display)' }}>Transaction Initiated</h3>
+          <p style={{ fontSize: '0.95rem', color: '#666', lineHeight: '1.6', marginBottom: '0.5rem' }}>Your payment is being processed securely.</p>
+          <p style={{ fontSize: '0.85rem', color: '#999', lineHeight: '1.6', marginBottom: '1.5rem' }}>You will receive a confirmation on your registered mobile number and email once the transaction is complete.</p>
+          <div style={{ padding: '1rem', background: '#f0fdf4', borderRadius: '12px', border: '1px solid #bbf7d0', marginBottom: '1.5rem' }}>
+            <p style={{ fontSize: '0.82rem', color: '#166534', lineHeight: '1.5' }}>For any queries, contact us at <strong>+91 9494808589</strong> or email <strong>info@incuxaieducationtrust.org</strong></p>
+          </div>
+          <button onClick={() => { const p = document.getElementById('donate-popup'); if (p) p.style.display = 'none'; (window as any).showPage('home'); }} style={{
+            padding: '0.8rem 2.5rem', borderRadius: '12px', border: 'none',
+            background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff',
+            fontSize: '0.95rem', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 15px rgba(16,185,129,0.3)'
+          }}>Done</button>
         </div>
       </div>
 
@@ -4112,6 +4238,7 @@ export default function App() {
               <li><a onClick={() => (window as any).showPage('gallery')}>Gallery</a></li>
               <li><a onClick={() => (window as any).showPage('volunteer')}>Volunteer</a></li>
               <li><a onClick={() => (window as any).showPage('contact')}>Contact Us</a></li>
+              <li><a onClick={() => (window as any).showPage('donate')}>Donate</a></li>
             </ul>
           </div>
           <div className="footer-col">

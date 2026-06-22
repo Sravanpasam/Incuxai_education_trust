@@ -3632,102 +3632,16 @@ footer {
 
 /* ============ 3D CINEMATIC HERO TITLE ANIMATION (FLY AWAY FROM FACE) ============ */
 .creative-hero-title {
-  perspective: 1200px;
-  transform-style: preserve-3d;
   display: flex;
   justify-content: center;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 0.05em;
-  animation: none !important;
-  background: none !important;
-  -webkit-background-clip: initial !important;
-  -webkit-text-fill-color: initial !important;
-  background-clip: initial !important;
-  filter: none !important;
-}
-
-.creative-hero-title .char {
-  display: inline-block;
-  opacity: 0;
-  color: #ffffff !important;
-  background: none !important;
-  -webkit-text-fill-color: #ffffff !important;
-  text-shadow: 
-    0 1px 0 #FFF6E5, 
-    0 2px 0 #B89047, 
-    0 3px 0 #9B7A3E, 
-    0 4px 0 #7D6334, 
-    0 5px 0 #5C461F, 
-    0 6px 1px rgba(0, 0, 0, 0.4), 
-    0 0 10px rgba(155, 122, 62, 0.5), 
-    0 10px 20px rgba(0, 0, 0, 0.6);
-    transform: translate3d(0, 0, 600px) scale(10);
-  font-family: 'Cuaniex Trial', 'Inter', sans-serif;
-  font-weight: 300;
-  animation: flyAndGrow 2s cubic-bezier(0.16, 1, 0.3, 1) forwards,
-             gentleFloat 4s ease-in-out infinite 2.2s alternate;
-  transform-style: preserve-3d;
-  will-change: transform, opacity, font-weight;
+  color: #ffffff;
+  text-shadow: 0 2px 20px rgba(0,0,0,0.4);
 }
 
 .creative-hero-title .space {
   display: inline-block;
   width: 0.35em;
-}
-
-/* Stagger animation delays for each letter of "AI FOR ALL" */
-.creative-hero-title .char:nth-child(1) { animation-delay: 0.1s, 2.3s; }  /* A */
-.creative-hero-title .char:nth-child(2) { animation-delay: 0.25s, 2.45s; } /* I */
-.creative-hero-title .char:nth-child(4) { animation-delay: 0.4s, 2.6s; }  /* F */
-.creative-hero-title .char:nth-child(5) { animation-delay: 0.55s, 2.75s; } /* O */
-.creative-hero-title .char:nth-child(6) { animation-delay: 0.7s, 2.9s; }  /* R */
-.creative-hero-title .char:nth-child(8) { animation-delay: 0.85s, 3.05s; } /* A */
-.creative-hero-title .char:nth-child(9) { animation-delay: 1.0s, 3.2s; }  /* L */
-.creative-hero-title .char:nth-child(10) { animation-delay: 1.15s, 3.35s; } /* L */
-
-/* 3D Entry Animation (Starts huge near camera/face, shrinks and goes away into screen) */
-@keyframes flyAndGrow {
-  0% {
-    opacity: 0;
-    transform: translate3d(0, 0, 600px) scale(10);
-    font-weight: 300;
-  }
-  35% {
-    opacity: 0.9;
-  }
-  85% {
-    opacity: 1;
-    transform: translate3d(0, 0, -25px) scale(0.95);
-    font-weight: 800;
-  }
-  100% {
-    opacity: 1;
-    transform: translate3d(0, 0, 0) scale(1);
-    font-weight: 800;
-  }
-}
-
-/* Post-landing continuous 3D idle floating */
-@keyframes gentleFloat {
-  0% {
-    transform: translate3d(0, 0, 0) rotateX(0deg) rotateY(0deg);
-  }
-  50% {
-    transform: translate3d(0, -6px, 15px) rotateX(5deg) rotateY(5deg);
-    text-shadow: 
-      0 1px 0 #FFF6E5, 
-      0 2px 0 #B89047, 
-      0 3px 0 #9B7A3E, 
-      0 4px 0 #7D6334, 
-      0 5px 0 #5C461F, 
-      0 8px 3px rgba(0, 0, 0, 0.5), 
-      0 0 15px rgba(155, 122, 62, 0.6), 
-      0 15px 30px rgba(0, 0, 0, 0.7);
-  }
-  100% {
-    transform: translate3d(0, 0, 0) rotateX(0deg) rotateY(0deg);
-  }
 }
 
 
@@ -4896,7 +4810,7 @@ footer {
   }
 
   /* Creative Hero Title */
-  .creative-hero-title .char {
+  .creative-hero-title {
     font-size: clamp(1.6rem, 11vw, 2.5rem);
   }
 
