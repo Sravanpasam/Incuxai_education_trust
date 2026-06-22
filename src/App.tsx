@@ -2642,11 +2642,6 @@ export default function App() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginTop: '2rem' }}>
             {[
-              { icon: '🎓', title: 'AI for Students', desc: 'Free AI courses, study tools, career guidance, and interactive learning for students from school to university.', link: 'ai4all' },
-              { icon: '🌾', title: 'AI for Farmers', desc: 'Crop disease detection, smart agriculture tools, and AI-powered farming techniques in local languages.', link: 'ai4all' },
-              { icon: '👩‍🏫', title: 'AI for Teachers', desc: 'Personalized teaching tools, AI lesson planning, student assessment automation, and classroom innovation.', link: 'ai4all' },
-              { icon: '💼', title: 'AI for MSMEs', desc: 'Business automation, AI marketing, customer engagement tools, and digital transformation for small businesses.', link: 'ai4all' },
-              { icon: '🧒', title: 'AI for Kids', desc: 'Fun, interactive AI learning through games, creative projects, and age-appropriate technology exposure.', link: 'ai4all' },
               { icon: '📚', title: 'Free Online Courses', desc: 'Self-paced courses on ChatGPT, Canva AI, Prompt Engineering, Google Tools, and more — completely free.', link: 'ai4all' },
               { icon: '🤝', title: 'Volunteer Network', desc: 'Join 5,000+ volunteers across 22 states delivering AI literacy in Hindi, Telugu, Tamil, Kannada, and more.', link: 'volunteer' },
               { icon: '🏫', title: 'TeachXai', desc: 'AI training program for educators — earn certificates, build lesson plans, and bring AI into your classroom.', link: 'teachxai' }
