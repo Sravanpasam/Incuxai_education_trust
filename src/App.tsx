@@ -4178,7 +4178,7 @@ export default function App() {
               if (!res.ok) throw new Error(data.error || 'Failed to create order');
 
               const options = {
-                key: (window as any).import.meta?.env?.VITE_RAZORPAY_KEY_ID || 'rzp_test_T59haDglDKaK4W',
+                key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_T59haDglDKaK4W',
                 amount: data.amount,
                 currency: data.currency,
                 name: 'IncuXai Education Trust',
