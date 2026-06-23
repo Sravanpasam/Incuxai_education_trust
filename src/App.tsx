@@ -4167,7 +4167,7 @@ export default function App() {
             const amountInPaise = Math.round(Number(amt) * 100);
 
             try {
-              const res = await fetch('http://localhost:3001/api/create-order', {
+              const res = await fetch('/api/create-order', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ amount: amountInPaise, currency: 'INR', receipt: `donation_${Date.now()}` }),
@@ -4184,7 +4184,7 @@ export default function App() {
                 order_id: data.order_id,
                 handler: async function (response: any) {
                   try {
-                    const verifyRes = await fetch('http://localhost:3001/api/verify-payment', {
+                    const verifyRes = await fetch('/api/verify-payment', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
