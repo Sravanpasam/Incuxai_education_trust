@@ -5,11 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
-    "server": "node server.js",
-    "start": "concurrently \"node server.js\" \"vite --port=3000 --host=0.0.0.0\"",
+    "server": "node server.cjs",
+    "start": "concurrently \"node server.cjs\" \"vite --port=3000 --host=0.0.0.0\"",
     "build": "vite build",
     "preview": "vite preview",
-    "clean": "rm -rf dist server.js",
+    "clean": "rm -rf dist server.cjs",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
