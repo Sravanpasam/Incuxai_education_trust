@@ -4269,6 +4269,9 @@ export default function App() {
             fontSize: '1.1rem', fontWeight: '700', fontFamily: 'var(--font-display)', cursor: 'pointer',
             boxShadow: '0 8px 25px rgba(155,122,62,0.3)', transition: 'all 0.3s', letterSpacing: '0.03em'
           }}>Donate Now</button>
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: '0.6rem', lineHeight: '1.5' }}>
+            Test mode: Use UPI (enter <strong>success@razorpay</strong> in Razorpay modal) or Net Banking to test payment.
+          </p>
 
           {/* Tax Benefits */}
           <div style={{ marginTop: '1.5rem', padding: '1.2rem', background: 'var(--glass)', border: '1px solid var(--glass-border)', borderRadius: '14px', textAlign: 'center' }}>
