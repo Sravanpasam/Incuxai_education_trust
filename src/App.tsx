@@ -4141,7 +4141,9 @@ export default function App() {
                   document.querySelectorAll('.pay-method').forEach(d => { (d as HTMLElement).style.borderColor = 'var(--glass-border)'; (d as HTMLElement).style.background = 'rgba(255,255,255,0.02)'; });
                   (e.currentTarget as HTMLElement).style.borderColor = 'var(--secondary)';
                   (e.currentTarget as HTMLElement).style.background = 'rgba(155,122,62,0.06)';
-                }} className="pay-method" style={{
+                  const upiField = document.getElementById('upi-id-field');
+                  if (upiField) upiField.style.display = method.id === 'upi' ? 'block' : 'none';
+                }} className="pay-method" data-method={method.id} style={{
                   border: '1.5px solid var(--glass-border)', borderRadius: '14px', padding: '1.2rem', cursor: 'pointer',
                   transition: 'all 0.2s', background: 'rgba(255,255,255,0.02)'
                 }}>
@@ -4155,14 +4157,29 @@ export default function App() {
                 </div>
               ))}
             </div>
+            {/* UPI ID Input */}
+            <div id="upi-id-field" style={{ display: 'none', marginTop: '1rem' }}>
+              <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.4rem' }}>Enter your UPI ID</label>
+              <input id="upi-id" type="text" placeholder="yourname@upi" style={{
+                width: '100%', padding: '0.8rem 1rem', borderRadius: '10px', border: '1.5px solid var(--glass-border)',
+                background: 'rgba(255,255,255,0.04)', color: 'var(--text)', fontSize: '0.95rem', fontFamily: 'var(--font-body)',
+                outline: 'none', boxSizing: 'border-box'
+              }} />
+            </div>
           </div>
 
           {/* Donate Button */}
           <button onClick={async () => {
             const amt = (document.getElementById('donate-amount') as HTMLInputElement)?.value;
             if (!amt || Number(amt) <= 0) { (window as any).showToast('Please enter a valid donation amount'); return; }
-            const selected = document.querySelector('.pay-method[style*="var(--secondary)"]');
-            if (!selected) { (window as any).showToast('Please select a payment method'); return; }
+            const selectedMethod = document.querySelector('.pay-method[style*="var(--secondary)"]') as HTMLElement;
+            if (!selectedMethod) { (window as any).showToast('Please select a payment method'); return; }
+
+            const methodId = selectedMethod.getAttribute('data-method');
+            if (methodId === 'upi') {
+              const upiVal = (document.getElementById('upi-id') as HTMLInputElement)?.value?.trim();
+              if (!upiVal || !upiVal.includes('@')) { (window as any).showToast('Please enter a valid UPI ID (e.g. name@upi)'); return; }
+            }
 
             const amountInPaise = Math.round(Number(amt) * 100);
 
@@ -4177,46 +4194,59 @@ export default function App() {
               try { data = JSON.parse(text); } catch { throw new Error('Server unreachable. Please make sure the backend is running on port 3001.'); }
               if (!res.ok) throw new Error(data.error || 'Failed to create order');
 
-              const options = {
+              const handler = async function (response: any) {
+                try {
+                  const verifyRes = await fetch('/api/verify-payment', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      razorpay_order_id: response.razorpay_order_id,
+                      razorpay_payment_id: response.razorpay_payment_id,
+                      razorpay_signature: response.razorpay_signature,
+                    }),
+                  });
+                  const vText = await verifyRes.text();
+                  let verifyData: any;
+                  try { verifyData = JSON.parse(vText); } catch { verifyData = { status: 'pending' }; }
+                  if (verifyData.status === 'success') {
+                    const popup = document.getElementById('donate-popup');
+                    if (popup) popup.style.display = 'flex';
+                  } else {
+                    (window as any).showToast('Payment verification failed. Please contact support.');
+                  }
+                } catch {
+                  (window as any).showToast('Payment received. Verification pending — we will confirm shortly.');
+                  const popup = document.getElementById('donate-popup');
+                  if (popup) popup.style.display = 'flex';
+                }
+              };
+
+              const prefilled: any = {};
+              if (methodId === 'upi') {
+                prefilled.vpa = (document.getElementById('upi-id') as HTMLInputElement)?.value?.trim();
+              }
+
+              const instrument = methodId === 'upi' ? [{ method: 'upi' }] : methodId === 'card' ? [{ method: 'card' }] : methodId === 'netbanking' ? [{ method: 'netbanking' }] : [{ method: 'wallet' }];
+
+              const options: any = {
                 key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_T59haDglDKaK4W',
                 amount: data.amount,
                 currency: data.currency,
                 name: 'IncuXai Education Trust',
                 description: 'Donation for AI Education',
                 order_id: data.order_id,
-                handler: async function (response: any) {
-                  try {
-                    const verifyRes = await fetch('/api/verify-payment', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        razorpay_order_id: response.razorpay_order_id,
-                        razorpay_payment_id: response.razorpay_payment_id,
-                        razorpay_signature: response.razorpay_signature,
-                      }),
-                    });
-                    const vText = await verifyRes.text();
-                    let verifyData: any;
-                    try { verifyData = JSON.parse(vText); } catch { verifyData = { status: 'pending' }; }
-                    if (verifyData.status === 'success') {
-                      const popup = document.getElementById('donate-popup');
-                      if (popup) popup.style.display = 'flex';
-                    } else {
-                      (window as any).showToast('Payment verification failed. Please contact support.');
+                handler,
+                prefill: prefilled,
+                theme: { color: '#9B7A3E' },
+                config: {
+                  display: {
+                    blocks: {
+                      utib: {
+                        name: 'Pay using',
+                        instruments: instrument,
+                      }
                     }
-                  } catch {
-                    (window as any).showToast('Payment received. Verification pending — we will confirm shortly.');
-                    const popup = document.getElementById('donate-popup');
-                    if (popup) popup.style.display = 'flex';
                   }
-                },
-                prefill: {
-                  name: '',
-                  email: '',
-                  contact: '',
-                },
-                theme: {
-                  color: '#9B7A3E',
                 },
                 modal: {
                   ondismiss: function () {
