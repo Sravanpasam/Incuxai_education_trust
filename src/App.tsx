@@ -4172,7 +4172,9 @@ export default function App() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ amount: amountInPaise, currency: 'INR', receipt: `donation_${Date.now()}` }),
               });
-              const data = await res.json();
+              const text = await res.text();
+              let data: any;
+              try { data = JSON.parse(text); } catch { throw new Error('Server unreachable. Please make sure the backend is running on port 3001.'); }
               if (!res.ok) throw new Error(data.error || 'Failed to create order');
 
               const options = {
@@ -4193,7 +4195,9 @@ export default function App() {
                         razorpay_signature: response.razorpay_signature,
                       }),
                     });
-                    const verifyData = await verifyRes.json();
+                    const vText = await verifyRes.text();
+                    let verifyData: any;
+                    try { verifyData = JSON.parse(vText); } catch { verifyData = { status: 'pending' }; }
                     if (verifyData.status === 'success') {
                       const popup = document.getElementById('donate-popup');
                       if (popup) popup.style.display = 'flex';
