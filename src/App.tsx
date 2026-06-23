@@ -4158,13 +4158,77 @@ export default function App() {
           </div>
 
           {/* Donate Button */}
-          <button onClick={() => {
+          <button onClick={async () => {
             const amt = (document.getElementById('donate-amount') as HTMLInputElement)?.value;
             if (!amt || Number(amt) <= 0) { (window as any).showToast('Please enter a valid donation amount'); return; }
             const selected = document.querySelector('.pay-method[style*="var(--secondary)"]');
             if (!selected) { (window as any).showToast('Please select a payment method'); return; }
-            const popup = document.getElementById('donate-popup');
-            if (popup) popup.style.display = 'flex';
+
+            const amountInPaise = Math.round(Number(amt) * 100);
+
+            try {
+              const res = await fetch('http://localhost:3001/api/create-order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount: amountInPaise, currency: 'INR', receipt: `donation_${Date.now()}` }),
+              });
+              const data = await res.json();
+              if (!res.ok) throw new Error(data.error || 'Failed to create order');
+
+              const options = {
+                key: (window as any).import.meta?.env?.VITE_RAZORPAY_KEY_ID || 'rzp_test_T59haDglDKaK4W',
+                amount: data.amount,
+                currency: data.currency,
+                name: 'IncuXai Education Trust',
+                description: 'Donation for AI Education',
+                order_id: data.order_id,
+                handler: async function (response: any) {
+                  try {
+                    const verifyRes = await fetch('http://localhost:3001/api/verify-payment', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        razorpay_order_id: response.razorpay_order_id,
+                        razorpay_payment_id: response.razorpay_payment_id,
+                        razorpay_signature: response.razorpay_signature,
+                      }),
+                    });
+                    const verifyData = await verifyRes.json();
+                    if (verifyData.status === 'success') {
+                      const popup = document.getElementById('donate-popup');
+                      if (popup) popup.style.display = 'flex';
+                    } else {
+                      (window as any).showToast('Payment verification failed. Please contact support.');
+                    }
+                  } catch {
+                    (window as any).showToast('Payment received. Verification pending — we will confirm shortly.');
+                    const popup = document.getElementById('donate-popup');
+                    if (popup) popup.style.display = 'flex';
+                  }
+                },
+                prefill: {
+                  name: '',
+                  email: '',
+                  contact: '',
+                },
+                theme: {
+                  color: '#9B7A3E',
+                },
+                modal: {
+                  ondismiss: function () {
+                    (window as any).showToast('Payment cancelled.');
+                  },
+                },
+              };
+              const rzp = new (window as any).Razorpay(options);
+              rzp.on('payment.failed', function (response: any) {
+                (window as any).showToast('Payment failed. Please try again.');
+                console.error('Payment failed:', response.error);
+              });
+              rzp.open();
+            } catch (err: any) {
+              (window as any).showToast(err.message || 'Something went wrong. Please try again.');
+            }
           }} style={{
             width: '100%', padding: '1rem', borderRadius: '14px', border: 'none',
             background: 'linear-gradient(135deg, var(--primary), var(--secondary))', color: '#fff',
