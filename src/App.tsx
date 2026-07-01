@@ -4191,7 +4191,7 @@ export default function App() {
               });
               const text = await res.text();
               let data: any;
-              try { data = JSON.parse(text); } catch { throw new Error('Server unreachable. Please make sure the backend is running on port 3001.'); }
+              try { data = JSON.parse(text); } catch { throw new Error('Payment server is currently unavailable. Please try again later.'); }
               if (!res.ok) throw new Error(data.error || 'Failed to create order');
 
               const handler = async function (response: any) {
