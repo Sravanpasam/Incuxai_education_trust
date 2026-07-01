@@ -20,6 +20,11 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', key: process.env.RAZORPAY_KEY_ID ? 'configured' : 'missing' });
 });
 
+// Root route
+app.get('/', (req, res) => {
+  res.json({ message: 'IncuXai Payment Backend is running. Frontend should be on port 3000.' });
+});
+
 // Create Order
 app.post('/api/create-order', async (req, res) => {
   try {
