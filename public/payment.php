@@ -1,6 +1,6 @@
 <?php
 /**
- * iit-payment.php
+ * payment.php
  * Verification and payment initialization page for the IIT Program.
  * Pricing: Selected (Accepted) ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¹1800 + 2% | Others ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¹4000 + 2%
  */
@@ -497,7 +497,7 @@ if (!empty($search)) {
                     <p style="color: var(--text-secondary); text-align: center; margin-bottom: 20px; font-size: 0.95rem;">
                         Enter your registered email or phone number to verify your selection status and proceed to payment.
                     </p>
-                    <form method="GET" action="iit-payment.php" class="search-form">
+                    <form method="GET" action="payment.php" class="search-form">
                         <div class="form-group" style="margin-bottom: 20px;">
                             <label for="search" class="form-label" style="display: block; margin-bottom: 8px; color: var(--text-primary); font-weight: 500;">Email or Phone Number</label>
                             <input type="text" id="search" name="search" class="form-input" 
@@ -558,16 +558,16 @@ if (!empty($search)) {
                     <div style="border: 1px solid var(--neon-success); padding: 15px; border-radius: 8px; background: rgba(0, 255, 163, 0.05); color: var(--neon-success); text-align: center;">
                         <i class="bi bi-check-circle-fill"></i> You have already paid and confirmed your seat!
                     </div>
-                    <a href="iit-payment.php" class="back-link"><i class="bi bi-arrow-left"></i> Check another registration</a>
+                    <a href="payment.php" class="back-link"><i class="bi bi-arrow-left"></i> Check another registration</a>
 
                 <?php elseif ($candidate['payment_status'] === 'not_required'): ?>
                     <div style="border: 1px solid var(--neon-warning); padding: 15px; border-radius: 8px; background: rgba(255, 209, 102, 0.05); color: var(--neon-warning); text-align: center;">
                         <i class="bi bi-info-circle-fill"></i> Your registration does not require payment.
                     </div>
-                    <a href="iit-payment.php" class="back-link"><i class="bi bi-arrow-left"></i> Check another registration</a>
+                    <a href="payment.php" class="back-link"><i class="bi bi-arrow-left"></i> Check another registration</a>
 
                                 <?php else: ?>
-                    <form method="POST" action="handlers/process-iit-payment.php" id="payment-form">
+                    <form method="POST" action="handlers/process-payment.php" id="payment-form">
                         <input type="hidden" name="csrf_token" value="<?php echo $csrf; ?>">
                         <input type="hidden" name="registration_id" value="<?php echo $candidate['id']; ?>">
                         <input type="hidden" name="coupon" id="applied_coupon" value="">
@@ -585,7 +585,7 @@ if (!empty($search)) {
                             Proceed to Secure Payment <i class="bi bi-shield-lock-fill"></i>
                         </button>
                     </form>
-                    <a href="iit-payment.php" class="back-link" style="display: block; text-align: center; margin-top: 20px; color: var(--text-secondary); text-decoration: none;"><i class="bi bi-arrow-left"></i> Verify a different email/phone</a>
+                    <a href="payment.php" class="back-link" style="display: block; text-align: center; margin-top: 20px; color: var(--text-secondary); text-decoration: none;"><i class="bi bi-arrow-left"></i> Verify a different email/phone</a>
                 <?php endif; // end payment_status check ?>
             <?php endif; // end candidate check ?>
 

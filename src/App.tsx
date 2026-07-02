@@ -262,7 +262,7 @@ export default function App() {
         .then(data => {
           if (data.error) {
             setPaymentError(data.error);
-            window.location.href = (import.meta.env.VITE_MAIN_SITE_URL || 'http://localhost:8000') + '/iit-payment.php';
+            window.location.href = (import.meta.env.VITE_MAIN_SITE_URL || 'http://localhost:8000') + '/payment.php';
             return;
           }
           
@@ -304,7 +304,7 @@ export default function App() {
               theme: { color: '#9B7A3E' },
               modal: {
                 ondismiss: function() {
-                  window.location.href = (import.meta.env.VITE_MAIN_SITE_URL || 'http://localhost:8000') + '/iit-payment.php';
+                  window.location.href = (import.meta.env.VITE_MAIN_SITE_URL || 'http://localhost:8000') + '/payment.php';
                 }
               }
             };
