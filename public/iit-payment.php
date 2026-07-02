@@ -78,7 +78,7 @@ if (!empty($search)) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Program Payment - IIT Hyderabad AI Innovation Program | IncuXai</title>
+    <title>Program Payment - IIT AI Innovation Program | IncuXai</title>
     <link rel="icon" href="/assets/favicon.ico" type="image/x-icon" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -483,7 +483,7 @@ if (!empty($search)) {
 
             <div class="header-title">
                 <h1>IIT Program Payment</h1>
-                <p>IIT Hyderabad AI Innovation &amp; Career Experience Program</p>
+                <p>IIT AI Innovation &amp; Career Experience Program</p>
             </div>
 
             <?php if ($error): ?>

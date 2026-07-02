@@ -1198,7 +1198,7 @@ export default function App() {
               <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=200&auto=format&fit=crop" alt="Dr. Arjun Reddy" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />
               <div className="card-title">Dr. Arjun Reddy</div>
               <div style={{ fontSize: '0.8rem', color: 'var(--secondary)', fontWeight: 600, marginBottom: '0.5rem' }}>Founder & CEO</div>
-              <div className="card-text">IIT Hyderabad alumnus. 15+ years in AI research and rural education.</div>
+              <div className="card-text">IIT alumnus. 15+ years in AI research and rural education.</div>
             </div>
             <div className="card" style={{ textAlign: 'center' }}>
               <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&auto=format&fit=crop" alt="Dr. Priya Sharma" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', marginBottom: '0.5rem', display: 'inline-block' }} />

@@ -336,7 +336,7 @@ if (empty($token) || strlen($token) !== 64 || !ctype_xdigit($token)) {
             <div class="whatsapp-box">
                 <p style="margin-bottom: 0.5rem; font-weight: 700; color: #25d366; font-size: 1.05rem;">📱 Join the Official WhatsApp Group</p>
                 <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;">
-                    Please join the official group to receive important updates, event schedules, and instructions regarding the IIT Hyderabad Visit.
+                    Please join the official group to receive important updates, event schedules, and instructions regarding the IIT Visit.
                 </p>
                 <a href="https://chat.whatsapp.com/B6DweDCBMXPIg9nQh1bofy" target="_blank" class="btn-whatsapp">
                     Join WhatsApp Group <i class="bi bi-whatsapp"></i>
