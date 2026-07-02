@@ -1,12 +1,12 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const Razorpay = require('razorpay');
-const crypto = require('crypto');
-const mysql = require('mysql2/promise');
+import 'dotenv/config';
+import express from 'express';
+import cors from 'cors';
+import Razorpay from 'razorpay';
+import crypto from 'crypto';
+import mysql from 'mysql2/promise';
 
 const app = express();
-const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['http://localhost:3000', 'http://localhost:8000'];
+const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['http://localhost:3000', 'http://localhost:8000', 'https://www.incuxaieducationtrust.org'];
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin || allowedOrigins.indexOf(origin) !== -1) {
@@ -21,8 +21,8 @@ app.use(express.json());
 console.log('RAZORPAY_KEY_ID:', process.env.RAZORPAY_KEY_ID ? 'Set' : 'Missing');
 
 const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
+  key_id: process.env.RAZORPAY_KEY_ID || '',
+  key_secret: process.env.RAZORPAY_KEY_SECRET || '',
 });
 
 // Database Connection
@@ -42,7 +42,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // Root route
-app.get('/', (req, res) => {
+app.get('/api', (req, res) => {
   res.json({ message: 'IncuXai Payment Backend is running. Frontend should be on port 3000.' });
 });
 
@@ -66,7 +66,6 @@ app.get('/api/get-registration/:reg_code', async (req, res) => {
       return res.status(400).json({ error: 'Payment already completed for this registration' });
     }
 
-    // Amount logic: 5500 INR for all, discount to 5000 if valid coupon
     let baseAmount = 5500;
     
     const coupon = req.query.coupon ? req.query.coupon.trim().toUpperCase() : '';
@@ -76,7 +75,6 @@ app.get('/api/get-registration/:reg_code', async (req, res) => {
       baseAmount = 5000;
     }
 
-    // Add 2% platform fee
     const finalAmount = baseAmount + (baseAmount * 0.02);
     const amountInPaise = Math.round(finalAmount * 100);
 
@@ -99,7 +97,7 @@ app.post('/api/create-order', async (req, res) => {
     console.log('Create order request:', { amount, currency, receipt });
 
     if (!amount || amount < 100) {
-      return res.status(400).json({ error: 'Amount must be at least 100 paise (₹1)' });
+      return res.status(400).json({ error: 'Amount must be at least 100 paise' });
     }
 
     const order = await razorpay.orders.create({
@@ -131,18 +129,16 @@ app.post('/api/verify-payment', async (req, res) => {
 
     const body = razorpay_order_id + '|' + razorpay_payment_id;
     const expectedSignature = crypto
-      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || '')
       .update(body)
       .digest('hex');
 
     if (expectedSignature === razorpay_signature) {
       console.log('Payment verified:', razorpay_payment_id);
 
-      // Generate a success token (like PHP logic)
       const successToken = crypto.randomBytes(32).toString('hex');
       const expiry = new Date(Date.now() + 5 * 60 * 1000); // 5 mins
 
-      // Update Database
       await pool.query(
         `UPDATE iit_visit_registrations 
          SET payment_status = 'completed',
@@ -179,4 +175,4 @@ if (process.env.NODE_ENV !== 'production') {
   });
 }
 
-module.exports = app;
+export default app;
