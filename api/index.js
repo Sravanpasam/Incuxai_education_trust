@@ -6,7 +6,7 @@ import crypto from 'crypto';
 import mysql from 'mysql2/promise';
 
 const app = express();
-const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['http://localhost:3000', 'http://localhost:8000', 'https://www.incuxaieducationtrust.org'];
+const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['http://localhost:3000', 'http://localhost:8000', 'https://www.incuxaieducationtrust.org', 'https://incuxai.com', 'https://www.incuxai.com'];
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin || allowedOrigins.indexOf(origin) !== -1) {
