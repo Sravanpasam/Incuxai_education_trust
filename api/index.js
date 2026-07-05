@@ -16,6 +16,8 @@ app.use(cors({
     }
   }
 }));
+// Raw body parser for Razorpay webhook signature verification
+app.use('/api/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json());
 
 console.log('RAZORPAY_KEY_ID:', process.env.RAZORPAY_KEY_ID ? 'Set' : 'Missing');
@@ -166,6 +168,97 @@ app.post('/api/verify-payment', async (req, res) => {
     console.error('Verify payment error:', err);
     res.status(500).json({ error: 'Payment verification failed' });
   }
+});
+
+// ── Razorpay Webhook ─────────────────────────────────────────────────────────
+// Set RAZORPAY_WEBHOOK_SECRET in your Vercel environment variables.
+// In Razorpay Dashboard → Settings → Webhooks → add this URL and secret.
+app.post('/api/webhook', async (req, res) => {
+  const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || '';
+
+  if (!webhookSecret) {
+    console.error('RAZORPAY_WEBHOOK_SECRET is not set');
+    return res.status(500).json({ error: 'Webhook secret not configured' });
+  }
+
+  // Verify Razorpay signature
+  const razorpaySignature = req.headers['x-razorpay-signature'];
+  const rawBody = req.body; // raw buffer due to express.raw()
+
+  const expectedSignature = crypto
+    .createHmac('sha256', webhookSecret)
+    .update(rawBody)
+    .digest('hex');
+
+  if (expectedSignature !== razorpaySignature) {
+    console.warn('Webhook signature mismatch — possible spoofed request');
+    return res.status(400).json({ error: 'Invalid signature' });
+  }
+
+  let event;
+  try {
+    event = JSON.parse(rawBody.toString());
+  } catch (e) {
+    return res.status(400).json({ error: 'Invalid JSON body' });
+  }
+
+  console.log('Razorpay webhook event:', event.event);
+
+  // Handle payment.captured — triggered when payment is successfully captured
+  if (event.event === 'payment.captured') {
+    const payment    = event.payload.payment.entity;
+    const orderId    = payment.order_id;
+    const paymentId  = payment.id;
+    const amountPaid = payment.amount; // in paise
+
+    try {
+      // Find the registration linked to this order
+      const [rows] = await pool.query(
+        'SELECT registration_code, payment_status FROM iit_visit_registrations WHERE razorpay_order_id = ? LIMIT 1',
+        [orderId]
+      );
+
+      if (rows.length === 0) {
+        console.warn('Webhook: No registration found for order', orderId);
+        return res.status(200).json({ status: 'ignored', reason: 'no registration found' });
+      }
+
+      const reg = rows[0];
+
+      // Skip if already completed (idempotency)
+      if (reg.payment_status === 'completed') {
+        console.log('Webhook: Payment already completed for', reg.registration_code);
+        return res.status(200).json({ status: 'already_completed' });
+      }
+
+      // Generate a success token (5-min TTL)
+      const successToken = crypto.randomBytes(32).toString('hex');
+      const expiry = new Date(Date.now() + 5 * 60 * 1000);
+
+      await pool.query(
+        `UPDATE iit_visit_registrations
+         SET payment_status      = 'completed',
+             completed_at        = NOW(),
+             razorpay_payment_id = ?,
+             amount_paid         = ?,
+             success_token       = ?,
+             token_used          = 0,
+             token_expires_at    = ?
+         WHERE razorpay_order_id = ? AND payment_status != 'completed'`,
+        [paymentId, amountPaid, successToken, expiry, orderId]
+      );
+
+      console.log('Webhook: Payment marked completed for', reg.registration_code);
+      return res.status(200).json({ status: 'success' });
+
+    } catch (err) {
+      console.error('Webhook DB error:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+  }
+
+  // Acknowledge all other events
+  res.status(200).json({ status: 'received' });
 });
 
 if (process.env.NODE_ENV !== 'production') {
