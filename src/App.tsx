@@ -277,9 +277,17 @@ export default function App() {
               key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_T89U7UEA6mDKNX',
               amount: orderData.amount,
               currency: orderData.currency,
-              name: 'Incuxeducation Trust',
+              name: 'IncuXai Education Trust',
               description: 'IIT Visit Program Payment',
               order_id: orderData.order_id,
+              prefill: {
+                name: data.name || '',
+                email: data.email || '',
+                contact: data.phone || '',
+              },
+              notes: {
+                registration_code: regCode,
+              },
               handler: function (response) {
                 fetch((import.meta.env.VITE_PAYMENT_API_URL || 'http://localhost:3001') + '/api/verify-payment', {
                   method: 'POST',
