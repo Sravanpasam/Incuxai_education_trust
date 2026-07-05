@@ -295,7 +295,7 @@ export default function App() {
                 .then(res => res.json())
                 .then(verifyData => {
                   if (verifyData.status === 'success') {
-                    window.location.href = (import.meta.env.VITE_MAIN_SITE_URL || 'http://localhost:8000') + '/iit-payment-success.php?t=' + verifyData.success_token;
+                    window.location.href = (import.meta.env.VITE_MAIN_SITE_URL || 'http://localhost:8000') + '/payment-confirm.php?t=' + verifyData.success_token;
                   } else {
                     setPaymentError('Verification failed. Please contact support.');
                   }
