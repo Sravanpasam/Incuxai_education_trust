@@ -68,13 +68,13 @@ app.get('/api/get-registration/:reg_code', async (req, res) => {
       return res.status(400).json({ error: 'Payment already completed for this registration' });
     }
 
-    let baseAmount = 5500;
+    let baseAmount = 5000;
     
     const coupon = req.query.coupon ? req.query.coupon.trim().toUpperCase() : '';
     const validCoupons = ['YASH500', 'RAVI500', 'SRI500', 'SIRI500', 'VAMSI500', 'PREET500', 'INCUX500', 'BINDHU500', 'HARINI500', 'DEVA500', 'SAI500', 'CHANDU500'];
     
     if (validCoupons.includes(coupon)) {
-      baseAmount = 5000;
+      baseAmount = 4500;
     }
 
     const finalAmount = baseAmount + (baseAmount * 0.02);
