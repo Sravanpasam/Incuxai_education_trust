@@ -74,7 +74,7 @@ app.get('/api/get-registration/:reg_code', async (req, res) => {
     const validCoupons = ['YASH500', 'RAVI500', 'SRI500', 'SIRI500', 'VAMSI500', 'PREET500', 'INCUX500', 'BINDHU500', 'HARINI500', 'DEVA500', 'SAI500', 'CHANDU500'];
     
     if (validCoupons.includes(coupon)) {
-      baseAmount = 4500;
+      baseAmount = 5000;
     }
 
     const finalAmount = baseAmount + (baseAmount * 0.02);
