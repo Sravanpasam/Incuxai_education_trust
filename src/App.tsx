@@ -249,20 +249,118 @@ export default function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const regCode = params.get('reg_code');
-    const coupon = params.get('coupon');
+    const amountPaise = params.get('amount_paise'); // pre-calculated by incuxai-web PHP (coupon already applied)
+    const token = params.get('token');
+
+    // 1. New Secure JWT Payment Flow
+    if (token) {
+      setIsIitPaymentFlow(true);
+      const apiBase = import.meta.env.VITE_PAYMENT_API_URL || 'http://localhost:3001';
+      
+      // Step A: Verify checkout token
+      fetch(`${apiBase}/api/verify-checkout-token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      })
+      .then(res => res.json())
+      .then(verifyTokenData => {
+        if (verifyTokenData.error || !verifyTokenData.payload) {
+          setPaymentError(verifyTokenData.error || 'Invalid checkout session.');
+          return;
+        }
+
+        const payload = verifyTokenData.payload;
+
+        // Step B: Create trust order
+        fetch(`${apiBase}/api/create-trust-order`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token })
+        })
+        .then(res => res.json())
+        .then(orderData => {
+          if (orderData.error) {
+            setPaymentError(orderData.error);
+            return;
+          }
+
+          // Step C: Initialize Razorpay
+          const options = {
+            key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_T89U7UEA6mDKNX',
+            amount: orderData.amount,
+            currency: orderData.currency,
+            name: 'IncuXai Education Trust',
+            description: payload.course_id === 'plan_a' ? 'IncuX Academy Plan 1 (₹499)' : (payload.course_id === 'plan_b' ? 'IncuX Academy Plan 2 (₹899)' : 'IncuX Academy Course Payment'),
+            order_id: orderData.order_id,
+            prefill: {
+              name: payload.name || '',
+              email: payload.email || '',
+              contact: payload.phone || '',
+            },
+            notes: {
+              transaction_id: payload.transaction_id,
+              user_id: payload.user_id,
+            },
+            handler: function (response: any) {
+              // Step D: Verify payment signature on Trust Backend
+              fetch(`${apiBase}/api/verify-trust-payment`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                  token: token
+                }),
+              })
+              .then(res => res.json())
+              .then(verifyData => {
+                if (verifyData.status === 'success') {
+                  // Step E: Redirect back to Academy with success reference token
+                  window.location.href = `${payload.callback_url}?reference=${verifyData.success_token}`;
+                } else {
+                  setPaymentError('Payment verification failed. Please contact support.');
+                }
+              })
+              .catch(() => {
+                setPaymentError('Internal verification error. Please contact support.');
+              });
+            },
+            theme: { color: '#9B7A3E' },
+            modal: {
+              ondismiss: function() {
+                // Redirect back to Academy with cancellation status
+                window.location.href = `${payload.callback_url}?error=cancelled`;
+              }
+            }
+          };
+          const rzp = new (window as any).Razorpay(options);
+          rzp.open();
+        })
+        .catch(() => {
+          setPaymentError('Unable to generate payment order. Please try again.');
+        });
+      })
+      .catch(() => {
+        setPaymentError('Secure payment session could not be established. Please try again.');
+      });
+      return;
+    }
+
+    // 2. Legacy IIT Payment Flow
     if (regCode) {
       setIsIitPaymentFlow(true);
-      // Auto trigger IIT payment flow
       let apiUrl = (import.meta.env.VITE_PAYMENT_API_URL || 'http://localhost:3001') + '/api/get-registration/' + regCode;
-      if (coupon) {
-        apiUrl += '?coupon=' + coupon;
+      if (amountPaise) {
+        apiUrl += '?amount_paise=' + amountPaise;
       }
       fetch(apiUrl)
         .then(res => res.json())
         .then(data => {
           if (data.error) {
             setPaymentError(data.error);
-            window.location.href = (import.meta.env.VITE_MAIN_SITE_URL || 'http://localhost:8000') + '/payment.php';
+            window.location.href = (import.meta.env.VITE_MAIN_SITE_URL || 'http://localhost:5173') + '/payment.php';
             return;
           }
           
@@ -288,7 +386,7 @@ export default function App() {
               notes: {
                 registration_code: regCode,
               },
-              handler: function (response) {
+              handler: function (response: any) {
                 fetch((import.meta.env.VITE_PAYMENT_API_URL || 'http://localhost:3001') + '/api/verify-payment', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -303,7 +401,7 @@ export default function App() {
                 .then(res => res.json())
                 .then(verifyData => {
                   if (verifyData.status === 'success') {
-                    window.location.href = (import.meta.env.VITE_MAIN_SITE_URL || 'http://localhost:8000') + '/payment-confirm.php?t=' + verifyData.success_token;
+                    window.location.href = (import.meta.env.VITE_MAIN_SITE_URL || 'http://localhost:5173') + '/payment-confirm.php?t=' + verifyData.success_token;
                   } else {
                     setPaymentError('Verification failed. Please contact support.');
                   }
@@ -312,7 +410,7 @@ export default function App() {
               theme: { color: '#9B7A3E' },
               modal: {
                 ondismiss: function() {
-                  window.location.href = (import.meta.env.VITE_MAIN_SITE_URL || 'http://localhost:8000') + '/payment.php';
+                  window.location.href = (import.meta.env.VITE_MAIN_SITE_URL || 'http://localhost:5173') + '/payment.php';
                 }
               }
             };
@@ -2458,18 +2556,18 @@ export default function App() {
 
   if (isIitPaymentFlow) {
     return (
-      <div style={{ minHeight: '100vh', width: '100vw', background: '#ffffff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ minHeight: '100vh', width: '100vw', background: 'radial-gradient(circle at center, #1e1b15 0%, #0d0b07 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
         {paymentError ? (
           <>
-            <svg style={{ width: '48px', height: '48px', color: '#DC2626', marginBottom: '16px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            <h2 style={{ color: '#DC2626', fontFamily: 'system-ui, sans-serif', fontSize: '1.5rem', fontWeight: '600' }}>Error</h2>
-            <p style={{ color: '#4B5563', fontFamily: 'system-ui, sans-serif', marginTop: '10px', textAlign: 'center', maxWidth: '400px' }}>{paymentError}</p>
+            <svg style={{ width: '48px', height: '48px', color: '#EF4444', marginBottom: '16px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <h2 style={{ color: '#EF4444', fontFamily: 'system-ui, sans-serif', fontSize: '1.5rem', fontWeight: '600' }}>Error</h2>
+            <p style={{ color: '#D1D5DB', fontFamily: 'system-ui, sans-serif', marginTop: '10px', textAlign: 'center', maxWidth: '400px' }}>{paymentError}</p>
           </>
         ) : (
           <>
-            <div className="spinner" style={{ border: '4px solid #f3f3f3', borderTop: '4px solid #3B82F6', borderRadius: '50%', width: '40px', height: '40px', animation: 'spin 1s linear infinite', marginBottom: '20px' }} />
-            <h2 style={{ color: '#111827', fontFamily: 'system-ui, sans-serif', fontSize: '1.5rem', fontWeight: '600' }}>Initializing secure payment...</h2>
-            <p style={{ color: '#6B7280', fontFamily: 'system-ui, sans-serif', marginTop: '10px' }}>Please do not close this window.</p>
+            <div className="spinner" style={{ border: '4px solid rgba(155,122,62,0.15)', borderTop: '4px solid #d4af37', borderRadius: '50%', width: '40px', height: '40px', animation: 'spin 1s linear infinite', marginBottom: '20px', boxShadow: '0 0 10px rgba(212,175,55,0.2)' }} />
+            <h2 style={{ color: '#ffffff', fontFamily: 'system-ui, sans-serif', fontSize: '1.5rem', fontWeight: '600' }}>Initializing secure payment...</h2>
+            <p style={{ color: '#9CA3AF', fontFamily: 'system-ui, sans-serif', marginTop: '10px' }}>Please do not close this window.</p>
             <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
           </>
         )}
