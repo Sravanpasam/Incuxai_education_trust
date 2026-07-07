@@ -268,7 +268,7 @@ app.get('/api/get-registration/:reg_code', async (req, res) => {
 
     let baseAmount = 5000;
     const coupon = req.query.coupon ? req.query.coupon.trim().toUpperCase() : '';
-    const validCoupons = ['YASH500', 'RAVI500', 'SRI500', 'SIRI500', 'VAMSI500', 'PREET500', 'INCUX500', 'BINDHU500', 'HARINI500', 'DEVA500', 'SAI500', 'CHANDU500', 'JOSHI500'];
+    const validCoupons = ['YASH500', 'RAVI500', 'SRI500', 'SIRI500', 'VAMSI500', 'PREET500', 'INCUX500', 'BINDHU500', 'HARINI500', 'DEVA500', 'SAI500', 'CHANDU500', 'JOSHI500', 'AK500'];
     if (validCoupons.includes(coupon)) {
       baseAmount = 4500;
     }
