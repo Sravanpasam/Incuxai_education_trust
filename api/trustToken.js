@@ -7,9 +7,10 @@ import crypto from 'crypto';
  * @returns {string} The signed token.
  */
 export function signToken(payload, secret) {
+  const trimmedSecret = (secret || '').trim();
   const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
   const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
-  const signature = crypto.createHmac('sha256', secret).update(`${header}.${body}`).digest('base64url');
+  const signature = crypto.createHmac('sha256', trimmedSecret).update(`${header}.${body}`).digest('base64url');
   return `${header}.${body}.${signature}`;
 }
 
@@ -26,7 +27,8 @@ export function verifyToken(token, secret) {
     if (parts.length !== 3) return null;
     
     const [headerB64, bodyB64, signature] = parts;
-    const expectedSignature = crypto.createHmac('sha256', secret).update(`${headerB64}.${bodyB64}`).digest('base64url');
+    const trimmedSecret = (secret || '').trim();
+    const expectedSignature = crypto.createHmac('sha256', trimmedSecret).update(`${headerB64}.${bodyB64}`).digest('base64url');
     
     if (signature !== expectedSignature) {
       console.warn('[TrustToken] Signature mismatch on verification');
