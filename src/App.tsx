@@ -489,7 +489,7 @@ export default function App() {
       if (modal) modal.classList.remove('active');
       const success = document.getElementById('modal-success');
       if (success) success.style.display = 'none';
-      document.querySelectorAll('.modal-form').forEach(f => {
+      document.querySelectorAll('#login-modal .modal-form').forEach(f => {
         (f as HTMLElement).style.display = '';
         f.classList.remove('active');
       });
@@ -517,14 +517,14 @@ export default function App() {
       if (e && e.currentTarget) {
         (e.currentTarget as HTMLElement).classList.add('active');
       }
-      document.querySelectorAll('.modal-form').forEach(f => f.classList.remove('active'));
+      document.querySelectorAll('#login-modal .modal-form').forEach(f => f.classList.remove('active'));
       const targetForm = document.getElementById(id);
       if (targetForm) targetForm.classList.add('active');
     };
 
     w.loginUser = (role: string) => {
       const success = document.getElementById('modal-success');
-      document.querySelectorAll('.modal-form').forEach(f => {
+      document.querySelectorAll('#login-modal .modal-form').forEach(f => {
         (f as HTMLElement).style.display = 'none';
       });
       if (success) success.style.display = 'block';
@@ -537,7 +537,7 @@ export default function App() {
         const found = volCreds.find((v: any) => v && v.email === email && v.password === pass);
         if (!found) {
           w.showToast('Invalid email or password');
-          document.querySelectorAll('.modal-form').forEach(f => { (f as HTMLElement).style.display = ''; });
+          document.querySelectorAll('#login-modal .modal-form').forEach(f => { (f as HTMLElement).style.display = ''; });
           if (success) success.style.display = 'none';
           return;
         }
@@ -550,7 +550,7 @@ export default function App() {
         const found = teacherCreds.find((t: any) => t && t.email === email && t.password === pass);
         if (!found) {
           w.showToast('Invalid teacher credentials');
-          document.querySelectorAll('.modal-form').forEach(f => { (f as HTMLElement).style.display = ''; });
+          document.querySelectorAll('#login-modal .modal-form').forEach(f => { (f as HTMLElement).style.display = ''; });
           if (success) success.style.display = 'none';
           return;
         }
@@ -561,7 +561,7 @@ export default function App() {
         const pass = (document.getElementById('ad-login-pass') as HTMLInputElement)?.value;
         if (email !== 'sravanpasam74@gmail.com' || pass !== 'admin123') {
           w.showToast('Invalid admin credentials');
-          document.querySelectorAll('.modal-form').forEach(f => { (f as HTMLElement).style.display = ''; });
+          document.querySelectorAll('#login-modal .modal-form').forEach(f => { (f as HTMLElement).style.display = ''; });
           if (success) success.style.display = 'none';
           return;
         }
@@ -619,7 +619,21 @@ export default function App() {
     };
 
     // ===== PERSISTENT DATA LAYER & UI SYNC SYSTEM =====
-    w.initData = () => {
+    w.initData = async () => {
+      // Force clear stale mock data from localStorage for returning users
+      try {
+        const cachedVols = JSON.parse(localStorage.getItem('volunteers') || '[]');
+        const hasMock = cachedVols.some((v: any) => v && (v.email === 'ravi@gmail.com' || v.email === 'priya@gmail.com' || v.email === 'arun@gmail.com' || v.email === 'neha@gmail.com'));
+        if (hasMock) {
+          localStorage.removeItem('volunteers');
+          localStorage.removeItem('volunteer_pass');
+          localStorage.removeItem('assignedTasks');
+          localStorage.removeItem('eventRegistrations');
+          localStorage.removeItem('volunteer_applications');
+        }
+      } catch (e) {
+        console.warn('Failed to parse cache:', e);
+      }
       if (!localStorage.getItem('events')) {
         const defaultEvents = [
           { id: 'ev1', title: 'AI for Farmers Workshop', date: '2025-06-15', location: 'Vijayawada', slots: 50, registeredCount: 42, dept: 'AI Training & Education', desc: 'Help Guntur district farmers leverage Plantix and agricultural chatbots to detect crop disease and boost yield.' },
@@ -630,41 +644,32 @@ export default function App() {
       }
 
       if (!localStorage.getItem('assignedTasks')) {
-        const defaultTasks = [
-          { id: 't1', volName: 'Ravi Kumar', title: 'Create Hindi content for AI Farming module', desc: 'Write 500-word introduction about how farmers can use AI on their smartphones.', due: '2025-06-10', status: 'Pending' },
-          { id: 't2', volName: 'Ravi Kumar', title: 'Prepare attendance report for Guntur workshop', desc: 'Compile attendance from Guntur event.', due: '2025-06-07', status: 'Completed' },
-          { id: 't3', volName: 'Priya Nair', title: 'Social media posts for July event', desc: 'Create 5 Instagram post designs promoting the upcoming workshop.', due: '2025-06-25', status: 'Pending' }
-        ];
-        localStorage.setItem('assignedTasks', JSON.stringify(defaultTasks));
+        localStorage.setItem('assignedTasks', JSON.stringify([]));
       }
 
       if (!localStorage.getItem('eventRegistrations')) {
-        const defaultRegs = [
-          { id: 'r1', event: 'AI for Farmers Workshop', name: 'Ravi Kumar', email: 'ravi@gmail.com', date: '2025-05-15' },
-          { id: 'r2', event: 'School AI Literacy Drive', name: 'Priya Nair', email: 'priya@gmail.com', date: '2025-05-18' },
-          { id: 'r3', event: 'MSME Digital AI Workshop', name: 'Arun Singh', email: 'arun@gmail.com', date: '2025-05-20' }
-        ];
-        localStorage.setItem('eventRegistrations', JSON.stringify(defaultRegs));
+        localStorage.setItem('eventRegistrations', JSON.stringify([]));
+      }
+
+      // Fetch persistent database from Express backend
+      try {
+        const res = await fetch('/api/sync-data');
+        if (res.ok) {
+          const db = await res.json();
+          if (db.volunteers) localStorage.setItem('volunteers', JSON.stringify(db.volunteers));
+          if (db.volunteer_applications) localStorage.setItem('volunteer_applications', JSON.stringify(db.volunteer_applications));
+          if (db.volunteer_pass) localStorage.setItem('volunteer_pass', JSON.stringify(db.volunteer_pass));
+        }
+      } catch (err) {
+        console.warn('Database sync failed, falling back to local storage cache:', err);
       }
 
       if (!localStorage.getItem('volunteers')) {
-        const defaultVols = [
-          { name: 'Ravi Kumar', email: 'ravi@gmail.com', phone: '9876543210', state: 'AP', why: 'Tech enthusiast', date: '2025-05-01', hours: 47 },
-          { name: 'Priya Nair', email: 'priya@gmail.com', phone: '9876543211', state: 'Kerala', why: 'Social outreach', date: '2025-05-02', hours: 32 },
-          { name: 'Arun Singh', email: 'arun@gmail.com', phone: '9876543212', state: 'UP', why: 'Education advocate', date: '2025-05-03', hours: 28 },
-          { name: 'Neha Verma', email: 'neha@gmail.com', phone: '9876543213', state: 'MH', why: 'Organizing events', date: '2025-05-04', hours: 15 }
-        ];
-        localStorage.setItem('volunteers', JSON.stringify(defaultVols));
+        localStorage.setItem('volunteers', JSON.stringify([]));
       }
       // Ensure volunteer_pass has entries for default volunteers
       if (!localStorage.getItem('volunteer_pass')) {
-        const defaultPass = [
-          { email: 'ravi@gmail.com', password: 'volunteer123', name: 'Ravi Kumar' },
-          { email: 'priya@gmail.com', password: 'volunteer123', name: 'Priya Nair' },
-          { email: 'arun@gmail.com', password: 'volunteer123', name: 'Arun Singh' },
-          { email: 'neha@gmail.com', password: 'volunteer123', name: 'Neha Verma' }
-        ];
-        localStorage.setItem('volunteer_pass', JSON.stringify(defaultPass));
+        localStorage.setItem('volunteer_pass', JSON.stringify([]));
       }
       // Restore session
       const savedUser = localStorage.getItem('currentUser');
@@ -684,6 +689,10 @@ export default function App() {
           // corrupted session data, ignore
         }
       }
+
+      // Re-trigger UI renders once sync data is in place
+      w.renderVolunteerApplications();
+      w.renderVolunteersAndLeaderboard();
     };
 
     w.renderEvents = () => {
@@ -858,10 +867,14 @@ export default function App() {
       // 1. Populate the Volunteer dropdown inside Admin Assign Task selector
       const selectVol = document.getElementById('assign-vol');
       if (selectVol) {
-        selectVol.innerHTML = volunteers.map((v: any) => {
-          if (!v) return '';
-          return `<option value="${v.name || ''}">${v.name || ''}</option>`;
-        }).join('');
+        if (volunteers.length === 0) {
+          selectVol.innerHTML = '<option value="">No volunteers available</option>';
+        } else {
+          selectVol.innerHTML = volunteers.map((v: any) => {
+            if (!v) return '';
+            return `<option value="${v.name || ''}">${v.name || ''}</option>`;
+          }).join('');
+        }
       }
 
       // 2. Render all volunteers table in Admin Volunteers Tab
@@ -975,7 +988,7 @@ export default function App() {
       }
     };
 
-    w.submitVolunteerApplication = () => {
+    w.submitVolunteerApplication = async () => {
       const fname = (document.getElementById('vol-app-fname') as HTMLInputElement)?.value;
       const phone = (document.getElementById('vol-app-phone') as HTMLInputElement)?.value;
       const email = (document.getElementById('vol-app-email') as HTMLInputElement)?.value;
@@ -985,16 +998,29 @@ export default function App() {
         w.showToast('Please fill in all required fields');
         return;
       }
-      const apps = getSafeArray('volunteer_applications');
-      const alreadyExists = apps.some((a: any) => a && a.email === email);
-      if (alreadyExists) {
-        w.showToast('An application with this email already exists!');
-        return;
+
+      try {
+        const res = await fetch('/api/volunteer-applications', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: fname, phone, email, education, why })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          w.showToast(data.error || 'Failed to submit application');
+          return;
+        }
+
+        const apps = getSafeArray('volunteer_applications');
+        apps.push({ name: fname, phone, email, education, why, date: new Date().toLocaleDateString('en-IN') });
+        localStorage.setItem('volunteer_applications', JSON.stringify(apps));
+        w.closeSignUpModal();
+        w.showToast('Application submitted! Admin will review and approve it shortly.');
+        w.renderVolunteerApplications();
+      } catch (err) {
+        console.error('Submit application failed:', err);
+        w.showToast('Server connection failed. Please try again.');
       }
-      apps.push({ name: fname, phone, email, education, why, date: new Date().toLocaleDateString('en-IN') });
-      localStorage.setItem('volunteer_applications', JSON.stringify(apps));
-      w.closeSignUpModal();
-      w.showToast('Application submitted! Admin will review and approve it shortly.');
     };
 
     // TeachXai form submission
@@ -1052,35 +1078,69 @@ export default function App() {
       document.getElementById('admin-vol-apps-count')!.textContent = apps.length.toString();
     };
 
-    w.approveVolunteerApp = (index: number) => {
+    w.approveVolunteerApp = async (index: number) => {
       const apps = getSafeArray('volunteer_applications');
       const volunteers = getSafeArray('volunteers');
       const volCreds = getSafeArray('volunteer_pass');
       if (index >= 0 && index < apps.length) {
         const app = apps[index];
-        const volEntry = { name: app.name, email: app.email, phone: app.phone, education: app.education, why: app.why, date: app.date, hours: 0, state: '', city: '', depts: [] };
-        volunteers.push(volEntry);
-        apps.splice(index, 1);
-        localStorage.setItem('volunteers', JSON.stringify(volunteers));
-        localStorage.setItem('volunteer_applications', JSON.stringify(apps));
-        // Create login credentials with default password
-        if (!volCreds.some((v: any) => v && v.email === app.email)) {
-          volCreds.push({ email: app.email, password: 'volunteer123', name: app.name });
-          localStorage.setItem('volunteer_pass', JSON.stringify(volCreds));
+
+        try {
+          const res = await fetch('/api/approve-volunteer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: app.email })
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            w.showToast(data.error || 'Approval failed');
+            return;
+          }
+
+          const volEntry = { name: app.name, email: app.email, phone: app.phone, education: app.education, why: app.why, date: app.date, hours: 0, state: '', city: '', depts: [] };
+          volunteers.push(volEntry);
+          apps.splice(index, 1);
+          localStorage.setItem('volunteers', JSON.stringify(volunteers));
+          localStorage.setItem('volunteer_applications', JSON.stringify(apps));
+          if (!volCreds.some((v: any) => v && v.email === app.email)) {
+            volCreds.push({ email: app.email, password: 'volunteer123', name: app.name });
+            localStorage.setItem('volunteer_pass', JSON.stringify(volCreds));
+          }
+          w.renderVolunteerApplications();
+          w.renderVolunteersAndLeaderboard();
+          w.showToast(`Approved! ${app.name} can login with email and password "volunteer123"`);
+        } catch (err) {
+          console.error('Approve failed:', err);
+          w.showToast('Server connection failed. Please try again.');
         }
-        w.renderVolunteerApplications();
-        w.renderVolunteersAndLeaderboard();
-        w.showToast(`Approved! ${app.name} can login with email and password "volunteer123"`);
       }
     };
 
-    w.rejectVolunteerApp = (index: number) => {
+    w.rejectVolunteerApp = async (index: number) => {
       const apps = getSafeArray('volunteer_applications');
       if (index >= 0 && index < apps.length) {
-        apps.splice(index, 1);
-        localStorage.setItem('volunteer_applications', JSON.stringify(apps));
-        w.renderVolunteerApplications();
-        w.showToast('Application rejected');
+        const app = apps[index];
+
+        try {
+          const res = await fetch('/api/reject-volunteer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: app.email })
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            w.showToast(data.error || 'Rejection failed');
+            return;
+          }
+
+          apps.splice(index, 1);
+          localStorage.setItem('volunteer_applications', JSON.stringify(apps));
+          w.renderVolunteerApplications();
+          w.showToast('Application rejected');
+        } catch (err) {
+          console.error('Reject failed:', err);
+          w.showToast('Server connection failed. Please try again.');
+        }
       }
     };
 
@@ -1126,6 +1186,11 @@ export default function App() {
         vol.education = education;
         vol.why = about;
         localStorage.setItem('volunteers', JSON.stringify(vols));
+        fetch('/api/update-volunteers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ volunteers: vols })
+        }).catch(err => console.error('Failed to sync updated volunteers:', err));
       }
       // Update display
       const pName = document.getElementById('portal-name');
@@ -1192,6 +1257,11 @@ export default function App() {
       }
       entry.password = newPass;
       localStorage.setItem('volunteer_pass', JSON.stringify(creds));
+      fetch('/api/update-volunteer-pass', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ volunteer_pass: creds })
+      }).catch(err => console.error('Failed to sync updated credentials:', err));
       (document.getElementById('vol-current-pass') as HTMLInputElement)!.value = '';
       (document.getElementById('vol-new-pass') as HTMLInputElement)!.value = '';
       w.showToast('Password updated successfully!');
@@ -2612,6 +2682,38 @@ export default function App() {
            </div>
         </section>
 
+        {/* ========== VOLUNTEER HIRING ALERT BANNER ========== */}
+        <div className="hiring-alert-container">
+          <div className="hiring-alert-card">
+            <div className="hiring-alert-left">
+              <div className="hiring-alert-header">
+                <span className="hiring-alert-badge">Active Recruitment</span>
+                <h4 className="hiring-alert-title"><span className="alert-siren">🚨</span> Hiring Volunteers</h4>
+              </div>
+              <p className="hiring-alert-desc">
+                We are actively looking for passionate volunteers to help teach AI skills in local languages across India. Join our community of 5,000+ change-makers!
+              </p>
+            </div>
+            <div className="hiring-alert-right">
+              <button 
+                className="hiring-alert-btn" 
+                onClick={() => {
+                  (window as any).showPage('volunteer');
+                  setTimeout(() => {
+                    (window as any).openSignUpModal();
+                  }, 100);
+                }}
+              >
+                Apply Now
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                  <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* ========== OUR SERVICES SECTION ========== */}
         <section style={{ background: 'var(--darker)', padding: '5rem 8%' }}>
           <div className="section-header">
@@ -3736,10 +3838,7 @@ export default function App() {
               <div className="form-group" style={{ flex: 1, margin: 0 }}>
                 <label>Select Volunteer</label>
                 <select id="assign-vol">
-                  <option>Ravi Kumar</option>
-                  <option>Priya Nair</option>
-                  <option>Arun Singh</option>
-                  <option>Neha Verma</option>
+                  <option value="">No volunteers available</option>
                 </select>
               </div>
               <div className="form-group" style={{ flex: 1, margin: 0 }}><label>Task Title</label><input type="text" id="task-title" placeholder="e.g. Create Hindi content" /></div>

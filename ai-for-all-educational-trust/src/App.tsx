@@ -443,7 +443,7 @@ export default function App() {
       if (modal) modal.classList.remove('active');
       const success = document.getElementById('modal-success');
       if (success) success.style.display = 'none';
-      document.querySelectorAll('.modal-form').forEach(f => {
+      document.querySelectorAll('#login-modal .modal-form').forEach(f => {
         (f as HTMLElement).style.display = '';
         f.classList.remove('active');
       });
@@ -461,14 +461,14 @@ export default function App() {
       if (e && e.currentTarget) {
         (e.currentTarget as HTMLElement).classList.add('active');
       }
-      document.querySelectorAll('.modal-form').forEach(f => f.classList.remove('active'));
+      document.querySelectorAll('#login-modal .modal-form').forEach(f => f.classList.remove('active'));
       const targetForm = document.getElementById(id);
       if (targetForm) targetForm.classList.add('active');
     };
 
     w.loginUser = (role: string) => {
       const success = document.getElementById('modal-success');
-      document.querySelectorAll('.modal-form').forEach(f => {
+      document.querySelectorAll('#login-modal .modal-form').forEach(f => {
         (f as HTMLElement).style.display = 'none';
       });
       if (success) success.style.display = 'block';
@@ -1668,9 +1668,7 @@ export default function App() {
           <table className="data-table">
             <thead><tr><th>Name</th><th>Email</th><th>State</th><th>Department</th><th>Registered</th></tr></thead>
             <tbody id="admin-recent-vols">
-              <tr><td>Ravi Kumar</td><td>ravi@gmail.com</td><td>AP</td><td>AI Training</td><td>Today</td></tr>
-              <tr><td>Priya Nair</td><td>priya@gmail.com</td><td>Kerala</td><td>Content Creation</td><td>Yesterday</td></tr>
-              <tr><td>Arun Singh</td><td>arun@gmail.com</td><td>UP</td><td>Field Outreach</td><td>2 days ago</td></tr>
+              <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>No recent registrations</td></tr>
             </tbody>
           </table>
         </div>
@@ -1735,10 +1733,7 @@ export default function App() {
           <table className="data-table attendance-table">
             <thead><tr><th>Volunteer</th><th>Department</th><th>Registered?</th><th>Mark Attendance</th></tr></thead>
             <tbody>
-              <tr><td>Ravi Kumar</td><td>AI Training</td><td><span className="badge badge-green">Yes</span></td><td><button className="attend-btn attend-present" onClick={(e) => (window as any).toggleAttend(e.currentTarget)}>Present</button></td></tr>
-              <tr><td>Priya Nair</td><td>Content Creation</td><td><span className="badge badge-green">Yes</span></td><td><button className="attend-btn attend-absent" onClick={(e) => (window as any).toggleAttend(e.currentTarget)}>Absent</button></td></tr>
-              <tr><td>Arun Singh</td><td>Field Outreach</td><td><span className="badge badge-green">Yes</span></td><td><button className="attend-btn attend-present" onClick={(e) => (window as any).toggleAttend(e.currentTarget)}>Present</button></td></tr>
-              <tr><td>Neha Verma</td><td>Event Management</td><td><span className="badge badge-green">Yes</span></td><td><button className="attend-btn attend-present" onClick={(e) => (window as any).toggleAttend(e.currentTarget)}>Present</button></td></tr>
+              <tr><td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>No volunteers registered for this event</td></tr>
             </tbody>
           </table>
           <button className="btn-submit" style={{ maxWidth: '200px', marginTop: '1rem' }} onClick={() => (window as any).showToast('✅ Attendance saved successfully!')}>💾 Save Attendance</button>
@@ -1750,11 +1745,7 @@ export default function App() {
           <table className="data-table">
             <thead><tr><th>Name</th><th>Email</th><th>State</th><th>Dept</th><th>Hours</th><th>Status</th></tr></thead>
             <tbody>
-              <tr><td>Ravi Kumar</td><td>ravi@gmail.com</td><td>AP</td><td>AI Training</td><td>47</td><td><span className="badge badge-green">Active</span></td></tr>
-              <tr><td>Priya Nair</td><td>priya@gmail.com</td><td>Kerala</td><td>Content</td><td>32</td><td><span className="badge badge-green">Active</span></td></tr>
-              <tr><td>Arun Singh</td><td>arun@gmail.com</td><td>UP</td><td>Field</td><td>28</td><td><span className="badge badge-green">Active</span></td></tr>
-              <tr><td>Neha Verma</td><td>neha@gmail.com</td><td>MH</td><td>Events</td><td>15</td><td><span className="badge badge-orange">Inactive</span></td></tr>
-              <tr><td>Rohan Das</td><td>rohan@gmail.com</td><td>WB</td><td>Social Media</td><td>22</td><td><span className="badge badge-green">Active</span></td></tr>
+              <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>No volunteers registered</td></tr>
             </tbody>
           </table>
         </div>
@@ -1767,10 +1758,7 @@ export default function App() {
               <div className="form-group" style={{ flex: 1, margin: 0 }}>
                 <label>Select Volunteer</label>
                 <select id="assign-vol">
-                  <option>Ravi Kumar</option>
-                  <option>Priya Nair</option>
-                  <option>Arun Singh</option>
-                  <option>Neha Verma</option>
+                  <option value="">No volunteers available</option>
                 </select>
               </div>
               <div className="form-group" style={{ flex: 1, margin: 0 }}><label>Task Title</label><input type="text" id="task-title" placeholder="e.g. Create Hindi content" /></div>
@@ -1783,8 +1771,7 @@ export default function App() {
           </div>
           <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--secondary)', fontSize: '1rem', marginBottom: '1rem' }}>Assigned Tasks</h3>
           <div id="assigned-tasks-list">
-            <div className="task-card"><div className="task-title">Ravi Kumar → Create Hindi content for AI Farming module</div><div className="task-desc">Due: June 10 | Status: In Progress</div></div>
-            <div className="task-card"><div className="task-title">Priya Nair → Design social media posts for July event</div><div className="task-desc">Due: June 25 | Status: Pending</div></div>
+            <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>No tasks assigned</div>
           </div>
         </div>
 
