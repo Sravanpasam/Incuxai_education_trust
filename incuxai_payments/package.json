@@ -1,0 +1,16 @@
+{
+  "name": "incuxai_payments",
+  "version": "1.0.0",
+  "description": "Centralized Payment Gateway for IncuXai",
+  "main": "server.cjs",
+  "scripts": {
+    "start": "node server.cjs"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "mysql2": "^3.10.2",
+    "razorpay": "^2.9.4"
+  }
+}
