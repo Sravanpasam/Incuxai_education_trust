@@ -141,7 +141,8 @@ app.post('/api/create-trust-order', async (req, res) => {
     res.json({
       order_id: order.id,
       amount: order.amount,
-      currency: order.currency
+      currency: order.currency,
+      key_id: process.env.RAZORPAY_KEY_ID
     });
   } catch (err) {
     console.error('[TrustOrder] Error generating payment order:', err.message || err);
@@ -396,6 +397,33 @@ app.post('/api/webhook', async (req, res) => {
     const amountPaid = payment.amount;
 
     try {
+      // 1. Check in new trust_transactions table
+      const [trustRows] = await pool.query(
+        'SELECT transaction_id, status FROM trust_transactions WHERE razorpay_order_id = ? LIMIT 1',
+        [orderId]
+      );
+
+      if (trustRows.length > 0) {
+        const tx = trustRows[0];
+        if (tx.status !== 'completed') {
+          const successToken = crypto.randomBytes(32).toString('hex');
+          const expiry = new Date(Date.now() + 5 * 60 * 1000);
+
+          await pool.query(
+            `UPDATE trust_transactions
+             SET status = 'completed',
+                 razorpay_payment_id = ?,
+                 success_token = ?,
+                 token_expires_at = ?
+             WHERE razorpay_order_id = ? AND status != 'completed'`,
+            [paymentId, successToken, expiry, orderId]
+          );
+          console.log('[Webhook] Updated trust_transactions payment success for order:', orderId);
+        }
+        return res.status(200).json({ status: 'success' });
+      }
+
+      // 2. Fallback: Check in legacy iit_visit_registrations table
       const [rows] = await pool.query(
         'SELECT registration_code, payment_status FROM iit_visit_registrations WHERE razorpay_order_id = ? LIMIT 1',
         [orderId]
@@ -428,6 +456,7 @@ app.post('/api/webhook', async (req, res) => {
 
       return res.status(200).json({ status: 'success' });
     } catch (err) {
+      console.error('[Webhook] Database processing error:', err);
       return res.status(500).json({ error: 'Database error' });
     }
   }
