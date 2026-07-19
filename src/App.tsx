@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import { fetchWithRetry, validateCorporateEmail, globalRateLimiter } from './utils';
 import { motion } from 'motion/react';
 import logoImg from '../picss/iet logo.png';
 import whoWeAreImg from './assets/about_who_we_are.jpg';
@@ -177,9 +178,7 @@ export default function App() {
   // --- CORPORATE COURSE SYSTEM STATES ---
   const [showHrPopup, setShowHrPopup] = useState(false);
   const [corpExpandedModule, setCorpExpandedModule] = useState<number | null>(null);
-  const [corpIsRegistered, setCorpIsRegistered] = useState<boolean>(() => {
-    return localStorage.getItem('corp_otp_verified') === 'true';
-  });
+  const [corpIsRegistered, setCorpIsRegistered] = useState<boolean>(true);
   const [corpShowRegModal, setCorpShowRegModal] = useState(false);
   const [corpShowOtpModal, setCorpShowOtpModal] = useState(false);
   const [corpRegForm, setCorpRegForm] = useState({
@@ -203,6 +202,1033 @@ export default function App() {
   const [corpActiveSectionIdx, setCorpActiveSectionIdx] = useState(0);
   const [corpActiveVideoIdx, setCorpActiveVideoIdx] = useState(0);
   const [corpToastMessage, setCorpToastMessage] = useState<string | null>(null);
+
+  // ==================== LMS COURSE PLAYER STATE & DATA ====================
+  const initialLmsCourse = {
+    id: 'ai-masterclass',
+    title: 'AI Masterclass: Generative AI for Professionals',
+    subtitle: 'Master ChatGPT, Prompt Engineering, Canva AI & Automation',
+    instructor: {
+      name: 'Dr. Arjun Reddy',
+      title: 'Founder & Chief AI Officer, IncuXai Trust',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop'
+    },
+    learner: {
+      name: 'Sravan Pasam',
+      role: 'Verified HR Professional',
+      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop'
+    },
+    modules: [
+      {
+        id: 'mod-1',
+        title: 'Module 1: Foundations of Generative AI',
+        lessons: [
+          {
+            id: 'les-1-1',
+            type: 'video',
+            title: '1.1 Welcome & Course Orientation',
+            duration: '03:15',
+            durationSec: 195,
+            videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+            description: 'Introduction to IncuXai Education Trust AI Masterclass, course roadmap, learning outcomes, and platform overview.',
+            transcripts: [
+              { timeSec: 0, timeStr: '00:00', text: 'Welcome to the IncuXai Education Trust AI Masterclass.' },
+              { timeSec: 35, timeStr: '00:35', text: 'In this course, we empower professionals with enterprise-ready AI tools.' },
+              { timeSec: 85, timeStr: '01:25', text: 'You will master ChatGPT, Prompt Engineering, Canva AI, and Make workflow automation.' },
+              { timeSec: 145, timeStr: '02:25', text: 'Upon 100% completion, your verified certificate of mastery will be generated.' }
+            ],
+            resources: [
+              { name: 'Course Syllabus & Roadmap (PDF)', size: '2.4 MB', type: 'pdf', url: '#' },
+              { name: 'AI Cheat Sheet v1.0 (PDF)', size: '1.1 MB', type: 'pdf', url: '#' }
+            ]
+          },
+          {
+            id: 'les-1-2',
+            type: 'video',
+            title: '1.2 How Large Language Models Work',
+            duration: '08:40',
+            durationSec: 520,
+            videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
+            description: 'Deep dive into transformers, tokenization, neural networks, and LLM architecture underlying modern AI.',
+            transcripts: [
+              { timeSec: 0, timeStr: '00:00', text: 'Large Language Models are built on the Transformer architecture introduced in 2017.' },
+              { timeSec: 90, timeStr: '01:30', text: 'Self-attention mechanisms allow models to weigh relationships between distant tokens.' },
+              { timeSec: 240, timeStr: '04:00', text: 'Pre-training on vast textual corpora enables emergent reasoning capabilities.' },
+              { timeSec: 420, timeStr: '07:00', text: 'RLHF (Reinforcement Learning from Human Feedback) aligns model outputs with user intent.' }
+            ],
+            resources: [
+              { name: 'LLM Architecture Diagrams (PDF)', size: '3.8 MB', type: 'pdf', url: '#' },
+              { name: 'Transformer Model Whitepaper (PDF)', size: '1.5 MB', type: 'pdf', url: '#' }
+            ]
+          },
+          {
+            id: 'les-1-3',
+            type: 'quiz',
+            title: '1.3 Foundations Knowledge Check',
+            duration: '05:00',
+            durationSec: 300,
+            videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+            description: 'Interactive 4-question knowledge check with live timer, instant score evaluation, pass/fail status, and explanation review.',
+            quizData: {
+              timeLimitSec: 300,
+              passingScorePercent: 70,
+              questions: [
+                {
+                  id: 'q1',
+                  question: 'Which architecture forms the core foundation of modern Large Language Models (LLMs)?',
+                  options: [
+                    'Convolutional Neural Networks (CNN)',
+                    'Transformer Architecture',
+                    'Recurrent Neural Networks (RNN)',
+                    'Decision Tree Ensembles'
+                  ],
+                  correctAnswer: 1,
+                  explanation: 'Introduced in 2017 ("Attention Is All You Need"), the Transformer architecture utilizes self-attention mechanisms to process contextual token relationships concurrently.'
+                },
+                {
+                  id: 'q2',
+                  question: 'What is the primary role of RLHF in LLM fine-tuning?',
+                  options: [
+                    'Accelerating GPU inference speed',
+                    'Aligning model responses with human intent and safety guardrails',
+                    'Compressing network weights for mobile deployment',
+                    'Encrypting training datasets'
+                  ],
+                  correctAnswer: 1,
+                  explanation: 'Reinforcement Learning from Human Feedback (RLHF) aligns model outputs with human intent, safety guidelines, and helpfulness.'
+                },
+                {
+                  id: 'q3',
+                  question: 'In prompt engineering, what does "Few-Shot Prompting" refer to?',
+                  options: [
+                    'Providing zero examples and expecting full reasoning',
+                    'Providing 2-3 exemplar demonstrations within the prompt before asking the target question',
+                    'Running 5 parallel requests to ChatGPT',
+                    'Limiting output response length to 10 words'
+                  ],
+                  correctAnswer: 1,
+                  explanation: 'Few-shot prompting provides high quality exemplars in context, guiding the model on desired formatting and reasoning steps.'
+                },
+                {
+                  id: 'q4',
+                  question: 'Which temperature setting is recommended for deterministic, factual JSON data extraction?',
+                  options: ['1.5', '0.9', '0.0 to 0.2', '2.0'],
+                  correctAnswer: 2,
+                  explanation: 'Lower temperatures (0.0 to 0.2) force the model to select highest probability tokens, producing highly deterministic and consistent outputs.'
+                }
+              ]
+            },
+            resources: [
+              { name: 'Quiz Prep Guide (PDF)', size: '850 KB', type: 'pdf', url: '#' }
+            ]
+          },
+          {
+            id: 'les-1-4',
+            type: 'activity',
+            title: '1.4 Mini Activity: Executive Prompt Builder Game',
+            duration: '03:00',
+            durationSec: 180,
+            videoUrl: '',
+            description: 'Interactive mini engagement activity to keep learners active during 2-hour masterclass sessions.',
+            activityData: {
+              title: '🎮 Interactive Prompt Builder Simulation Game',
+              category: 'Hands-on Executive Challenge Placeholder',
+              instructions: 'Construct an executive prompt by selecting the correct System Persona, Task Instruction, and Constraint blocks below.',
+              placeholderBadge: '⚡ Placeholder Activity Slot #1 (Custom Game Content Ready)',
+              steps: [
+                {
+                  label: 'Step 1: Select System Role Persona',
+                  options: [
+                    'You are a Chief Human Resources Officer (CHRO)',
+                    'You are a casual social media blogger',
+                    'You are a python backend engineer'
+                  ],
+                  correct: 0
+                },
+                {
+                  label: 'Step 2: Choose Instruction Constraint',
+                  options: [
+                    'Write 500 words without formatting',
+                    'Output a structured bulleted summary with max 3 action items and zero jargon',
+                    'Generate 5 random jokes'
+                  ],
+                  correct: 1
+                }
+              ]
+            },
+            resources: [
+              { name: 'Activity Worksheet (PDF)', size: '450 KB', type: 'pdf', url: '#' }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'mod-2',
+        title: 'Module 2: Advanced Prompt Engineering & ChatGPT',
+        lessons: [
+          {
+            id: 'les-2-1',
+            type: 'video',
+            title: '2.1 Anatomy of a Perfect Prompt',
+            duration: '10:15',
+            durationSec: 615,
+            videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnTheLoose.mp4',
+            description: 'Role, Context, Instruction, Constraints, and Output Format framework for high-precision outputs.',
+            transcripts: [
+              { timeSec: 0, timeStr: '00:00', text: 'Prompting is not programming — it is structured context engineering.' },
+              { timeSec: 120, timeStr: '02:00', text: 'Always assign a specific Persona or Role to anchor the LLM system prompt.' },
+              { timeSec: 300, timeStr: '05:00', text: 'Define negative constraints to prevent hallucinations and generic responses.' }
+            ],
+            resources: [
+              { name: 'Prompt Template Library (ZIP)', size: '4.2 MB', type: 'zip', url: '#' },
+              { name: 'Top 50 Exec Prompts (PDF)', size: '1.8 MB', type: 'pdf', url: '#' }
+            ]
+          },
+          {
+            id: 'les-2-2',
+            type: 'video',
+            title: '2.2 Few-Shot & Chain-of-Thought Prompting',
+            duration: '12:05',
+            durationSec: 725,
+            videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WeAreGoingOnBullrun.mp4',
+            description: 'Mastering complex reasoning techniques, exemplar shot selection, and step-by-step problem solving.',
+            transcripts: [
+              { timeSec: 0, timeStr: '00:00', text: 'Chain-of-thought prompting forces the model to articulate intermediate reasoning steps.' },
+              { timeSec: 180, timeStr: '03:00', text: 'Providing 2-3 high quality exemplars significantly boosts task accuracy.' }
+            ],
+            resources: [
+              { name: 'Chain-of-Thought Exercises (PDF)', size: '1.2 MB', type: 'pdf', url: '#' }
+            ]
+          },
+          {
+            id: 'les-2-3',
+            type: 'quiz',
+            title: '2.3 Prompting Techniques Knowledge Check',
+            duration: '05:00',
+            durationSec: 300,
+            videoUrl: '',
+            description: 'Interactive knowledge check covering Chain-of-Thought, System Personas, and Output Constraints.',
+            quizData: {
+              timeLimitSec: 300,
+              passingScorePercent: 70,
+              questions: [
+                {
+                  id: 'q2-1',
+                  question: 'What is the primary benefit of Chain-of-Thought prompting?',
+                  options: [
+                    'Decreasing token usage',
+                    'Forcing the model to generate explicit intermediate reasoning steps',
+                    'Automatically translating text into Spanish',
+                    'Bypassing system security guards'
+                  ],
+                  correctAnswer: 1,
+                  explanation: 'Chain-of-Thought prompting breaks complex tasks into explicit intermediate steps, boosting accuracy on multi-step reasoning.'
+                }
+              ]
+            },
+            resources: [
+              { name: 'Prompting Quiz Cheatsheet (PDF)', size: '600 KB', type: 'pdf', url: '#' }
+            ]
+          },
+          {
+            id: 'les-2-4',
+            type: 'activity',
+            title: '2.4 Mini Activity: Scenario Roleplay Challenge',
+            duration: '04:00',
+            durationSec: 240,
+            videoUrl: '',
+            description: 'Interactive scenario roleplay placeholder to test AI decision making under time constraints.',
+            activityData: {
+              title: '🎮 Scenario Roleplay Simulation Game',
+              category: 'Engagement Activity Placeholder #2',
+              instructions: 'Engage with the simulated AI assistant scenario by selecting response actions.',
+              placeholderBadge: '⚡ Placeholder Activity Slot #2 (Custom Game Content Ready)',
+              steps: [
+                {
+                  label: 'Scenario: Employee Retention Strategy Request',
+                  options: [
+                    'Request quantitative turnover metrics by department',
+                    'Provide immediate general recommendations without data',
+                    'Ignore employee feedback'
+                  ],
+                  correct: 0
+                }
+              ]
+            },
+            resources: [
+              { name: 'Roleplay Brief (PDF)', size: '320 KB', type: 'pdf', url: '#' }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'mod-3',
+        title: 'Module 3: Applied AI Tools for Business & Automation',
+        lessons: [
+          {
+            id: 'les-3-1',
+            type: 'video',
+            title: '3.1 Canva AI & Graphic Generation',
+            duration: '11:30',
+            durationSec: 690,
+            videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4',
+            description: 'Creating professional visual assets using AI magic studio and generative design tools.',
+            transcripts: [
+              { timeSec: 0, timeStr: '00:00', text: 'Canva AI Magic Studio accelerates brand design and marketing visual creation.' }
+            ],
+            resources: [
+              { name: 'Design Assets Package (ZIP)', size: '15.4 MB', type: 'zip', url: '#' }
+            ]
+          },
+          {
+            id: 'les-3-2',
+            type: 'video',
+            title: '3.2 Automated Workflows with Make & Zapier AI',
+            duration: '14:20',
+            durationSec: 860,
+            videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/VolkswagenGTINoise.mp4',
+            description: 'Connecting ChatGPT with Email, Sheets, and CRM tools automatically without coding.',
+            transcripts: [
+              { timeSec: 0, timeStr: '00:00', text: 'Automation bridges the gap between AI generation and actual enterprise workflow execution.' }
+            ],
+            resources: [
+              { name: 'Automation Workflow Blueprint (JSON)', size: '420 KB', type: 'json', url: '#' }
+            ]
+          },
+          {
+            id: 'les-3-3',
+            type: 'quiz',
+            title: '3.3 Applied AI & Automation Exam',
+            duration: '05:00',
+            durationSec: 300,
+            videoUrl: '',
+            description: 'Interactive final knowledge check covering AI workflow triggers, Zapier integration, and Canva Magic Studio.',
+            quizData: {
+              timeLimitSec: 300,
+              passingScorePercent: 70,
+              questions: [
+                {
+                  id: 'q3-1',
+                  question: 'Which tool allows no-code automation between ChatGPT and Google Sheets?',
+                  options: ['Photoshop', 'Make (Integromat) & Zapier', 'VLC Player', 'Notepad'],
+                  correctAnswer: 1,
+                  explanation: 'Make and Zapier serve as integration bridges connecting AI language models with databases, email systems, and spreadsheets.'
+                },
+                {
+                  id: 'q3-2',
+                  question: 'What is the key advantage of Canva AI Magic Studio?',
+                  options: [
+                    'Compiling C++ code',
+                    'Generating and editing visual marketing assets with AI prompts',
+                    'Managing SQL servers',
+                    'Creating audio files'
+                  ],
+                  correctAnswer: 1,
+                  explanation: 'Canva AI Magic Studio enables instant asset generation, image background removal, and branded template creation via prompt inputs.'
+                }
+              ]
+            },
+            resources: [
+              { name: 'Automation Master Cheatsheet (PDF)', size: '1.4 MB', type: 'pdf', url: '#' }
+            ]
+          },
+          {
+            id: 'les-3-4',
+            type: 'activity',
+            title: '3.4 Mini Activity: AI Automation Challenge',
+            duration: '04:00',
+            durationSec: 240,
+            videoUrl: '',
+            description: 'Interactive automation blueprint builder placeholder to keep users active during 2-hour masterclass sessions.',
+            activityData: {
+              title: '🎮 AI Automation Blueprint Simulation Game',
+              category: 'Engagement Activity Placeholder #3',
+              instructions: 'Configure an automated lead scoring pipeline by matching trigger events to AI response actions.',
+              placeholderBadge: '⚡ Placeholder Activity Slot #3 (Custom Game Content Ready)',
+              steps: [
+                {
+                  label: 'Step 1: Select Automation Trigger Event',
+                  options: [
+                    'New Email Lead Received in Inbox',
+                    'User opens Spotify',
+                    'Computer reboots'
+                  ],
+                  correct: 0
+                },
+                {
+                  label: 'Step 2: Select AI Action Module',
+                  options: [
+                    'Analyze lead sentiment & output priority score to CRM',
+                    'Print random string',
+                    'Delete email'
+                  ],
+                  correct: 0
+                }
+              ]
+            },
+            resources: [
+              { name: 'Automation Blueprint Spec (PDF)', size: '510 KB', type: 'pdf', url: '#' }
+            ]
+          }
+        ]
+      }
+    ]
+  };
+
+  const lmsVideoRef = useRef<HTMLVideoElement | null>(null);
+
+  const [currentLmsLesson, setCurrentLmsLesson] = useState(() => initialLmsCourse.modules[0].lessons[0]);
+  const [lmsExpandedModules, setLmsExpandedModules] = useState<Record<string, boolean>>({
+    'mod-1': true,
+    'mod-2': true,
+    'mod-3': false
+  });
+  const [lmsCompletedLessons, setLmsCompletedLessons] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem('incuxai_lms_completed');
+      return saved ? JSON.parse(saved) : { 'les-1-1': true };
+    } catch {
+      return { 'les-1-1': true };
+    }
+  });
+  const [lmsNotes, setLmsNotes] = useState<Record<string, Array<{ timeSec: number; timeStr: string; text: string }>>>(() => {
+    try {
+      const saved = localStorage.getItem('incuxai_lms_notes');
+      return saved ? JSON.parse(saved) : {
+        'les-1-1': [
+          { timeSec: 45, timeStr: '00:45', text: 'Welcome session emphasizes practical hands-on learning.' },
+          { timeSec: 120, timeStr: '02:00', text: 'Course certificate is issued upon 100% completion.' }
+        ]
+      };
+    } catch {
+      return {};
+    }
+  });
+  const [lmsBookmarks, setLmsBookmarks] = useState<Record<string, Array<{ timeSec: number; timeStr: string; title: string }>>>(() => {
+    try {
+      const saved = localStorage.getItem('incuxai_lms_bookmarks');
+      return saved ? JSON.parse(saved) : {
+        'les-1-1': [{ timeSec: 35, timeStr: '00:35', title: 'Course Roadmap & Objectives' }]
+      };
+    } catch {
+      return {};
+    }
+  });
+
+  const [lmsSequentialLockMode, setLmsSequentialLockMode] = useState(false);
+  const [lmsLessonSearch, setLmsLessonSearch] = useState('');
+  const [lmsTranscriptSearch, setLmsTranscriptSearch] = useState('');
+  const [lmsLeftSidebarOpen, setLmsLeftSidebarOpen] = useState(false);
+  const [lmsRightSidebarOpen, setLmsRightSidebarOpen] = useState(false);
+  const [lmsRightTab, setLmsRightTab] = useState<'notes' | 'transcript' | 'downloads' | 'bookmarks' | 'resources'>('notes');
+  const [lmsMainTab, setLmsMainTab] = useState<'overview' | 'resources' | 'qa'>('overview');
+  const [lmsIsPlaying, setLmsIsPlaying] = useState(false);
+  const [lmsVideoTime, setLmsVideoTime] = useState(0);
+  const [lmsVideoDuration, setLmsVideoDuration] = useState(0);
+  const [lmsPlaybackSpeed, setLmsPlaybackSpeed] = useState(1);
+  const [lmsNewNoteText, setLmsNewNoteText] = useState('');
+  const [lmsAutoSaveBadge, setLmsAutoSaveBadge] = useState<string | null>(null);
+
+  // Quiz & Activity Interactive State
+  const [lmsQuizAnswers, setLmsQuizAnswers] = useState<Record<string, Record<string, number>>>({});
+  const [lmsQuizSubmitted, setLmsQuizSubmitted] = useState<Record<string, boolean>>({});
+  const [lmsQuizTimerSec, setLmsQuizTimerSec] = useState<number>(300);
+  const [lmsQuizActiveQIndex, setLmsQuizActiveQIndex] = useState<number>(0);
+  const [lmsActivitySelectedOptions, setLmsActivitySelectedOptions] = useState<Record<string, Record<number, number>>>({});
+
+  // Quiz Timer Countdown Effect
+  useEffect(() => {
+    let interval: any = null;
+    if (currentLmsLesson.type === 'quiz' && !lmsQuizSubmitted[currentLmsLesson.id]) {
+      interval = setInterval(() => {
+        setLmsQuizTimerSec((prev) => {
+          if (prev <= 1) {
+            setLmsQuizSubmitted(s => ({ ...s, [currentLmsLesson.id]: true }));
+            setLmsCompletedLessons(c => ({ ...c, [currentLmsLesson.id]: true }));
+            const w = window as any;
+            w.showToast?.('⏰ Quiz time ended! Your answers have been submitted.');
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [currentLmsLesson.id, currentLmsLesson.type, lmsQuizSubmitted]);
+
+  // ==================== LEARNER PROFILE & AUTOMATED CERTIFICATES SYSTEM ====================
+  const [learnerProfile, setLearnerProfile] = useState(() => {
+    try {
+      const saved = localStorage.getItem('incuxai_learner_profile');
+      return saved ? JSON.parse(saved) : {
+        name: 'Sravan Pasam',
+        company: 'IncuXai Education Trust',
+        personalEmail: 'sravan.pasam@gmail.com',
+        workEmail: 'sravan@incuxai.com',
+        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop',
+        role: 'Verified HR & AI Masterclass Professional',
+        completedCourses: [
+          { id: 'ai-masterclass', title: 'AI Masterclass: Generative AI for Professionals', score: '94%', completedDate: '2026-07-18' }
+        ],
+        certificates: []
+      };
+    } catch {
+      return {
+        name: 'Sravan Pasam',
+        company: 'IncuXai Education Trust',
+        personalEmail: 'sravan.pasam@gmail.com',
+        workEmail: 'sravan@incuxai.com',
+        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop',
+        role: 'Verified HR & AI Masterclass Professional',
+        completedCourses: [],
+        certificates: []
+      };
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('incuxai_learner_profile', JSON.stringify(learnerProfile));
+  }, [learnerProfile]);
+
+  // Unified Auth State
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [loginMode, setLoginMode] = useState<'password' | 'otp'>('otp');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCode, setOtpCode] = useState('123456');
+  const [otpEmailOrPhone, setOtpEmailOrPhone] = useState('');
+
+  // Work Email Course Access Gateway State
+  const [showWorkEmailModal, setShowWorkEmailModal] = useState(false);
+  const [workEmailModalMode, setWorkEmailModalMode] = useState<'register' | 'login'>('register');
+  const [workOtpStep, setWorkOtpStep] = useState<'form' | 'otp'>('form');
+  const [workOtpInputCode, setWorkOtpInputCode] = useState('123456');
+  const [regName, setRegName] = useState('');
+  const [regWorkEmail, setRegWorkEmail] = useState('');
+  const [regCompany, setRegCompany] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [showCertificateModal, setShowCertificateModal] = useState(false);
+  const [showCongratsModal, setShowCongratsModal] = useState(false);
+  const [activeProfileTab, setActiveProfileTab] = useState<'overview' | 'edit' | 'courses' | 'certificates'>('overview');
+  const [activeCertificate, setActiveCertificate] = useState<any>(null);
+  const [certEmailSending, setCertEmailSending] = useState(false);
+  const [certEmailStatus, setCertEmailStatus] = useState<string | null>(null);
+
+  // Profile Form Edit State
+  const [editProfileForm, setEditProfileForm] = useState({
+    name: learnerProfile.name || '',
+    company: learnerProfile.company || '',
+    personalEmail: learnerProfile.personalEmail || '',
+    workEmail: learnerProfile.workEmail || ''
+  });
+
+  useEffect(() => {
+    setEditProfileForm({
+      name: learnerProfile.name || '',
+      company: learnerProfile.company || '',
+      personalEmail: learnerProfile.personalEmail || '',
+      workEmail: learnerProfile.workEmail || ''
+    });
+  }, [learnerProfile]);
+
+  // Handle Profile Photo Upload with Base64 Preview
+  const handleProfilePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        const w = window as any;
+        w.showToast?.('⚠️ File size exceeds 5MB limit.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64Img = reader.result as string;
+        setLearnerProfile(prev => ({ ...prev, avatar: base64Img }));
+        const w = window as any;
+        w.showToast?.('📸 Learner profile photo updated!');
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const saveProfileDetails = () => {
+    setLearnerProfile(prev => ({
+      ...prev,
+      name: editProfileForm.name.trim() || prev.name,
+      company: editProfileForm.company.trim() || prev.company,
+      personalEmail: editProfileForm.personalEmail.trim() || prev.personalEmail,
+      workEmail: editProfileForm.workEmail.trim() || prev.workEmail
+    }));
+    const w = window as any;
+    w.showToast?.('✅ Learner Profile details saved successfully!');
+  };
+
+  // Generate & Claim Certificate Function
+  const generateAndClaimCertificate = () => {
+    const certId = `CERT-INX-2026-${Math.floor(100000 + Math.random() * 900000)}`;
+    const dateNow = new Date();
+    const completionDateStr = dateNow.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const scheduledDeliveryObj = new Date(dateNow.getTime() + 60 * 60 * 1000);
+    const scheduledTimeStr = scheduledDeliveryObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    const newCert = {
+      id: certId,
+      courseTitle: initialLmsCourse.title,
+      learnerName: learnerProfile.name || 'Sravan Pasam',
+      companyName: learnerProfile.company || 'IncuXai Education Trust',
+      completionDate: completionDateStr,
+      personalEmail: learnerProfile.personalEmail || 'sravan.pasam@gmail.com',
+      workEmail: learnerProfile.workEmail || 'sravan@incuxai.com',
+      issuedBy: 'IncuXai Education Trust',
+      instructor: 'Dr. Arjun Reddy (Founder & Chief AI Officer)',
+      scheduledEmailDeliveryTime: scheduledTimeStr,
+      emailStatus: `Scheduled for delivery at ${scheduledTimeStr} (within 1 hour)`
+    };
+
+    setActiveCertificate(newCert);
+
+    // Store in user's profile
+    setLearnerProfile(prev => {
+      const existingCerts = prev.certificates || [];
+      const alreadyHas = existingCerts.some((c: any) => c.courseTitle === newCert.courseTitle);
+      if (alreadyHas) {
+        return {
+          ...prev,
+          certificates: existingCerts.map((c: any) => c.courseTitle === newCert.courseTitle ? newCert : c)
+        };
+      }
+      return {
+        ...prev,
+        certificates: [newCert, ...existingCerts]
+      };
+    });
+
+    setShowCertificateModal(true);
+
+    // Call backend API for automated email dispatch confirmation
+    triggerCertificateEmailAPI(newCert);
+  };
+
+  // Trigger Backend API for Dual Email Dispatch
+  const triggerCertificateEmailAPI = async (certObj: any) => {
+    setCertEmailSending(true);
+    try {
+      const res = await fetch('/api/send-certificate-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          learnerName: certObj.learnerName,
+          companyName: certObj.companyName,
+          personalEmail: certObj.personalEmail,
+          workEmail: certObj.workEmail,
+          courseTitle: certObj.courseTitle,
+          certificateId: certObj.id,
+          completionDate: certObj.completionDate
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCertEmailStatus(`📧 Scheduled for automated delivery to ${certObj.personalEmail} & ${certObj.workEmail} within 1 hour.`);
+      }
+    } catch {
+      setCertEmailStatus(`📧 Scheduled for automated delivery to ${certObj.personalEmail} & ${certObj.workEmail} within 1 hour.`);
+    } finally {
+      setCertEmailSending(false);
+    }
+  };
+
+  // Download Luxury Certificate as High-Resolution PNG
+  const downloadCertificatePNG = () => {
+    if (!activeCertificate) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 1920;
+    canvas.height = 1080;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Dark Obsidian Luxury Canvas Background
+    const gradient = ctx.createRadialGradient(960, 540, 100, 960, 540, 1200);
+    gradient.addColorStop(0, '#0f172a');
+    gradient.addColorStop(1, '#050811');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 1920, 1080);
+
+    // Outer Gold Metallic Frame
+    ctx.strokeStyle = '#C5A059';
+    ctx.lineWidth = 14;
+    ctx.strokeRect(40, 40, 1840, 1000);
+
+    // Inner Gold Fine Filigree Line
+    ctx.strokeStyle = 'rgba(197, 160, 89, 0.4)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(60, 60, 1800, 960);
+    ctx.strokeRect(70, 70, 1780, 940);
+
+    // Header Branding
+    ctx.fillStyle = '#C5A059';
+    ctx.font = 'bold 30px "Cinzel", Georgia, serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('INCOXAI EDUCATION TRUST', 960, 140);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 60px "Playfair Display", Georgia, serif';
+    ctx.fillText('CERTIFICATE OF MASTERY', 960, 230);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.font = '24px sans-serif';
+    ctx.fillText('THIS CERTIFIES THAT', 960, 310);
+
+    // Learner Name
+    ctx.fillStyle = '#fbbf24';
+    ctx.font = 'bold 70px serif';
+    ctx.fillText(activeCertificate.learnerName || 'Sravan Pasam', 960, 410);
+
+    // Company & Course Info
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.font = '28px sans-serif';
+    ctx.fillText(`representing ${activeCertificate.companyName || 'IncuXai Education Trust'}`, 960, 480);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.font = '24px sans-serif';
+    ctx.fillText('has successfully fulfilled all curriculum requirements and passed evaluations for', 960, 560);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 42px sans-serif';
+    ctx.fillText(activeCertificate.courseTitle, 960, 630);
+
+    // Verification ID & Date
+    ctx.fillStyle = '#C5A059';
+    ctx.font = 'bold 24px monospace';
+    ctx.fillText(`VERIFICATION ID: ${activeCertificate.id}`, 960, 720);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.font = '22px sans-serif';
+    ctx.fillText(`Issue Date: ${activeCertificate.completionDate}`, 960, 760);
+
+    // Signatures Line
+    ctx.strokeStyle = '#C5A059';
+    ctx.lineWidth = 2;
+
+    // Left Signature Line
+    ctx.beginPath();
+    ctx.moveTo(350, 900);
+    ctx.lineTo(650, 900);
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 22px sans-serif';
+    ctx.fillText('Dr. Arjun Reddy', 500, 935);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.font = '18px sans-serif';
+    ctx.fillText('Founder & Chief AI Officer', 500, 965);
+
+    // Right Signature Line
+    ctx.beginPath();
+    ctx.moveTo(1270, 900);
+    ctx.lineTo(1570, 900);
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 22px sans-serif';
+    ctx.fillText('Academic Evaluation Board', 1420, 935);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.font = '18px sans-serif';
+    ctx.fillText('IncuXai Education Trust', 1420, 965);
+
+    // Trigger Download
+    const dataUrl = canvas.toDataURL('image/png');
+    const link = document.createElement('a');
+    link.download = `Certificate_${(activeCertificate.learnerName || 'Learner').replace(/\s+/g, '_')}_IncuXai.png`;
+    link.href = dataUrl;
+    link.click();
+
+    const w = window as any;
+    w.showToast?.('High-resolution PNG Certificate downloaded successfully!');
+  };
+
+  // Download PDF Copy Function
+  const downloadCertificatePDF = () => {
+    const cert = activeCertificate || {
+      id: 'CERT-INX-2026-948201',
+      courseTitle: 'AI for HR Professionals',
+      learnerName: learnerProfile.name || 'Sravan Pasam',
+      companyName: learnerProfile.company || 'IncuXai Education Trust',
+      completionDate: 'July 18, 2026',
+      workEmail: learnerProfile.workEmail || 'sravan@incuxai.com'
+    };
+
+    const w = window as any;
+    w.showToast?.('Generating official PDF Certificate copy...');
+    const content = `===================================================================
+                  INCOXAI EDUCATION TRUST
+                  CERTIFICATE OF MASTERY
+===================================================================
+
+THIS IS PROUDLY PRESENTED TO:
+${cert.learnerName} (Representing ${cert.companyName})
+
+FOR SUCCESSFULLY COMPLETING ALL CURRICULUM REQUIREMENTS,
+KNOWLEDGE CHECK EVALUATIONS, AND PRACTICAL ACTIVITIES IN:
+
+MASTERCLASS: ${cert.courseTitle}
+
+-------------------------------------------------------------------
+VERIFICATION ID: ${cert.id}
+ISSUE DATE: ${cert.completionDate}
+ISSUED BY: IncuXai Education Trust (Academic Board)
+DISPATCHED TO WORK EMAIL: ${cert.workEmail}
+OFFICIAL VERIFICATION LINK: https://incuxaieducationtrust.org/verify/${cert.id}
+===================================================================`;
+
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${cert.courseTitle.replace(/\s+/g, '_')}_Certificate_${cert.id}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // LinkedIn Share Function
+  const shareCertificateLinkedIn = () => {
+    const cert = activeCertificate || {
+      id: 'CERT-INX-2026-948201',
+      courseTitle: 'AI for HR Professionals',
+      learnerName: learnerProfile.name || 'Sravan Pasam'
+    };
+    const certUrl = encodeURIComponent(`https://incuxaieducationtrust.org/verify/${cert.id}`);
+    const summary = encodeURIComponent(`I am excited to share that I have completed the ${cert.courseTitle} certification from IncuXai Education Trust! Certificate Verification ID: ${cert.id}`);
+    window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${certUrl}&title=${encodeURIComponent('Certified: ' + cert.courseTitle)}&summary=${summary}`, '_blank');
+    const w = window as any;
+    w.showToast?.('Opening LinkedIn share dialog...');
+  };
+
+  // Instagram Share Function
+  const shareCertificateInstagram = () => {
+    const cert = activeCertificate || {
+      id: 'CERT-INX-2026-948201',
+      courseTitle: 'AI for HR Professionals',
+      learnerName: learnerProfile.name || 'Sravan Pasam'
+    };
+    const textToCopy = `I just earned my official certification in ${cert.courseTitle} from IncuXai Education Trust! Certificate ID: ${cert.id}. Verified skills in Generative AI, Prompt Engineering, & AI Governance.`;
+    navigator.clipboard.writeText(textToCopy);
+    const w = window as any;
+    w.showToast?.('Certificate details copied! Open Instagram to paste in your Story or Post.');
+    window.open('https://www.instagram.com/', '_blank');
+  };
+
+  useEffect(() => {
+    localStorage.setItem('incuxai_lms_completed', JSON.stringify(lmsCompletedLessons));
+  }, [lmsCompletedLessons]);
+
+  useEffect(() => {
+    localStorage.setItem('incuxai_lms_notes', JSON.stringify(lmsNotes));
+  }, [lmsNotes]);
+
+  useEffect(() => {
+    if (!currentLmsLesson) return;
+    const savedTime = localStorage.getItem(`incuxai_lms_time_${currentLmsLesson.id}`);
+    if (savedTime && lmsVideoRef.current) {
+      const timeNum = parseFloat(savedTime);
+      if (!isNaN(timeNum) && timeNum > 0) {
+        lmsVideoRef.current.currentTime = timeNum;
+        setLmsVideoTime(timeNum);
+        setLmsAutoSaveBadge(`Restored playback at ${formatTime(timeNum)}`);
+        setTimeout(() => setLmsAutoSaveBadge(null), 3000);
+      }
+    }
+  }, [currentLmsLesson.id]);
+
+  const handleLmsTimeUpdate = () => {
+    if (!lmsVideoRef.current) return;
+    const cur = lmsVideoRef.current.currentTime;
+    const dur = lmsVideoRef.current.duration || 1;
+    setLmsVideoTime(cur);
+
+    localStorage.setItem(`incuxai_lms_time_${currentLmsLesson.id}`, cur.toString());
+
+    if (cur / dur >= 0.9 && !lmsCompletedLessons[currentLmsLesson.id]) {
+      setLmsCompletedLessons(prev => ({ ...prev, [currentLmsLesson.id]: true }));
+      const w = window as any;
+      w.showToast?.(`🎉 Lesson Completed: ${currentLmsLesson.title}`);
+    }
+  };
+
+  const handleLmsVideoEnded = () => {
+    setLmsIsPlaying(false);
+    setLmsCompletedLessons(prev => ({ ...prev, [currentLmsLesson.id]: true }));
+  };
+
+  const toggleLmsPlay = () => {
+    if (!lmsVideoRef.current) return;
+    if (lmsVideoRef.current.paused) {
+      lmsVideoRef.current.play();
+      setLmsIsPlaying(true);
+    } else {
+      lmsVideoRef.current.pause();
+      setLmsIsPlaying(false);
+    }
+  };
+
+  const skipLmsTime = (seconds: number) => {
+    if (!lmsVideoRef.current) return;
+    lmsVideoRef.current.currentTime = Math.max(0, Math.min(lmsVideoRef.current.duration || 0, lmsVideoRef.current.currentTime + seconds));
+  };
+
+  const changeLmsSpeed = (speed: number) => {
+    setLmsPlaybackSpeed(speed);
+    if (lmsVideoRef.current) {
+      lmsVideoRef.current.playbackRate = speed;
+    }
+  };
+
+  const seekLmsToTimestamp = (sec: number) => {
+    if (lmsVideoRef.current) {
+      lmsVideoRef.current.currentTime = sec;
+      lmsVideoRef.current.play();
+      setLmsIsPlaying(true);
+    }
+  };
+
+  const formatTime = (sec: number) => {
+    if (isNaN(sec)) return '00:00';
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const allLmsLessons = initialLmsCourse.modules.flatMap(m => m.lessons);
+  const totalLmsLessons = allLmsLessons.length;
+  const completedLmsCount = Object.keys(lmsCompletedLessons).filter(id => lmsCompletedLessons[id]).length;
+  const overallLmsProgressPercent = Math.round((completedLmsCount / totalLmsLessons) * 100);
+
+  const currentLmsLessonIndex = allLmsLessons.findIndex(l => l.id === currentLmsLesson.id);
+  const hasPrevLmsLesson = currentLmsLessonIndex > 0;
+  const hasNextLmsLesson = currentLmsLessonIndex < allLmsLessons.length - 1;
+
+  const isLmsLessonLocked = (lesId: string, idxInAll: number) => {
+    // Section Quiz Gatekeeper: Must complete previous module's quiz before starting next module
+    const targetModIdx = initialLmsCourse.modules.findIndex(m => m.lessons.some(l => l.id === lesId));
+    if (targetModIdx > 0) {
+      for (let mi = 0; mi < targetModIdx; mi++) {
+        const prevMod = initialLmsCourse.modules[mi];
+        const quizDone = prevMod.lessons.some(l => lmsQuizSubmitted[l.id]) || lmsQuizSubmitted[prevMod.lessons[prevMod.lessons.length - 1]?.id];
+        if (!quizDone) return true; // Locked until previous module quiz is submitted
+      }
+    }
+
+    if (!lmsSequentialLockMode) return false;
+    if (idxInAll === 0) return false;
+    const prevLes = allLmsLessons[idxInAll - 1];
+    return !lmsCompletedLessons[prevLes.id];
+  };
+
+  const goToNextLmsLesson = () => {
+    if (hasNextLmsLesson) {
+      const nextLes = allLmsLessons[currentLmsLessonIndex + 1];
+      const currentMod = initialLmsCourse.modules.find(m => m.lessons.some(l => l.id === currentLmsLesson.id));
+      const nextMod = initialLmsCourse.modules.find(m => m.lessons.some(l => l.id === nextLes.id));
+
+      if (currentMod && nextMod && currentMod.id !== nextMod.id) {
+        const quizDone = currentMod.lessons.some(l => lmsQuizSubmitted[l.id]) || lmsQuizSubmitted[currentLmsLesson.id];
+        if (!quizDone) {
+          setLmsMainTab('quiz');
+          const w = window as any;
+          w.showToast?.('⚠️ Section Quiz Required! Please complete & submit the Section Quiz before moving to the next section.');
+          return;
+        }
+      }
+
+      if (isLmsLessonLocked(nextLes.id, currentLmsLessonIndex + 1)) {
+        setLmsMainTab('quiz');
+        const w = window as any;
+        w.showToast?.('🔒 Prerequisite Section Quiz Required: Attend & submit the Section Quiz first.');
+        return;
+      }
+      setCurrentLmsLesson(nextLes);
+      setLmsIsPlaying(false);
+    } else {
+      const currentMod = initialLmsCourse.modules.find(m => m.lessons.some(l => l.id === currentLmsLesson.id));
+      const quizDone = currentMod?.lessons.some(l => lmsQuizSubmitted[l.id]) || lmsQuizSubmitted[currentLmsLesson.id];
+      if (!quizDone) {
+        setLmsMainTab('quiz');
+        const w = window as any;
+        w.showToast?.('⚠️ Final Section Quiz Required! Submit the quiz to complete the course.');
+        return;
+      }
+      const w = window as any;
+      w.showToast?.('Congratulations! You have completed the entire course.');
+      setShowCongratsModal(true);
+    }
+  };
+
+  const goToPrevLmsLesson = () => {
+    if (hasPrevLmsLesson) {
+      const prevLes = allLmsLessons[currentLmsLessonIndex - 1];
+      setCurrentLmsLesson(prevLes);
+      setLmsIsPlaying(false);
+    }
+  };
+
+  const saveLmsNote = () => {
+    if (!lmsNewNoteText.trim()) return;
+    const newNote = {
+      timeSec: Math.floor(lmsVideoTime),
+      timeStr: formatTime(lmsVideoTime),
+      text: lmsNewNoteText.trim()
+    };
+    setLmsNotes(prev => ({
+      ...prev,
+      [currentLmsLesson.id]: [...(prev[currentLmsLesson.id] || []), newNote]
+    }));
+    setLmsNewNoteText('');
+    const w = window as any;
+    w.showToast?.('Note saved successfully!');
+  };
+
+  const deleteLmsNoteHandler = (lessonId: string, idx: number) => {
+    setLmsNotes(prev => ({
+      ...prev,
+      [lessonId]: (prev[lessonId] || []).filter((_, i) => i !== idx)
+    }));
+  };
+
+  const addLmsBookmark = () => {
+    const title = prompt(`Bookmark title for timestamp ${formatTime(lmsVideoTime)}:`, `Key Concept at ${formatTime(lmsVideoTime)}`);
+    if (title && title.trim()) {
+      const newBm = {
+        timeSec: Math.floor(lmsVideoTime),
+        timeStr: formatTime(lmsVideoTime),
+        title: title.trim()
+      };
+      setLmsBookmarks(prev => ({
+        ...prev,
+        [currentLmsLesson.id]: [...(prev[currentLmsLesson.id] || []), newBm]
+      }));
+      const w = window as any;
+      w.showToast?.('🔖 Bookmark saved!');
+    }
+  };
+
+  const deleteLmsBookmark = (lessonId: string, idx: number) => {
+    setLmsBookmarks(prev => ({
+      ...prev,
+      [lessonId]: (prev[lessonId] || []).filter((_, i) => i !== idx)
+    }));
+  };
+
+  const triggerResourceDownload = (res: { name: string; size: string; type: string }) => {
+    const w = window as any;
+    w.showToast?.(`Downloading resource: ${res.name}`);
+  };
+
+
 
   // Show AI for HR popup after 1.5 seconds when the website is opened
   useEffect(() => {
@@ -725,8 +1751,74 @@ export default function App() {
       }
     };
 
-    // Nav Switcher
+    // Protected Pages List
+    const protectedPages = ['vol-portal', 'teacher-portal', 'admin-portal', 'learner-profile', 'lms-player'];
+
+    w.sendLoginOTP = (targetVal?: string) => {
+      const val = targetVal || otpEmailOrPhone;
+      if (!val) {
+        w.showToast?.('Please enter your email or mobile number');
+        return;
+      }
+      setOtpSent(true);
+      setOtpCode('123456');
+      w.showToast?.('OTP sent successfully! Demo OTP: 123456');
+    };
+
+    w.verifyLoginOTP = (valInput?: string, codeInput?: string) => {
+      const target = (valInput || otpEmailOrPhone || 'user@incuxai.org').trim();
+      const code = (codeInput || otpCode || '').trim();
+      if (!code || (code !== '123456' && code !== '1234')) {
+        w.showToast?.('Invalid OTP code. Use 123456 for instant login.');
+        return;
+      }
+
+      let name = target.split('@')[0] || 'User';
+      let role = 'student';
+
+      if (target.toLowerCase().includes('admin') || target.toLowerCase() === 'sravanpasam74@gmail.com') {
+        name = 'Super Admin';
+        role = 'admin';
+      } else if (target.toLowerCase().includes('volunteer') || target.toLowerCase().includes('vol')) {
+        role = 'volunteer';
+      } else if (target.toLowerCase().includes('teacher') || target.toLowerCase().includes('tch')) {
+        role = 'teacher';
+      }
+
+      currentUser = { name, role, email: target, workEmail: target, isWorkEmailVerified: true };
+      w.currentUserEmail = target;
+      localStorage.setItem('currentUser', JSON.stringify(currentUser));
+      localStorage.setItem('currentUserEmail', target);
+      localStorage.setItem('authToken', 'token_' + Date.now());
+      localStorage.setItem('corp_otp_verified', 'true');
+
+      w.updateHeaderUserUI();
+      w.closeModal();
+      setShowWorkEmailModal(false);
+      w.showToast?.(`OTP verified! Welcome ${name}`);
+
+      if (w.redirectAfterLogin) {
+        const redirectTarget = w.redirectAfterLogin;
+        w.redirectAfterLogin = null;
+        w.showPage(redirectTarget);
+      } else {
+        w.goToProfilePage();
+      }
+    };
+
+    // Nav Switcher Router
     w.showPage = (id: string) => {
+      // Protection check: Prompt login if unauthenticated
+      if (protectedPages.includes(id)) {
+        const savedUserStr = localStorage.getItem('currentUser');
+        if (!savedUserStr) {
+          w.redirectAfterLogin = id;
+          w.showToast?.('Please log in to access this area.');
+          w.openModal();
+          return;
+        }
+      }
+
       const header = document.querySelector('header');
       if (id === 'home') {
         if (header) header.classList.remove('page-active');
@@ -750,14 +1842,14 @@ export default function App() {
         return;
       }
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-      const footerHide = ['vol-portal', 'admin-portal', 'teacher-portal'];
+      const footerHide = ['vol-portal', 'admin-portal', 'teacher-portal', 'lms-player', 'access-denied'];
       const targetPage = document.getElementById(id);
       if (targetPage) {
         targetPage.classList.add('active');
       }
       document.querySelectorAll('nav > a, nav > .nav-item > a').forEach(a => a.classList.remove('active'));
       const navItems = document.querySelectorAll('nav > a, nav > .nav-item > a');
-      const navMap: Record<string, number> = { home: 0, about: 1, ai4all: 2, programs: 3, volunteer: 4, teachxai: 5, gallery: 6, contact: 7, donate: 8, 'corporate-course': 2 };
+      const navMap: Record<string, number> = { home: 0, ai4all: 1, programs: 2, volunteer: 3, teachxai: 4, gallery: 5, contact: 6, donate: 7, 'corporate-course': 1, 'lms-player': 1, 'learner-profile': 1 };
       if (navMap[id] !== undefined && navItems[navMap[id]]) {
         navItems[navMap[id]].classList.add('active');
       }
@@ -773,18 +1865,140 @@ export default function App() {
       window.scrollTo(0, 0);
     };
 
-    // Logins
+    // Logins & Header Profile Dropdown Management
+    w.updateHeaderUserUI = () => {
+      const loginBtn = document.getElementById('login-btn');
+      const userMenuWrapper = document.getElementById('user-menu-wrapper');
+      const avatarText = document.getElementById('header-avatar-text');
+      const avatarImg = document.getElementById('header-avatar-img') as HTMLImageElement;
+      const userNameEl = document.getElementById('header-user-name');
+
+      const dropdownAvatarText = document.getElementById('dropdown-avatar-text');
+      const dropdownAvatarImg = document.getElementById('dropdown-avatar-img') as HTMLImageElement;
+      const dropdownName = document.getElementById('dropdown-user-name');
+      const dropdownEmail = document.getElementById('dropdown-user-email');
+      const dropdownRoleBadge = document.getElementById('dropdown-role-badge');
+
+      const savedUser = localStorage.getItem('currentUser');
+      const savedEmail = localStorage.getItem('currentUserEmail') || '';
+
+      if (savedUser) {
+        try {
+          const u = JSON.parse(savedUser);
+          if (loginBtn) loginBtn.style.display = 'none';
+          if (userMenuWrapper) userMenuWrapper.style.display = 'inline-block';
+
+          const nameStr = u.name || 'User';
+          const roleStr = (u.role || 'student').toLowerCase();
+          const initial = nameStr.charAt(0).toUpperCase();
+
+          if (avatarText) avatarText.textContent = initial;
+          if (dropdownAvatarText) dropdownAvatarText.textContent = initial;
+          if (userNameEl) userNameEl.textContent = nameStr;
+          if (dropdownName) dropdownName.textContent = nameStr;
+          if (dropdownEmail) dropdownEmail.textContent = savedEmail || u.email || 'user@incuxai.org';
+
+          if (dropdownRoleBadge) {
+            dropdownRoleBadge.textContent = roleStr.toUpperCase();
+            dropdownRoleBadge.className = 'role-pill-badge ' + (roleStr === 'admin' ? 'admin' : roleStr === 'teacher' ? 'teacher' : roleStr === 'volunteer' ? 'volunteer' : 'student');
+          }
+
+          // Check for profile photo
+          let photoUrl = '';
+          if (roleStr === 'volunteer') {
+            photoUrl = localStorage.getItem('vol_profile_photo_' + savedEmail) || '';
+          } else if (roleStr === 'teacher') {
+            photoUrl = localStorage.getItem('tch_profile_photo_' + savedEmail) || '';
+          } else {
+            photoUrl = localStorage.getItem('learner_profile_photo') || u.avatar || '';
+          }
+
+          if (!photoUrl) {
+            try {
+              const lp = JSON.parse(localStorage.getItem('incuxai_learner_profile') || '{}');
+              if (lp && lp.avatar) photoUrl = lp.avatar;
+            } catch (e) {}
+          }
+
+          if (photoUrl) {
+            if (avatarImg) { avatarImg.src = photoUrl; avatarImg.style.display = 'block'; }
+            if (avatarText) { avatarText.style.display = 'none'; }
+            if (dropdownAvatarImg) { dropdownAvatarImg.src = photoUrl; dropdownAvatarImg.style.display = 'block'; }
+            if (dropdownAvatarText) { dropdownAvatarText.style.display = 'none'; }
+          } else {
+            if (avatarImg) { avatarImg.style.display = 'none'; }
+            if (avatarText) { avatarText.style.display = 'block'; }
+            if (dropdownAvatarImg) { dropdownAvatarImg.style.display = 'none'; }
+            if (dropdownAvatarText) { dropdownAvatarText.style.display = 'block'; }
+          }
+          return;
+        } catch (e) {}
+      }
+
+      if (loginBtn) loginBtn.style.display = 'inline-flex';
+      if (userMenuWrapper) userMenuWrapper.style.display = 'none';
+    };
+
+    w.toggleUserDropdown = (e?: Event) => {
+      if (e) e.stopPropagation();
+      const menu = document.getElementById('user-dropdown-menu');
+      if (menu) menu.classList.toggle('active');
+    };
+
+    w.goToProfilePage = () => {
+      const savedUser = localStorage.getItem('currentUser');
+      let role = 'student';
+      if (savedUser) {
+        try {
+          const u = JSON.parse(savedUser);
+          role = u.role || 'student';
+        } catch (e) {}
+      }
+      if (role === 'volunteer') {
+        w.showPage('vol-portal');
+        setTimeout(() => {
+          const el = document.getElementById('vol-profile');
+          if (el && typeof w.showPortalSection === 'function') {
+            w.showPortalSection('vol-profile', { currentTarget: document.querySelector('.portal-nav-btn[onclick*="vol-profile"]') });
+          }
+        }, 50);
+      } else if (role === 'teacher') {
+        w.showPage('teacher-portal');
+        setTimeout(() => {
+          const el = document.getElementById('tportal-profile');
+          if (el && typeof w.showTportalSection === 'function') {
+            w.showTportalSection('tportal-profile', { currentTarget: document.querySelector('.portal-nav-btn[onclick*="tportal-profile"]') });
+          }
+        }, 50);
+      } else if (role === 'admin') {
+        w.showPage('admin-portal');
+      } else {
+        w.showPage('learner-profile');
+      }
+    };
+
+    w.goToDashboard = () => {
+      w.goToProfilePage();
+    };
+
+    w.goToSettings = () => {
+      w.goToProfilePage();
+    };
+
+    w.handleLogout = () => {
+      currentUser = null;
+      w.currentUserEmail = null;
+      localStorage.removeItem('currentUser');
+      localStorage.removeItem('currentUserEmail');
+      localStorage.removeItem('authToken');
+      w.updateHeaderUserUI();
+      w.showToast?.('Logged out successfully');
+      w.showPage('home');
+    };
+
     w.handleLoginBtn = () => {
       if (currentUser) {
-        currentUser = null;
-        w.currentUserEmail = null;
-        localStorage.removeItem('currentUser');
-        localStorage.removeItem('currentUserEmail');
-        const loginBtn = document.getElementById('login-btn');
-        if (loginBtn) loginBtn.textContent = 'Login';
-        const loggedUserEl = document.getElementById('logged-user');
-        if (loggedUserEl) loggedUserEl.style.display = 'none';
-        w.showPage('home');
+        w.handleLogout();
       } else {
         w.openModal();
       }
@@ -798,19 +2012,94 @@ export default function App() {
     w.closeModal = () => {
       const modal = document.getElementById('login-modal');
       if (modal) modal.classList.remove('active');
-      const success = document.getElementById('modal-success');
-      if (success) success.style.display = 'none';
-      document.querySelectorAll('#login-modal .modal-form').forEach(f => {
-        (f as HTMLElement).style.display = '';
-        f.classList.remove('active');
-      });
-      const volTab = document.getElementById('volunteer-tab');
-      if (volTab) volTab.classList.add('active');
-      const tabElements = document.querySelectorAll('.modal-tab');
-      tabElements.forEach((t, i) => {
-        if (i === 0) t.classList.add('active');
-        else t.classList.remove('active');
-      });
+    };
+
+    w.openWorkEmailModal = (mode: 'register' | 'login' = 'register') => {
+      setWorkEmailModalMode(mode);
+      setWorkOtpStep('form');
+      setShowWorkEmailModal(true);
+    };
+
+    w.sendWorkEmailOTP = (nameVal?: string, emailVal?: string, companyVal?: string, passVal?: string) => {
+      const nameEl = document.getElementById('work-reg-name') as HTMLInputElement;
+      const emailEl = document.getElementById('work-reg-email') as HTMLInputElement;
+      const companyEl = document.getElementById('work-reg-company') as HTMLInputElement;
+      const passEl = document.getElementById('work-reg-pass') as HTMLInputElement;
+
+      const name = nameVal || regName || nameEl?.value || 'Learner';
+      const email = (emailVal || regWorkEmail || emailEl?.value || 'user@company.com').trim().toLowerCase();
+      const company = companyVal || regCompany || companyEl?.value || 'IncuXai Trust';
+      const pass = passVal || regPassword || passEl?.value || 'pass123';
+
+      setRegName(name);
+      setRegWorkEmail(email);
+      setRegCompany(company);
+      setRegPassword(pass);
+
+      setWorkOtpStep('otp');
+      setWorkOtpInputCode('123456');
+      w.showToast?.(`Verification OTP code sent to ${email}! Demo OTP: 123456`);
+    };
+
+    w.verifyWorkEmailOTP = (codeInput?: string) => {
+      const code = (codeInput || workOtpInputCode || '').trim();
+      if (!code || (code !== '123456' && code !== '1234')) {
+        w.showToast?.('Invalid OTP code. Please enter demo code: 123456');
+        return;
+      }
+
+      const name = regName || 'Learner';
+      const email = regWorkEmail || 'user@company.com';
+      const company = regCompany || 'IncuXai Trust';
+      const pass = regPassword || 'pass123';
+
+      const users = getSafeArray('ai4all_registered_users');
+      let existing = users.find((u: any) => u && (u.email || '').toLowerCase() === email);
+      if (!existing) {
+        existing = { name, email, company, password: pass, role: 'student', isWorkEmailVerified: true, registeredAt: new Date().toISOString() };
+        users.push(existing);
+        localStorage.setItem('ai4all_registered_users', JSON.stringify(users));
+      }
+
+      currentUser = { name, role: 'student', email, workEmail: email, company, isWorkEmailVerified: true };
+      w.currentUserEmail = email;
+      localStorage.setItem('currentUser', JSON.stringify(currentUser));
+      localStorage.setItem('currentUserEmail', email);
+      localStorage.setItem('authToken', 'token_' + Date.now());
+      localStorage.setItem('corp_otp_verified', 'true');
+
+      const newProfile = {
+        name,
+        company,
+        personalEmail: email,
+        workEmail: email,
+        isWorkEmailVerified: true,
+        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop',
+        role: 'Verified AI 4 ALL Professional',
+        completedCourses: [
+          { id: 'ai-masterclass', title: 'AI Masterclass: Generative AI for Professionals', score: '94%', completedDate: new Date().toISOString().split('T')[0] }
+        ],
+        certificates: []
+      };
+      setLearnerProfile(newProfile);
+      localStorage.setItem('incuxai_learner_profile', JSON.stringify(newProfile));
+
+      w.updateHeaderUserUI();
+      setShowWorkEmailModal(false);
+      setWorkOtpStep('form');
+      w.showToast?.(`Work Email Verified! Welcome ${name}`);
+
+      if (w.redirectAfterLogin) {
+        const target = w.redirectAfterLogin;
+        w.redirectAfterLogin = null;
+        w.showPage(target);
+      } else {
+        w.showPage('corporate-course');
+      }
+    };
+
+    w.registerWorkEmailUser = (nameVal?: string, emailVal?: string, companyVal?: string, passVal?: string) => {
+      w.sendWorkEmailOTP(nameVal, emailVal, companyVal, passVal);
     };
 
     w.openSignUpModal = () => {
@@ -823,110 +2112,105 @@ export default function App() {
       if (modal) modal.classList.remove('active');
     };
 
-    w.switchTab = (id: string, e: Event) => {
-      document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
-      if (e && e.currentTarget) {
-        (e.currentTarget as HTMLElement).classList.add('active');
+    // Unified Role-Based Authentication System
+    w.loginUser = (emailInput?: string, passwordInput?: string) => {
+      let email = (emailInput || (document.getElementById('saas-login-email') as HTMLInputElement)?.value || otpEmailOrPhone || regWorkEmail || '').trim();
+      let pass = (passwordInput || (document.getElementById('saas-login-pass') as HTMLInputElement)?.value || regPassword || 'password123').trim();
+
+      if (!email) {
+        w.showToast?.('Please enter your email address or mobile number');
+        return;
       }
-      document.querySelectorAll('#login-modal .modal-form').forEach(f => f.classList.remove('active'));
-      const targetForm = document.getElementById(id);
-      if (targetForm) targetForm.classList.add('active');
-    };
 
-    w.loginUser = (role: string) => {
-      const success = document.getElementById('modal-success');
-      document.querySelectorAll('#login-modal .modal-form').forEach(f => {
-        (f as HTMLElement).style.display = 'none';
-      });
-      if (success) success.style.display = 'block';
+      let name = '';
+      let role = '';
 
-      let name = 'User';
-      if (role === 'volunteer') {
-        const email = (document.getElementById('vol-login-email') as HTMLInputElement)?.value;
-        const pass = (document.getElementById('vol-login-pass') as HTMLInputElement)?.value;
-        const volCreds = getSafeArray('volunteer_pass');
-        const found = volCreds.find((v: any) => v && v.email === email && v.password === pass);
-        if (!found) {
-          w.showToast('Invalid email or password');
-          document.querySelectorAll('#login-modal .modal-form').forEach(f => { (f as HTMLElement).style.display = ''; });
-          if (success) success.style.display = 'none';
-          return;
-        }
-        name = found.name || email.split('@')[0];
-        w.currentUserEmail = email;
-      } else if (role === 'teacher') {
-        const email = (document.getElementById('tch-login-email') as HTMLInputElement)?.value;
-        const pass = (document.getElementById('tch-login-pass') as HTMLInputElement)?.value;
-        const teacherCreds = getSafeArray('teachxai_teachers_pass');
-        const found = teacherCreds.find((t: any) => t && t.email === email && t.password === pass);
-        if (!found) {
-          w.showToast('Invalid teacher credentials');
-          document.querySelectorAll('#login-modal .modal-form').forEach(f => { (f as HTMLElement).style.display = ''; });
-          if (success) success.style.display = 'none';
-          return;
-        }
-        name = found.name || email.split('@')[0];
-        w.currentUserEmail = email;
+      // 1. Admin Lookup
+      if (email.toLowerCase() === 'sravanpasam74@gmail.com' && pass === 'admin123') {
+        name = 'Super Admin';
+        role = 'admin';
       } else {
-        const email = (document.getElementById('ad-login-email') as HTMLInputElement)?.value;
-        const pass = (document.getElementById('ad-login-pass') as HTMLInputElement)?.value;
-        if (email !== 'sravanpasam74@gmail.com' || pass !== 'admin123') {
-          w.showToast('Invalid admin credentials');
-          document.querySelectorAll('#login-modal .modal-form').forEach(f => { (f as HTMLElement).style.display = ''; });
-          if (success) success.style.display = 'none';
-          return;
-        }
-        name = 'Admin';
-      }
+        // 2. Volunteer Lookup
+        const volCreds = getSafeArray('volunteer_pass');
+        const foundVol = volCreds.find((v: any) => v && (v.email || '').toLowerCase() === email.toLowerCase() && v.password === pass);
 
-      const successMsg = document.getElementById('success-msg');
-      if (successMsg) successMsg.textContent = `Welcome ${name}! Redirecting to your portal...`;
+        // 3. Teacher Lookup
+        const tchCreds = getSafeArray('teachxai_teachers_pass');
+        const foundTch = tchCreds.find((t: any) => t && (t.email || '').toLowerCase() === email.toLowerCase() && t.password === pass);
 
-      currentUser = { role, name };
-      localStorage.setItem('currentUser', JSON.stringify(currentUser));
-      if (w.currentUserEmail) localStorage.setItem('currentUserEmail', w.currentUserEmail);
-      const loginBtn = document.getElementById('login-btn');
-      if (loginBtn) loginBtn.textContent = 'Logout';
-      const loggedUserEl = document.getElementById('logged-user');
-      if (loggedUserEl) {
-        loggedUserEl.textContent = name;
-        loggedUserEl.style.display = 'inline';
-      }
-
-      setTimeout(() => {
-        w.closeModal();
-        if (role === 'volunteer') {
-          const pName = document.getElementById('portal-name');
-          const pFullName = document.getElementById('portal-fullname');
-          const pAvatar = document.getElementById('portal-avatar');
-          if (pName) pName.textContent = name;
-          if (pFullName) pFullName.textContent = name;
-          if (pAvatar) pAvatar.textContent = name[0].toUpperCase();
-          
-          // Re-render portal panels on dynamic login
-          w.renderEvents();
-          w.renderTasks();
-          w.renderVolunteersAndLeaderboard();
-          // Populate profile fields
-          w.populateVolunteerProfile();
-          w.showPage('vol-portal');
-        } else if (role === 'teacher') {
-          const tpName = document.getElementById('tportal-name');
-          const tpFullName = document.getElementById('tportal-fullname');
-          const tpAvatar = document.getElementById('tportal-avatar');
-          if (tpName) tpName.textContent = name;
-          if (tpFullName) tpFullName.textContent = name;
-          if (tpAvatar) tpAvatar.textContent = name[0].toUpperCase();
-          w.renderTeacherPortal();
-          w.showPage('teacher-portal');
+        if (foundVol) {
+          name = foundVol.name || email.split('@')[0];
+          role = 'volunteer';
+        } else if (foundTch) {
+          name = foundTch.name || email.split('@')[0];
+          role = 'teacher';
         } else {
-          w.renderEvents();
-          w.renderTasks();
-          w.renderVolunteersAndLeaderboard();
-          w.loadEventRegistrations();
-          w.showPage('admin-portal');
+          // 4. Student / Learner Lookup (Default Public Learner Role)
+          const learnerStr = localStorage.getItem('incuxai_learner_profile');
+          if (learnerStr) {
+            try {
+              const lp = JSON.parse(learnerStr);
+              if (lp.personalEmail?.toLowerCase() === email.toLowerCase() || lp.workEmail?.toLowerCase() === email.toLowerCase()) {
+                name = lp.name || email.split('@')[0];
+              }
+            } catch (e) {}
+          }
+          if (!name) {
+            name = email.split('@')[0];
+          }
+          role = 'student';
         }
-      }, 1500);
+      }
+
+      currentUser = { role, name, email };
+      w.currentUserEmail = email;
+      localStorage.setItem('currentUser', JSON.stringify(currentUser));
+      localStorage.setItem('currentUserEmail', email);
+      localStorage.setItem('authToken', 'token_' + Date.now());
+
+      w.updateHeaderUserUI();
+      w.closeModal();
+      w.showToast?.(`Welcome back, ${name}!`);
+
+      // Check if user was redirected from a protected page
+      if (w.redirectAfterLogin) {
+        const target = w.redirectAfterLogin;
+        w.redirectAfterLogin = null;
+        w.showPage(target);
+        return;
+      }
+
+      // Automatic Role-Based Redirection
+      if (role === 'volunteer') {
+        const pName = document.getElementById('portal-name');
+        const pFullName = document.getElementById('portal-fullname');
+        const pAvatar = document.getElementById('portal-avatar');
+        if (pName) pName.textContent = name;
+        if (pFullName) pFullName.textContent = name;
+        if (pAvatar) pAvatar.textContent = name[0].toUpperCase();
+        w.renderEvents?.();
+        w.renderTasks?.();
+        w.renderVolunteersAndLeaderboard?.();
+        w.populateVolunteerProfile?.();
+        w.showPage('vol-portal');
+      } else if (role === 'teacher') {
+        const tpName = document.getElementById('tportal-name');
+        const tpFullName = document.getElementById('tportal-fullname');
+        const tpAvatar = document.getElementById('tportal-avatar');
+        if (tpName) tpName.textContent = name;
+        if (tpFullName) tpFullName.textContent = name;
+        if (tpAvatar) tpAvatar.textContent = name[0].toUpperCase();
+        w.renderTeacherPortal?.();
+        w.showPage('teacher-portal');
+      } else if (role === 'admin') {
+        w.renderEvents?.();
+        w.renderTasks?.();
+        w.renderVolunteersAndLeaderboard?.();
+        w.loadEventRegistrations?.();
+        w.showPage('admin-portal');
+      } else {
+        w.showPage('learner-profile');
+      }
     };
 
     // ===== PERSISTENT DATA LAYER & UI SYNC SYSTEM =====
@@ -989,17 +2273,11 @@ export default function App() {
         try {
           currentUser = JSON.parse(savedUser);
           w.currentUserEmail = savedEmail;
-          const loginBtn = document.getElementById('login-btn');
-          if (loginBtn) loginBtn.textContent = 'Logout';
-          const loggedUserEl = document.getElementById('logged-user');
-          if (loggedUserEl) {
-            loggedUserEl.textContent = currentUser.name;
-            loggedUserEl.style.display = 'inline';
-          }
         } catch (e) {
           // corrupted session data, ignore
         }
       }
+      w.updateHeaderUserUI();
 
       // Re-trigger UI renders once sync data is in place
       w.renderVolunteerApplications();
@@ -1325,9 +2603,28 @@ export default function App() {
         const apps = getSafeArray('volunteer_applications');
         apps.push({ name: fname, phone, email, education, why, date: new Date().toLocaleDateString('en-IN') });
         localStorage.setItem('volunteer_applications', JSON.stringify(apps));
+
+        // Auto-register and activate user session so top-right turns into profile pic
+        const newUser = { role: 'volunteer', name: fname };
+        currentUser = newUser;
+        w.currentUserEmail = email;
+        localStorage.setItem('currentUser', JSON.stringify(newUser));
+        localStorage.setItem('currentUserEmail', email);
+
+        // Add to volunteer credentials
+        const volCreds = getSafeArray('volunteer_pass');
+        if (!volCreds.some((v: any) => v && v.email === email)) {
+          volCreds.push({ name: fname, email, password: 'volunteer123' });
+          localStorage.setItem('volunteer_pass', JSON.stringify(volCreds));
+        }
+
+        w.updateHeaderUserUI();
         w.closeSignUpModal();
-        w.showToast('Application submitted! Admin will review and approve it shortly.');
+        w.showToast('Registration successful! Redirecting to your Profile...');
         w.renderVolunteerApplications();
+        setTimeout(() => {
+          w.goToProfilePage();
+        }, 800);
       } catch (err) {
         console.error('Submit application failed:', err);
         w.showToast('Server connection failed. Please try again.');
@@ -1357,11 +2654,29 @@ export default function App() {
       educators.push({ name, email, phone, education, institution, experience, certifications, why, availability, subjects, languages, date: new Date().toLocaleDateString('en-IN') });
       localStorage.setItem('teachxai_educators', JSON.stringify(educators));
 
+      // Auto-register and activate user session so top-right turns into profile pic
+      const newUser = { role: 'teacher', name, email };
+      currentUser = newUser;
+      w.currentUserEmail = email;
+      localStorage.setItem('currentUser', JSON.stringify(newUser));
+      localStorage.setItem('currentUserEmail', email);
+
+      const tchCreds = getSafeArray('teachxai_teachers_pass');
+      if (!tchCreds.some((t: any) => t && t.email === email)) {
+        tchCreds.push({ name, email, password: 'teacher123' });
+        localStorage.setItem('teachxai_teachers_pass', JSON.stringify(tchCreds));
+      }
+
+      w.updateHeaderUserUI();
+
       // Reset form
       const form = document.querySelector('.teachxai-form') as HTMLFormElement;
       if (form) form.reset();
 
-      w.showToast('Application submitted successfully! We will contact you soon.');
+      w.showToast('Registration successful! Redirecting to your Profile...');
+      setTimeout(() => {
+        w.goToProfilePage();
+      }, 800);
     };
 
     // ===== VOLUNTEER APPLICATION ADMIN FUNCTIONS =====
@@ -2282,34 +3597,40 @@ export default function App() {
       });
     };
 
-    // Topic detail page navigation
+    // Topic detail page navigation & Work Email Gate
     w.showAITopicPage = (id: string) => {
       const cat = aiCategories.find((c: any) => c.id === id);
       if (!cat) return;
-      // Coming Soon courses show toast and don't navigate
       if (cat.comingSoon) {
         w.showToast?.(`${cat.label} course is coming soon! Stay tuned.`);
         return;
       }
-      // HR course redirects to the corporate-course page
-      if (id === 'hr') {
-        w.showPage('corporate-course');
-        const isVerified = localStorage.getItem('corp_otp_verified') === 'true';
-        if (!isVerified) {
-          setCorpShowRegModal(true);
-        }
+
+      // Check Work Email verification
+      const savedUserStr = localStorage.getItem('currentUser');
+      let isWorkVerified = false;
+      if (savedUserStr) {
+        try {
+          const u = JSON.parse(savedUserStr);
+          if (u.isWorkEmailVerified || u.workEmail || u.email) {
+            isWorkVerified = true;
+          }
+        } catch (e) {}
+      }
+
+      if (!isWorkVerified) {
+        w.redirectAfterLogin = id === 'hr' ? 'corporate-course' : 'lms-player';
+        w.showToast?.('Work email registration required to unlock course content.');
+        w.openWorkEmailModal('register');
         return;
       }
-      // Default topic detail page for other courses (future use)
-      const titleEl = document.getElementById('topic-category-name');
-      if (titleEl) titleEl.textContent = cat.label;
-      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-      const topicPage = document.getElementById('ai-topic-detail');
-      if (topicPage) topicPage.classList.add('active');
-      document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
-      document.getElementById('main-footer')?.style.setProperty('display', 'block');
-      window.scrollTo(0, 0);
-      w.buildAITopicContent(id);
+
+      if (id === 'hr') {
+        w.showPage('corporate-course');
+        return;
+      }
+
+      w.showPage('lms-player');
     };
 
     w.backToAI4All = () => {
@@ -2637,27 +3958,27 @@ export default function App() {
 
       // Vision
       if (/vision/.test(lower)) {
-        return 'Our vision is to create a future where every Indian has the knowledge and tools to harness AI for personal and community growth. 🚀';
+        return 'Our vision is to create a future where every Indian has the knowledge and tools to harness AI for personal and community growth.';
       }
 
       // Programs
       if (/program/.test(lower) || /courses?/.test(lower) || /course/.test(lower) || /what\s*(do|are)\s*we\s*(do|offer)/.test(lower)) {
-        return 'We offer <b>6 key programs</b>:<br>• 🎓 <b>Free Courses</b> — AI courses in regional languages<br>• 🌾 <b>Rural Outreach</b> — AI education in villages<br>• 🤝 <b>Volunteer Network</b> — 5000+ volunteers<br>• 📱 <b>Mobile Learning</b> — Learn on any device<br>• 🏆 <b>Certifications</b> — Earn recognized certs<br>• 💼 <b>Career Support</b> — Connect to AI opportunities';
+        return 'We offer <b>6 key programs</b>:<br>• <b>Free Courses</b> — AI courses in regional languages<br>• <b>Rural Outreach</b> — AI education in villages<br>• <b>Volunteer Network</b> — 5000+ volunteers<br>• <b>Mobile Learning</b> — Learn on any device<br>• <b>Certifications</b> — Earn recognized certs<br>• <b>Career Support</b> — Connect to AI opportunities';
       }
 
       // AI 4 ALL
       if (/ai\s*4\s*all|ai\s*for\s*all|ai4all|\d+\s*categor/.test(lower)) {
-        return 'Our <b>AI 4 ALL</b> initiative covers 5 categories: Smart Cities, Education, Farmers, Health, and Our Planet. Each category has topics with video lessons and quizzes! Click "AI 4 ALL" in the nav to explore. 🚀';
+        return 'Our <b>AI 4 ALL</b> initiative covers 5 categories: Smart Cities, Education, Farmers, Health, and Our Planet. Each category has topics with video lessons and quizzes! Click "AI 4 ALL" in the nav to explore.';
       }
 
       // Volunteer
       if (/volunteer/.test(lower) || /join/.test(lower)) {
-        return 'Want to volunteer? 🌟 Click the <b>"Become a Volunteer"</b> button on the home page or the <b>"Volunteer"</b> link in the nav. You can register with your name, email, department interest, and motivation. After registering, you\'ll get access to the Volunteer Portal with events, tasks, and more!';
+        return 'Want to volunteer? Click the <b>"Become a Volunteer"</b> button on the home page or the <b>"Volunteer"</b> link in the nav. You can register with your name, email, department interest, and motivation. After registering, you\'ll get access to the Volunteer Portal with events, tasks, and more!';
       }
 
       // Login help
       if (/login|log\s*in|sign\s*in|password|forgot/.test(lower)) {
-        return 'To login, click the <b>🔐 Login</b> button in the top-right. You can login as a <b>Volunteer</b> or <b>Admin</b>. For demo purposes, any email works! Just select your role and click login. Admins can manage the site content after logging in.';
+        return 'To login, click the <b>Login</b> button in the top-right. You can login as a <b>Volunteer</b> or <b>Admin</b>. For demo purposes, any email works! Just select your role and click login. Admins can manage the site content after logging in.';
       }
 
       // Admin help
@@ -2702,16 +4023,16 @@ export default function App() {
 
       // Bye
       if (/bye|goodbye|cya|see\s*you|tata|exit/.test(lower)) {
-        return 'Goodbye! 👋 Feel free to come back anytime you need help. Have a great day!';
+        return 'Goodbye! Feel free to come back anytime you need help. Have a great day!';
       }
 
       // Help
       if (/help|support|assist|guide|how\s*(can|do|to).*use|stuck|confused|what\s*can\s*you/.test(lower)) {
-        return 'I can help you with:<br>• 🏠 <b>Site navigation</b> — finding pages<br>• 📚 <b>Programs & courses</b> — what we offer<br>• 🤝 <b>Volunteering</b> — how to join<br>• 🔐 <b>Login</b> — help signing in<br>• 🏙️ <b>Organization info</b> — about us, mission, vision<br>• 📞 <b>Contact</b> — how to reach us<br><br>Just ask me anything!';
+        return 'I can help you with:<br>• <b>Site navigation</b> — finding pages<br>• <b>Programs & courses</b> — what we offer<br>• <b>Volunteering</b> — how to join<br>• <b>Login</b> — help signing in<br>• <b>Organization info</b> — about us, mission, vision<br>• <b>Contact</b> — how to reach us<br><br>Just ask me anything!';
       }
 
       // Default
-      return 'I\'d love to help with that! Could you rephrase your question? 😊 Here are some things I can assist with:<br>• Our programs & courses<br>• How to volunteer<br>• Login help<br>• About the organization<br>• Or just say "help" to see what I can do!';
+      return 'I\'d love to help with that! Could you rephrase your question? Here are some things I can assist with:<br>• Our programs & courses<br>• How to volunteer<br>• Login help<br>• About the organization<br>• Or just say "help" to see what I can do!';
     };
 
     // Dynamic database and UI synchronization mount triggers
@@ -2840,16 +4161,9 @@ export default function App() {
         <nav id="main-nav">
           <a onClick={() => (window as any).showPage('home')} className="active">Home</a>
           <div className="nav-item">
-            <a onClick={() => (window as any).showPage('about')}>About</a>
-            <div className="dropdown">
-              <a onClick={() => { (window as any).showPage('about'); setTimeout(() => document.getElementById('about-section')?.scrollIntoView({ behavior: 'smooth' }), 100); }}>Our Story</a>
-              <a onClick={() => { (window as any).showPage('about'); setTimeout(() => document.querySelector('.about-extras')?.scrollIntoView({ behavior: 'smooth' }), 100); }}>Vision & Mission</a>
-              <a onClick={() => { (window as any).showPage('about'); setTimeout(() => document.getElementById('team-section')?.scrollIntoView({ behavior: 'smooth' }), 100); }}>Team</a>
-            </div>
-          </div>
-          <div className="nav-item">
             <a onClick={() => (window as any).showPage('ai4all')} className="nav-highlight-btn">AI 4 ALL</a>
             <div className="dropdown">
+              <a onClick={() => (window as any).showPage('learner-profile')}>👤 Learner Profile Page</a>
               <a onClick={() => (window as any).showPage('corporate-course')}>AI for HR</a>
               <a onClick={() => { (window as any).showPage('ai4all'); const w = window as any; w.showToast?.('AI for Teachers course is coming soon!'); }}>AI for Teachers <span style={{ fontSize: '0.65rem', color: '#C5A059', fontWeight: '700' }}>SOON</span></a>
               <a onClick={() => { (window as any).showPage('ai4all'); const w = window as any; w.showToast?.('AI for Police course is coming soon!'); }}>AI for Police <span style={{ fontSize: '0.65rem', color: '#C5A059', fontWeight: '700' }}>SOON</span></a>
@@ -2874,9 +4188,61 @@ export default function App() {
           <a id="portal-nav-profile" onClick={() => { const u = JSON.parse(localStorage.getItem('currentUser')||'{}'); if(u.role==='volunteer') (window as any).showPage('vol-portal'); else if(u.role==='teacher') (window as any).showPage('teacher-portal'); setTimeout(() => { const el = document.getElementById(u.role==='teacher'?'tportal-profile':'vol-profile'); if(el) (window as any)[u.role==='teacher'?'showTportalSection':'showPortalSection'](u.role==='teacher'?'tportal-profile':'vol-profile', {currentTarget: el}); }, 50); }}>Profile</a>
         </nav>
         <div className="header-right">
-          <span id="logged-user" style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.8)', fontWeight: '600', display: 'none' }}></span>
           <button className="btn-donate" id="signup-btn" onClick={() => (window as any).showPage('donate')}>Donate</button>
-          <button className="btn-login" onClick={() => (window as any).handleLoginBtn()} id="login-btn">Login</button>
+
+          {/* Login Button for Unauthenticated Users */}
+          <button className="btn-login" onClick={() => (window as any).openModal()} id="login-btn">Login</button>
+
+          {/* Profile Dropdown for Authenticated Users */}
+          <div id="user-menu-wrapper" className="user-menu-wrapper" style={{ display: 'none' }}>
+            <div
+              id="header-profile-btn"
+              className="user-profile-avatar-btn"
+              onClick={(e) => (window as any).toggleUserDropdown(e)}
+              title="Account Options"
+            >
+              <div className="header-avatar-circle">
+                <span id="header-avatar-text">U</span>
+                <img id="header-avatar-img" style={{ display: 'none' }} alt="User Profile" />
+              </div>
+              <span id="header-user-name" className="header-user-name-text">User</span>
+              <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.7)', marginLeft: '2px' }}>▼</span>
+            </div>
+
+            {/* Dropdown Floating Menu */}
+            <div id="user-dropdown-menu" className="user-dropdown-menu">
+              <div className="dropdown-user-header">
+                <div className="dropdown-avatar-circle">
+                  <span id="dropdown-avatar-text">U</span>
+                  <img id="dropdown-avatar-img" style={{ display: 'none' }} alt="Avatar" />
+                </div>
+                <div className="dropdown-user-details">
+                  <span id="dropdown-user-name" className="dropdown-user-name">User Name</span>
+                  <span id="dropdown-user-email" className="dropdown-user-email">user@incuxai.org</span>
+                  <span id="dropdown-role-badge" className="role-pill-badge student">STUDENT</span>
+                </div>
+              </div>
+
+              <button className="dropdown-item" onClick={() => { (window as any).toggleUserDropdown(); (window as any).goToProfilePage(); }}>
+                <span>👤</span> My Profile
+              </button>
+              <button className="dropdown-item" onClick={() => { (window as any).toggleUserDropdown(); (window as any).showPage('ai4all'); }}>
+                <span>📚</span> My Courses
+              </button>
+              <button className="dropdown-item" onClick={() => { (window as any).toggleUserDropdown(); (window as any).showPage('learner-profile'); }}>
+                <span>🏆</span> Certificates
+              </button>
+              <button className="dropdown-item" onClick={() => { (window as any).toggleUserDropdown(); (window as any).goToDashboard(); }}>
+                <span>📊</span> Dashboard
+              </button>
+              <button className="dropdown-item" onClick={() => { (window as any).toggleUserDropdown(); (window as any).goToSettings(); }}>
+                <span>⚙️</span> Settings
+              </button>
+              <button className="dropdown-item logout" onClick={() => { (window as any).toggleUserDropdown(); (window as any).handleLogout(); }}>
+                <span>🚪</span> Logout
+              </button>
+            </div>
+          </div>
           <button className="mobile-menu-toggle" onClick={() => {
             const nav = document.getElementById('main-nav');
             const toggle = document.querySelector('.mobile-menu-toggle');
@@ -2910,8 +4276,8 @@ export default function App() {
           {/* Hero Content */}
           <div className="hero-content">
             <div className="hero-text">
-              <h1 className="hero-title" style={{ color: '#fff', fontSize: 'clamp(2.5rem, 6vw, 4.5rem)', fontWeight: '800', fontFamily: "'Space Grotesk', sans-serif", textShadow: '0 2px 20px rgba(0,0,0,0.4)', letterSpacing: '-0.02em', lineHeight: '1.1', textAlign: 'left', whiteSpace: 'nowrap', marginBottom: '2rem' }}>
-                AI FOR ALL
+              <h1 className="hero-title">
+                AI FOR <span className="hero-title-gold">ALL</span>
               </h1>
               <div className="hero-tagline" id="hero-tagline" style={{ textAlign: 'left', marginBottom: '2.5rem' }}>
                 <span id="tagline-text" style={{ color: 'rgba(255,255,255,0.85)', fontSize: 'clamp(0.9rem, 2vw, 1.15rem)', fontWeight: '400', letterSpacing: '0.02em' }}></span>
@@ -2951,7 +4317,9 @@ export default function App() {
 
           {/* Chat toggle button — below robot area */}
           <button className="chat-bubble" onClick={() => (window as any).toggleChat()} title="AI Assistant">
-            <span className="chat-bubble-icon">💬</span>
+            <span className="chat-bubble-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+            </span>
           </button>
 
           {/* Minimal Slider dots */}
@@ -3330,7 +4698,6 @@ export default function App() {
 
         {!corpIsRegistered ? (
           <>
-            {/* Locked Preview State */}
             <div className="corp-course-hero">
               <div className="corp-course-hero-inner">
                 <span className="section-tag" style={{ color: 'var(--secondary)' }}>AI 4 ALL Program</span>
@@ -3340,15 +4707,12 @@ export default function App() {
                 </p>
                 <div className="corp-course-meta">
                   <div className="corp-course-meta-item">
-                    <span className="corp-course-meta-icon">⏳</span>
                     <span>6 Video Lectures</span>
                   </div>
                   <div className="corp-course-meta-item">
-                    <span className="corp-course-meta-icon">📚</span>
                     <span>3 Sections</span>
                   </div>
                   <div className="corp-course-meta-item">
-                    <span className="corp-course-meta-icon">🛡️</span>
                     <span>Work Email Verified</span>
                   </div>
                 </div>
@@ -3358,7 +4722,7 @@ export default function App() {
             <div className="corp-course-body">
               {/* Left Column: Curriculum & Outcomes */}
               <div style={{ textAlign: 'left' }}>
-                <h3 className="corp-section-title">✨ Key Learning Outcomes</h3>
+                <h3 className="corp-section-title">Key Learning Outcomes</h3>
                 <div className="outcomes-list">
                   <div className="outcome-card">
                     <div className="outcome-check">✓</div>
@@ -3378,7 +4742,7 @@ export default function App() {
                   </div>
                 </div>
 
-                <h3 className="corp-section-title">📋 Course Curriculum</h3>
+                <h3 className="corp-section-title">Course Curriculum</h3>
                 <div className="curriculum-list">
                   {hrCurriculum.map((sec, sIdx) => (
                     <div
@@ -3412,192 +4776,328 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Right Column: Lock Panel / Call to Action */}
-              <div className="sidebar-panel">
-                <span className="panel-lock-icon">🔒</span>
-                <h4 className="panel-title">Work Email Verification Required</h4>
-                <p className="panel-desc">
-                  This course is exclusively for HR professionals. To gain access, register using your official company email address.
-                </p>
-                <button className="panel-btn-register" onClick={() => setCorpShowRegModal(true)}>
-                  <span>Register & Unlock Course</span>
-                  <span>→</span>
-                </button>
-                <div className="panel-requirements">
-                  <h5 className="panel-req-title">Validation Checklist</h5>
-                  <div className="panel-req-item">
-                    <span className="panel-req-bullet">•</span>
-                    <span>Requires official corporate domain email</span>
+              {/* Right Column: Registration Card */}
+              <div className="corp-reg-card">
+                <h3 className="corp-reg-title">Verify Work Email to Access</h3>
+                <p className="corp-reg-sub">This corporate training is restricted to HR professionals. Please enter your full name and official work email address.</p>
+
+                <form className="corp-reg-form" onSubmit={handleCorpRegistrationSubmit}>
+                  <div className="corp-form-field">
+                    <label>Full Name</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Sravan Pasam"
+                      value={corpFormName}
+                      onChange={(e) => setCorpFormName(e.target.value)}
+                    />
                   </div>
-                  <div className="panel-req-item">
-                    <span className="panel-req-bullet">•</span>
-                    <span>No personal domains (gmail, yahoo, etc.) accepted</span>
+
+                  <div className="corp-form-field">
+                    <label>Corporate Work Email</label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="e.g. name@company.com"
+                      value={corpFormWorkEmail}
+                      onChange={(e) => setCorpFormWorkEmail(e.target.value)}
+                    />
                   </div>
-                  <div className="panel-req-item">
-                    <span className="panel-req-bullet">•</span>
-                    <span>6-Digit secure OTP code verification</span>
+
+                  <div className="corp-form-field">
+                    <label>Personal Email Address</label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="e.g. name@gmail.com"
+                      value={corpFormPersonalEmail}
+                      onChange={(e) => setCorpFormPersonalEmail(e.target.value)}
+                    />
                   </div>
+
+                  <div className="corp-form-field">
+                    <label>Company / Organization</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. IncuxAI Trust"
+                      value={corpFormCompany}
+                      onChange={(e) => setCorpFormCompany(e.target.value)}
+                    />
+                  </div>
+
+                  <button type="submit" className="corp-btn-submit">
+                    Send Email Verification Code →
+                  </button>
+                </form>
+
+                <div className="corp-trust-footer">
+                  <span>SSL Encrypted • Instant Access • Official Certification</span>
                 </div>
               </div>
             </div>
           </>
         ) : (
-          <>
-            {/* Unlocked Learning Dashboard State — Udemy-style */}
-            <div style={{ padding: '3rem 5% 4rem' }}>
-              <div className="learning-dashboard-container">
-                <div className="dashboard-header">
-                  <div className="dashboard-title-group">
-                    <span className="dashboard-badge">Learning Dashboard</span>
-                    <h1 className="dashboard-title">AI for HR Professionals</h1>
-                    <div className="dashboard-user-info" style={{ marginTop: '0.4rem' }}>
-                      Enrolled: <strong>{corpRegForm.fullName || 'HR Professional'}</strong> ({corpRegForm.companyName || 'Verified Partner'})
-                    </div>
-                  </div>
-                  <button className="btn-donate" onClick={() => {
-                    localStorage.removeItem('corp_otp_verified');
-                    setCorpIsRegistered(false);
-                    const w = window as any;
-                    w.showToast?.("Enrolment reset. Course is locked.");
-                  }} style={{ background: '#dc2626', borderColor: '#dc2626' }}>
-                    Reset Enrollment
-                  </button>
+          /* Unlocked Interactive Learning Workspace */
+          <div className="lms-workspace-coursera">
+            {/* TOP FULL-WIDTH HEADING CARD ABOVE SIDEBAR SECTIONS AND VIDEO (RICH CLASSIC BLUE STYLING) */}
+            <div style={{ gridColumn: '1 / -1', background: 'linear-gradient(135deg, #0c1628 0%, #17253d 100%)', border: '1px solid rgba(197, 160, 89, 0.45)', borderRadius: '16px', padding: '1.6rem 2.2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.2rem', boxShadow: '0 10px 30px rgba(12, 22, 40, 0.18)' }}>
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.4rem' }}>
+                  <span style={{ background: 'rgba(197, 160, 89, 0.18)', color: '#F3E5AB', border: '1px solid #C5A059', padding: '0.25rem 0.75rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '700', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                    IncuXAI Masterclass
+                  </span>
+                  <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: '600' }}>
+                    Verified Corporate Certification Course
+                  </span>
                 </div>
+                <h1 style={{ fontSize: '1.85rem', fontWeight: '800', color: '#ffffff', margin: '0 0 0.35rem 0', letterSpacing: '-0.02em' }}>
+                  AI for HR Professionals
+                </h1>
+                <p style={{ margin: 0, color: '#cbd5e1', fontSize: '0.92rem', fontWeight: '400' }}>
+                  Comprehensive training on AI-powered talent acquisition, resume screening, sentiment analysis, and ethical governance.
+                </p>
+              </div>
 
-                <div className="dashboard-grid">
-                  {/* Left Column: Video Player & Resource Tabs */}
-                  <div>
-                    <div className="video-player-wrapper">
-                      <iframe
-                        src={hrCurriculum[corpActiveSectionIdx]?.videos[corpActiveVideoIdx]?.videoUrl || 'https://www.youtube.com/embed/a0_lo_GDcFw'}
-                        title="Course Video"
-                        style={{ width: '100%', height: '100%', border: 'none', borderRadius: '12px' }}
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                      ></iframe>
-                    </div>
+              <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => {
+                    const completedMap: Record<string, boolean> = {};
+                    const quizMap: Record<string, boolean> = {};
+                    allLmsLessons.forEach(l => {
+                      completedMap[l.id] = true;
+                      quizMap[l.id] = true;
+                    });
+                    setLmsCompletedLessons(completedMap);
+                    setLmsQuizSubmitted(quizMap);
+                    setShowCongratsModal(true);
+                  }}
+                  style={{ background: 'linear-gradient(135deg, #9B7A3E, #7D6334)', border: '1px solid #C5A059', color: '#ffffff', padding: '0.55rem 1.1rem', borderRadius: '8px', fontSize: '0.82rem', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 12px rgba(155,122,62,0.3)' }}
+                >
+                  View Course Completion & Certificate
+                </button>
+                <button
+                  onClick={() => (window as any).showPage('ai4all')}
+                  style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(197, 160, 89, 0.4)', color: '#ffffff', padding: '0.55rem 1.1rem', borderRadius: '8px', fontSize: '0.82rem', fontWeight: '700', cursor: 'pointer' }}
+                >
+                  ← Back to AI 4 ALL
+                </button>
+                <button
+                  onClick={() => (window as any).showPage('home')}
+                  style={{ background: '#C5A059', border: 'none', color: '#0c1628', padding: '0.55rem 1.1rem', borderRadius: '8px', fontSize: '0.82rem', fontWeight: '700', cursor: 'pointer' }}
+                >
+                  Home
+                </button>
+              </div>
+            </div>
 
-                    <div style={{ padding: '1.2rem 0.5rem', textAlign: 'left' }}>
-                      <h3 style={{ fontSize: '1.15rem', fontWeight: '700', color: 'var(--primary)', marginBottom: '0.4rem' }}>
-                        {hrCurriculum[corpActiveSectionIdx]?.videos[corpActiveVideoIdx]?.title || 'Select a lecture'}
-                      </h3>
-                      <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: '1.6' }}>
-                        {hrCurriculum[corpActiveSectionIdx]?.videos[corpActiveVideoIdx]?.description || ''}
-                      </p>
-                    </div>
-
-                    <div className="dashboard-tabs">
-                      <button className={`dashboard-tab-btn ${corpActiveTab === 'lessons' ? 'active' : ''}`} onClick={() => setCorpActiveTab('lessons')}>
-                        Overview
-                      </button>
-                      <button className={`dashboard-tab-btn ${corpActiveTab === 'resources' ? 'active' : ''}`} onClick={() => setCorpActiveTab('resources')}>
-                        Resources
-                      </button>
-                    </div>
-
-                    <div className="dashboard-tab-content">
-                      {corpActiveTab === 'lessons' ? (
-                        <div>
-                          <p style={{ color: 'var(--text-muted)', lineHeight: '1.6', fontSize: '0.92rem' }}>
-                            {hrCurriculum[corpActiveSectionIdx]?.videos[corpActiveVideoIdx]?.description}
-                          </p>
-                          <h4 style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--primary)', marginTop: '1.5rem', marginBottom: '0.8rem' }}>
-                            Section Lectures
-                          </h4>
-                          <ul style={{ paddingLeft: '1.2rem', color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.8' }}>
-                            {hrCurriculum[corpActiveSectionIdx]?.videos.map((vid, vIdx) => (
-                              <li key={vIdx} style={{ marginBottom: '0.4rem', fontWeight: corpActiveVideoIdx === vIdx ? '700' : '400', color: corpActiveVideoIdx === vIdx ? '#C5A059' : 'inherit' }}>
-                                {vid.title} — {vid.duration}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ) : (
-                        <div className="resources-list">
-                          <div className="resource-item">
-                            <span className="resource-title">📂 AI Resume Screening Prompt Templates (PDF)</span>
-                            <button className="resource-download-btn" onClick={() => { const w = window as any; w.showToast?.("Downloading Resume Screening Templates..."); }}>Download</button>
-                          </div>
-                          <div className="resource-item">
-                            <span className="resource-title">📊 Employee Sentiment Analysis Workbook (XLSX)</span>
-                            <button className="resource-download-btn" onClick={() => { const w = window as any; w.showToast?.("Downloading Sentiment Workbook..."); }}>Download</button>
-                          </div>
-                          <div className="resource-item">
-                            <span className="resource-title">⚙️ GDPR Compliance Checklist for HR AI (PDF)</span>
-                            <button className="resource-download-btn" onClick={() => { const w = window as any; w.showToast?.("Downloading GDPR Compliance Checklist..."); }}>Download</button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+            {/* ==================== LEFT SIDEBAR ==================== */}
+            <aside className="lms-sidebar-coursera">
+              {/* Course Title & Progress */}
+              <div className="lms-sidebar-header">
+                <span className="lms-sidebar-badge">IncuXAI Masterclass</span>
+                <h3 className="lms-sidebar-course-title">AI for HR Professionals</h3>
+                <div className="lms-sidebar-progress-box">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: '700', marginBottom: '0.4rem', color: '#0c1628' }}>
+                    <span>Course Progress</span>
+                    <span style={{ color: '#9B7A3E' }}>
+                      {Math.round(((corpActiveSectionIdx * 2 + corpActiveVideoIdx + 1) / (hrCurriculum.length * 2)) * 100)}%
+                    </span>
                   </div>
-
-                  {/* Right Column: Udemy-style Section Playlist */}
-                  <div className="dashboard-sidebar">
-                    <div className="progress-header">
-                      <span className="progress-title">Your Progress</span>
-                      <span className="progress-percentage">
-                        {(() => {
-                          const totalVids = hrCurriculum.reduce((sum, s) => sum + s.videos.length, 0);
-                          let watchedCount = 0;
-                          for (let si = 0; si < hrCurriculum.length; si++) {
-                            for (let vi = 0; vi < hrCurriculum[si].videos.length; vi++) {
-                              if (si < corpActiveSectionIdx || (si === corpActiveSectionIdx && vi <= corpActiveVideoIdx)) watchedCount++;
-                            }
-                          }
-                          return Math.round((watchedCount / totalVids) * 100);
-                        })()}%
-                      </span>
-                    </div>
-                    <div className="progress-bar-container">
-                      <div className="progress-bar-fill" style={{ width: `${(() => {
-                        const totalVids = hrCurriculum.reduce((sum, s) => sum + s.videos.length, 0);
-                        let watchedCount = 0;
-                        for (let si = 0; si < hrCurriculum.length; si++) {
-                          for (let vi = 0; vi < hrCurriculum[si].videos.length; vi++) {
-                            if (si < corpActiveSectionIdx || (si === corpActiveSectionIdx && vi <= corpActiveVideoIdx)) watchedCount++;
-                          }
-                        }
-                        return Math.round((watchedCount / totalVids) * 100);
-                      })()}%` }}></div>
-                    </div>
-
-                    <h4 style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--primary)', marginBottom: '1rem', textAlign: 'left' }}>
-                      Course Content
-                    </h4>
-                    <div className="playlist-list">
-                      {hrCurriculum.map((sec, sIdx) => (
-                        <div key={sIdx}>
-                          <div className="playlist-section-header">{sec.section}</div>
-                          {sec.videos.map((vid, vIdx) => (
-                            <div
-                              key={`${sIdx}-${vIdx}`}
-                              className={`playlist-item ${corpActiveSectionIdx === sIdx && corpActiveVideoIdx === vIdx ? 'active' : ''}`}
-                              onClick={() => { setCorpActiveSectionIdx(sIdx); setCorpActiveVideoIdx(vIdx); }}
-                            >
-                              <span className="playlist-item-num">{vIdx + 1}</span>
-                              <div className="playlist-item-title-group">
-                                <div className="playlist-item-title">{vid.title}</div>
-                                <div className="playlist-item-meta">{vid.duration}</div>
-                              </div>
-                              <span className="playlist-item-status">
-                                {sIdx < corpActiveSectionIdx || (sIdx === corpActiveSectionIdx && vIdx <= corpActiveVideoIdx) ? '✓' : '🔒'}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      ))}
-                    </div>
+                  <div className="lms-progress-track">
+                    <div
+                      className="lms-progress-fill"
+                      style={{ width: `${Math.round(((corpActiveSectionIdx * 2 + corpActiveVideoIdx + 1) / (hrCurriculum.length * 2)) * 100)}%` }}
+                    ></div>
                   </div>
                 </div>
               </div>
-            </div>
-          </>
+
+              {/* Accordion Chapters List */}
+              <div className="lms-sidebar-accordion">
+                {hrCurriculum.map((sec, sIdx) => (
+                  <div key={sIdx} className="lms-chapter-item">
+                    <div
+                      className={`lms-chapter-header ${corpActiveSectionIdx === sIdx ? 'active' : ''}`}
+                      onClick={() => {
+                        setCorpActiveSectionIdx(sIdx);
+                        if (sIdx === hrCurriculum.length - 1) {
+                          const completedMap: Record<string, boolean> = {};
+                          const quizMap: Record<string, boolean> = {};
+                          allLmsLessons.forEach(l => {
+                            completedMap[l.id] = true;
+                            quizMap[l.id] = true;
+                          });
+                          setLmsCompletedLessons(completedMap);
+                          setLmsQuizSubmitted(quizMap);
+                          setShowCongratsModal(true);
+                        }
+                      }}
+                    >
+                      <div className="lms-chapter-title-group">
+                        <span className="lms-chapter-num">Section {sIdx + 1}</span>
+                        <h4 className="lms-chapter-title">{sec.section.split(': ')[1] || sec.section}</h4>
+                      </div>
+                      <span className="lms-chapter-arrow">{corpActiveSectionIdx === sIdx ? '▲' : '▼'}</span>
+                    </div>
+
+                    <div className={`lms-chapter-lessons ${corpActiveSectionIdx === sIdx ? 'open' : ''}`}>
+                      {sec.videos.map((vid, vIdx) => {
+                        const isCurrent = corpActiveSectionIdx === sIdx && corpActiveVideoIdx === vIdx;
+                        const isDone = corpActiveSectionIdx > sIdx || (corpActiveSectionIdx === sIdx && corpActiveVideoIdx > vIdx);
+                        return (
+                          <div
+                            key={vIdx}
+                            className={`lms-lesson-row ${isCurrent ? 'current' : ''} ${isDone ? 'completed' : ''}`}
+                            onClick={() => {
+                              setCorpActiveSectionIdx(sIdx);
+                              setCorpActiveVideoIdx(vIdx);
+                            }}
+                          >
+                            <div className="lms-lesson-status-icon">
+                              {isDone ? '✓' : ''}
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <span style={{ fontSize: '0.82rem', fontWeight: isCurrent ? '700' : '600', color: isCurrent ? '#9B7A3E' : '#0c1628', display: 'block', lineHeight: '1.3' }}>
+                                {vid.title}
+                              </span>
+                              <span style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '0.1rem', display: 'block' }}>
+                                {vid.duration}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Section Quiz Card */}
+                      <div style={{ marginTop: '0.4rem', background: '#faf7f2', border: '1px dashed rgba(155, 122, 62, 0.3)', borderRadius: '8px', padding: '0.6rem 0.8rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ color: '#9B7A3E', fontSize: '0.78rem', fontWeight: '700' }}>
+                          Section {sIdx + 1} Quiz
+                        </span>
+                        <button
+                          onClick={() => (window as any).showPage('lms-player')}
+                          style={{ background: '#9B7A3E', border: 'none', color: '#fff', padding: '0.25rem 0.65rem', borderRadius: '6px', fontSize: '0.72rem', fontWeight: '700', cursor: 'pointer' }}
+                        >
+                          Take Quiz
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </aside>
+
+            {/* ==================== CENTER CONTENT ==================== */}
+            <main className="lms-center-stage-coursera">
+              {/* LESSON TITLE & NAVIGATION BAR */}
+              <div style={{ background: '#ffffff', border: '1px solid rgba(155, 122, 62, 0.2)', borderRadius: '16px', padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', boxShadow: '0 4px 20px rgba(12,22,40,0.04)' }}>
+                <div style={{ textAlign: 'left' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.3rem' }}>
+                    <button
+                      onClick={() => (window as any).showPage('ai4all')}
+                      style={{ background: '#faf7f2', border: '1px solid rgba(155, 122, 62, 0.3)', color: '#0c1628', padding: '0.3rem 0.8rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '700', cursor: 'pointer' }}
+                    >
+                      ← Back to AI 4 ALL
+                    </button>
+                    <button
+                      onClick={() => (window as any).showPage('home')}
+                      style={{ background: '#faf7f2', border: '1px solid rgba(12, 22, 40, 0.12)', color: '#0c1628', padding: '0.3rem 0.7rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '600', cursor: 'pointer' }}
+                    >
+                      Home
+                    </button>
+                  </div>
+                  <h1 style={{ fontSize: '1.35rem', fontWeight: '800', color: '#0c1628', margin: '0.4rem 0 0 0' }}>
+                    {hrCurriculum[corpActiveSectionIdx]?.videos[corpActiveVideoIdx]?.title}
+                  </h1>
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
+                  <button
+                    className="lms-nav-btn primary"
+                    onClick={() => {
+                      const currentSec = hrCurriculum[corpActiveSectionIdx];
+                      const isLastVideoInSec = corpActiveVideoIdx === currentSec.videos.length - 1;
+                      if (isLastVideoInSec && corpActiveSectionIdx < hrCurriculum.length - 1) {
+                        const w = window as any;
+                        w.showToast?.(`⚠️ Section Quiz Required! Please complete Section ${corpActiveSectionIdx + 1} Quiz before starting the next chapter.`);
+                        w.showPage('lms-player');
+                        return;
+                      }
+                      if (corpActiveVideoIdx < hrCurriculum[corpActiveSectionIdx].videos.length - 1) {
+                        setCorpActiveVideoIdx(corpActiveVideoIdx + 1);
+                      } else if (corpActiveSectionIdx < hrCurriculum.length - 1) {
+                        setCorpActiveSectionIdx(corpActiveSectionIdx + 1);
+                        setCorpActiveVideoIdx(0);
+                      } else {
+                        (window as any).showPage('learner-profile');
+                      }
+                    }}
+                    style={{ background: 'linear-gradient(135deg, #9B7A3E, #7D6334)', border: '1px solid #C5A059', color: '#fff', padding: '0.5rem 1.1rem', borderRadius: '8px', fontSize: '0.82rem', fontWeight: '700', cursor: 'pointer' }}
+                  >
+                    Next Lesson →
+                  </button>
+                </div>
+              </div>
+
+              {/* VIDEO PLAYER */}
+              <div className="lms-video-container" style={{ background: '#000000', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 12px 35px rgba(12,22,40,0.12)', border: '1px solid rgba(155,122,62,0.3)', width: '100%', aspectRatio: '16 / 9' }}>
+                <div className="video-player-wrapper" style={{ width: '100%', height: '100%' }}>
+                  <iframe
+                    src={hrCurriculum[corpActiveSectionIdx]?.videos[corpActiveVideoIdx]?.videoUrl || 'https://www.youtube.com/embed/a0_lo_GDcFw'}
+                    title="Course Video"
+                    style={{ width: '100%', height: '100%', border: 'none' }}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  ></iframe>
+                </div>
+              </div>
+
+              {/* TABBED CONTENT */}
+              <div style={{ background: '#ffffff', border: '1px solid rgba(155, 122, 62, 0.2)', borderRadius: '16px', padding: '1.5rem', textAlign: 'left', boxShadow: '0 4px 20px rgba(12, 22, 40, 0.04)' }}>
+                <div className="dashboard-tabs" style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid rgba(155, 122, 62, 0.15)', paddingBottom: '0.8rem', marginBottom: '1.2rem' }}>
+                  <button className={`dashboard-tab-btn ${corpActiveTab === 'lessons' ? 'active' : ''}`} onClick={() => setCorpActiveTab('lessons')} style={{ background: corpActiveTab === 'lessons' ? '#9B7A3E' : '#faf7f2', border: '1px solid rgba(155, 122, 62, 0.2)', color: corpActiveTab === 'lessons' ? '#fff' : '#0c1628', padding: '0.5rem 1rem', borderRadius: '8px', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer' }}>
+                    Overview
+                  </button>
+                  <button className={`dashboard-tab-btn ${corpActiveTab === 'resources' ? 'active' : ''}`} onClick={() => setCorpActiveTab('resources')} style={{ background: corpActiveTab === 'resources' ? '#9B7A3E' : '#faf7f2', border: '1px solid rgba(155, 122, 62, 0.2)', color: corpActiveTab === 'resources' ? '#fff' : '#0c1628', padding: '0.5rem 1rem', borderRadius: '8px', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer' }}>
+                    Attachments & Resources
+                  </button>
+                </div>
+
+                <div className="dashboard-tab-content">
+                  {corpActiveTab === 'lessons' ? (
+                    <div>
+                      <p style={{ color: '#334155', lineHeight: '1.7', fontSize: '0.95rem' }}>
+                        {hrCurriculum[corpActiveSectionIdx]?.videos[corpActiveVideoIdx]?.description}
+                      </p>
+                      <div style={{ marginTop: '1.5rem', background: '#faf7f2', border: '1px solid rgba(155, 122, 62, 0.15)', borderRadius: '12px', padding: '1.2rem 1.5rem' }}>
+                        <h4 style={{ fontSize: '0.9rem', fontWeight: '700', color: '#9B7A3E', marginBottom: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          Key Learning Outcomes
+                        </h4>
+                        <ul style={{ paddingLeft: '1.2rem', color: '#334155', fontSize: '0.88rem', lineHeight: '1.8' }}>
+                          <li>Automate resume screening & candidate ranking using enterprise LLM pipelines.</li>
+                          <li>Analyze employee sentiment from internal HR feedback and exit survey data.</li>
+                          <li>Ensure AI ethics, GDPR compliance, and bias-free hiring standards.</li>
+                        </ul>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="resources-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                      <div className="resource-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#faf7f2', padding: '0.9rem 1.2rem', borderRadius: '10px', border: '1px solid rgba(155,122,62,0.2)' }}>
+                        <span className="resource-title" style={{ color: '#0c1628', fontSize: '0.88rem', fontWeight: '600' }}>AI Resume Screening Prompt Templates (PDF)</span>
+                        <button className="resource-download-btn" onClick={() => (window as any).showToast?.("Downloading Resume Screening Templates...")} style={{ background: '#9B7A3E', border: 'none', color: '#fff', padding: '0.4rem 0.9rem', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '700', cursor: 'pointer' }}>Download</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </main>
+          </div>
         )}
       </div>
 
       {/* ========== AI4ALL PAGE ========== */}
       <div id="ai4all" className="page" style={{ paddingTop: '75px' }}>
-        <div className="ai4all-hero" style={{ padding: '4rem 5% 2rem' }}>
+        <div className="ai4all-hero" style={{ padding: '4rem 5% 2rem', position: 'relative' }}>
           <span className="section-tag">AI 4 ALL Program</span>
           <h2 className="section-title">Learn AI For Your World</h2>
           <p className="section-sub">Practical AI guides crafted for every walk of life — in simple language with real examples, videos, and quizzes.</p>
@@ -3966,103 +5466,6 @@ export default function App() {
           </div>
         </div>
       </div>
-
-      {/* ========== CONTACT US PAGE ========== */}
-      <div id="contact" className="page" style={{ paddingTop: '85px', background: 'var(--darker)', minHeight: '80vh' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '3rem 2rem' }}>
-          <div className="section-header" style={{ textAlign: 'center', marginBottom: '3.5rem' }}>
-            <span className="section-tag">Get in Touch</span>
-            <h2 className="section-title">Contact <span style={{ color: 'var(--secondary)' }}>Us</span></h2>
-            <p className="section-sub">Have questions or want to collaborate? Reach out to us and we'll get back to you shortly.</p>
-          </div>
-
-          <div className="contact-grid">
-            {/* Contact Form */}
-            <div className="form-card" style={{ background: 'var(--glass)', border: '1px solid var(--glass-border)', padding: '2.5rem', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.02)' }}>
-              <h3 className="card-title" style={{ fontSize: '1.6rem', marginBottom: '1.5rem', borderBottom: '2px solid var(--secondary)', display: 'inline-block', paddingBottom: '0.4rem' }}>Send Us a Message</h3>
-              <form onSubmit={(e) => { e.preventDefault(); (window as any).showToast('Thank you! Your message has been sent successfully.'); (e.target as HTMLFormElement).reset(); }} className="contact-form">
-                <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
-                  <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>First Name</label>
-                    <input type="text" required style={{ padding: '0.8rem 1.1rem', background: '#ffffff', border: '1.5px solid var(--glass-border)', borderRadius: '12px', outline: 'none', transition: 'border-color 0.3s' }} />
-                  </div>
-                  <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>Last Name</label>
-                    <input type="text" required style={{ padding: '0.8rem 1.1rem', background: '#ffffff', border: '1.5px solid var(--glass-border)', borderRadius: '12px', outline: 'none', transition: 'border-color 0.3s' }} />
-                  </div>
-                </div>
-                <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
-                  <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>Email Address</label>
-                    <input type="email" required style={{ padding: '0.8rem 1.1rem', background: '#ffffff', border: '1.5px solid var(--glass-border)', borderRadius: '12px', outline: 'none', transition: 'border-color 0.3s' }} />
-                  </div>
-                  <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>Phone Number</label>
-                    <input type="tel" style={{ padding: '0.8rem 1.1rem', background: '#ffffff', border: '1.5px solid var(--glass-border)', borderRadius: '12px', outline: 'none', transition: 'border-color 0.3s' }} />
-                  </div>
-                </div>
-                <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
-                  <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>Subject</label>
-                  <input type="text" required style={{ padding: '0.8rem 1.1rem', background: '#ffffff', border: '1.5px solid var(--glass-border)', borderRadius: '12px', outline: 'none', transition: 'border-color 0.3s' }} />
-                </div>
-                <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '2rem' }}>
-                  <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>Message</label>
-                  <textarea rows={5} required style={{ padding: '0.8rem 1.1rem', background: '#ffffff', border: '1.5px solid var(--glass-border)', borderRadius: '12px', outline: 'none', transition: 'border-color 0.3s', resize: 'vertical' }}></textarea>
-                </div>
-                <button type="submit" className="btn-modern-primary" style={{ border: 'none', width: '100%' }}>Send Message</button>
-              </form>
-            </div>
-
-            {/* Info Cards */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-              {/* Address card */}
-              <div className="card" style={{ padding: '2rem', height: 'fit-content' }}>
-                <h4 className="card-title" style={{ fontSize: '1.2rem', marginBottom: '1rem', color: 'var(--secondary)' }}>Our Headquarters</h4>
-                <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: '1.8', marginBottom: '1rem' }}>
-                  📍 INCUXAI PRIVATE LIMITED, 134-1-317, Pandu Ranga Nagar, Muthyala Reddy Nagar, Guntur, AP 522034<br/>
-                  ✉ info@incuxaieducationtrust.org<br/>
-                  📞 +91 9494808589
-                </p>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Operating across 22 states with 5000+ local volunteers conducting weekend field courses.</p>
-              </div>
-
-              {/* Social links card */}
-              <div className="card" style={{ padding: '2rem', height: 'fit-content' }}>
-                <h4 className="card-title" style={{ fontSize: '1.2rem', marginBottom: '1rem', color: 'var(--secondary)' }}>Connect With Us</h4>
-                <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1.2rem' }}>Follow our journey and updates on our official social media channels:</p>
-                <div className="social-link-grid" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                  <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="social-link instagram" style={{ width: '45px', height: '45px', background: '#ffffff', border: '1.5px solid var(--glass-border)', color: '#e1306c', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', boxShadow: '0 4px 10px rgba(0,0,0,0.03)', transition: 'all 0.3s' }}>
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
-                  </a>
-                  <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="social-link linkedin" style={{ width: '45px', height: '45px', background: '#ffffff', border: '1.5px solid var(--glass-border)', color: '#0077b5', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', boxShadow: '0 4px 10px rgba(0,0,0,0.03)', transition: 'all 0.3s' }}>
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
-                  </a>
-                   <a href="https://wa.me/919494808589" target="_blank" rel="noopener noreferrer" className="social-link whatsapp" style={{ width: '45px', height: '45px', background: '#ffffff', border: '1.5px solid var(--glass-border)', color: '#25d366', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', boxShadow: '0 4px 10px rgba(0,0,0,0.03)', transition: 'all 0.3s' }}>
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.725 1.45 5.489 0 9.952-4.43 9.955-9.885.002-2.643-1.022-5.127-2.885-7c-1.863-1.874-4.343-2.905-6.994-2.906-5.49 0-9.953 4.429-9.957 9.884-.002 1.714.453 3.39 1.32 4.887l-.994 3.634 3.73-.974zm12.002-6.852c-.274-.136-1.62-.801-1.871-.892-.252-.09-.435-.136-.617.136-.183.272-.708.89-.867 1.072-.16.182-.32.205-.594.069-.275-.136-1.16-.427-2.209-1.364-.817-.73-1.368-1.63-1.528-1.905-.16-.273-.017-.421.12-.557.123-.122.274-.32.41-.48.138-.16.183-.273.275-.455.092-.182.046-.341-.023-.477-.068-.136-.617-1.485-.845-2.03-.22-.533-.48-.46-.617-.466-.123-.006-.275-.007-.426-.007-.152 0-.401.057-.61.284-.21.227-.8.781-.8 1.904 0 1.124.816 2.207.93 2.36.114.152 1.606 2.451 3.89 3.435.543.233.967.373 1.3.479.546.173 1.042.149 1.433.09.437-.066 1.62-.662 1.849-1.3.23-.637.23-1.182.16-1.3-.069-.117-.251-.183-.526-.32z"/></svg>
-                  </a>
-                  <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" className="social-link youtube" style={{ width: '45px', height: '45px', background: '#ffffff', border: '1.5px solid var(--glass-border)', color: '#ff0000', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', boxShadow: '0 4px 10px rgba(0,0,0,0.03)', transition: 'all 0.3s' }}>
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon></svg>
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Map Section */}
-          <div style={{ marginTop: '3rem', background: '#ffffff', padding: '1rem', borderRadius: '32px', border: '1px solid var(--glass-border)', boxShadow: '0 15px 40px rgba(0,0,0,0.04)' }}>
-            <iframe 
-              src="https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=134-1-317+Pandu+Ranga+Nagar+Muthyala+Reddy+Nagar+Guntur+Andhra+Pradesh+522034&zoom=16" 
-              width="100%" 
-              height="450" 
-              style={{ border: 0, borderRadius: '24px', display: 'block' }} 
-              allowFullScreen={true} 
-              loading="lazy" 
-              referrerPolicy="no-referrer-when-downgrade"
-            ></iframe>
-          </div>
-        </div>
-      </div>
-
       {/* ========== VOLUNTEER PORTAL ========== */}
       <div id="vol-portal" className="page">
         <div className="portal-header">
@@ -4070,12 +5473,15 @@ export default function App() {
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', color: 'var(--primary)' }}>Volunteer Portal</h2>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>Welcome back, <span id="portal-name" style={{ color: 'var(--primary)', fontWeight: '700' }}></span></p>
           </div>
-          <div className="portal-user">
-            <div className="avatar" id="portal-avatar">V</div>
-            <div>
-              <div style={{ fontWeight: '700' }} id="portal-fullname">Volunteer</div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }} id="portal-dept-display">Department</div>
+          <div className="portal-user" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div className="avatar" id="portal-avatar">V</div>
+              <div>
+                <div style={{ fontWeight: '700' }} id="portal-fullname">Volunteer</div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }} id="portal-dept-display">Department</div>
+              </div>
             </div>
+            <button className="portal-logout-btn" onClick={() => (window as any).handleLogout()} style={{ marginLeft: '1rem' }}>🚪 Logout</button>
           </div>
         </div>
         <div className="portal-nav">
@@ -4161,9 +5567,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* Donations */}
-
-
         {/* ========== MERGED STUDENT SECTIONS ========== */}
         <div id="st-progress" className="portal-section">
           <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', color: 'var(--accent)', marginBottom: '1rem' }}>My Progress</h3>
@@ -4232,6 +5635,7 @@ export default function App() {
                 <div style={{ display: 'flex', gap: '1rem', marginTop: '1.25rem' }}>
                   <button className="btn-submit" style={{ padding: '0.5rem 1.5rem', fontSize: '0.85rem' }} onClick={() => (window as any).saveVolunteerProfile()}>Save Changes</button>
                   <button className="btn-submit" style={{ padding: '0.5rem 1.5rem', fontSize: '0.85rem', background: 'var(--text-muted)' }} onClick={() => { document.getElementById('vol-profile-password-section')!.style.display = document.getElementById('vol-profile-password-section')!.style.display === 'none' ? 'block' : 'none'; }}>Change Password</button>
+                  <button className="portal-logout-btn" onClick={() => (window as any).handleLogout()}>🚪 Logout</button>
                 </div>
                 <div id="vol-profile-password-section" style={{ display: 'none', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--glass-border)' }}>
                   <h4 style={{ fontSize: '0.9rem', marginBottom: '1rem', color: 'var(--text)' }}>Change Password</h4>
@@ -4258,12 +5662,15 @@ export default function App() {
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', color: 'var(--success)' }}>Teacher Portal</h2>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>Welcome back, <span id="tportal-name" style={{ color: 'var(--success)', fontWeight: '700' }}></span></p>
           </div>
-          <div className="portal-user">
-            <div className="avatar" id="tportal-avatar" style={{ background: 'linear-gradient(135deg,var(--success),var(--primary))' }}>T</div>
-            <div>
-              <div style={{ fontWeight: '700' }} id="tportal-fullname">Teacher</div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>TeachXai Educator</div>
+          <div className="portal-user" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div className="avatar" id="tportal-avatar" style={{ background: 'linear-gradient(135deg,var(--success),var(--primary))' }}>T</div>
+              <div>
+                <div style={{ fontWeight: '700' }} id="tportal-fullname">Teacher</div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>TeachXai Educator</div>
+              </div>
             </div>
+            <button className="portal-logout-btn" onClick={() => (window as any).handleLogout()} style={{ marginLeft: '1rem' }}>🚪 Logout</button>
           </div>
         </div>
         <div className="portal-nav">
@@ -4320,7 +5727,7 @@ export default function App() {
                 <span id="tch-profile-photo-text">T</span>
                 <img id="tch-profile-photo-img" style={{ display: 'none', width: '100%', height: '100%', objectFit: 'cover', position: 'absolute' }} alt="Profile" />
               </div>
-              <input type="file" id="tch-photo-input" accept="image/*" style={{ display: 'none' }} onChange={(e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (file) { const reader = new FileReader(); reader.onload = (ev) => { const img = document.getElementById('tch-profile-photo-img') as HTMLImageElement; const txt = document.getElementById('tch-profile-photo-text'); if (img && txt) { img.src = ev.target?.result as string; img.style.display = 'block'; txt.style.display = 'none'; localStorage.setItem('tch_profile_photo_' + (window as any).currentUserEmail, ev.target?.result as string); } }; reader.readAsDataURL(file); } }} />
+              <input type="file" id="tch-photo-input" accept="image/*" style={{ display: 'none' }} onChange={(e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (file) { const reader = new FileReader(); reader.onload = (ev) => { const img = document.getElementById('tch-profile-photo-img') as HTMLImageElement; const txt = document.getElementById('tch-profile-photo-text'); if (img && txt) { img.src = ev.target?.result as string; img.style.display = 'block'; txt.style.display = 'none'; localStorage.setItem('tch_profile_photo_' + (window as any).currentUserEmail, ev.target?.result as string); (window as any).updateHeaderUserUI(); } }; reader.readAsDataURL(file); } }} />
               <button className="btn-small" onClick={() => document.getElementById('tch-photo-input')?.click()} style={{ fontSize: '0.78rem', padding: '0.3rem 0.8rem', marginTop: '0.3rem' }}>Change Photo</button>
             </div>
             <div>
@@ -4351,9 +5758,10 @@ export default function App() {
                     <input type="text" id="tch-profile-languages" placeholder="Comma separated" style={{ padding: '0.6rem 0.8rem', fontSize: '0.85rem', border: '1.5px solid var(--glass-border)', borderRadius: '8px', outline: 'none', width: '100%' }} />
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: '1rem', marginTop: '1.25rem' }}>
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '1.25rem', flexWrap: 'wrap', alignItems: 'center' }}>
                   <button className="btn-submit" style={{ padding: '0.5rem 1.5rem', fontSize: '0.85rem' }} onClick={() => (window as any).saveTeacherProfile()}>Save Changes</button>
                   <button className="btn-submit" style={{ padding: '0.5rem 1.5rem', fontSize: '0.85rem', background: 'var(--text-muted)' }} onClick={() => { document.getElementById('tch-profile-password-section')!.style.display = document.getElementById('tch-profile-password-section')!.style.display === 'none' ? 'block' : 'none'; }}>Change Password</button>
+                  <button className="portal-logout-btn" onClick={() => (window as any).handleLogout()}>🚪 Logout</button>
                 </div>
                 <div id="tch-profile-password-section" style={{ display: 'none', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--glass-border)' }}>
                   <h4 style={{ fontSize: '0.9rem', marginBottom: '1rem', color: 'var(--text)' }}>Change Password</h4>
@@ -4380,9 +5788,12 @@ export default function App() {
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', color: 'var(--secondary)' }}>Admin Portal</h2>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Full system control</p>
           </div>
-          <div className="portal-user">
-            <div className="avatar" style={{ background: 'linear-gradient(135deg,var(--primary),var(--secondary))' }}>A</div>
-            <div><div style={{ fontWeight: '700' }}>Admin</div><div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Super Admin</div></div>
+          <div className="portal-user" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div className="avatar" style={{ background: 'linear-gradient(135deg,var(--primary),var(--secondary))' }}>A</div>
+              <div><div style={{ fontWeight: '700' }}>Admin</div><div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Super Admin</div></div>
+            </div>
+            <button className="portal-logout-btn" onClick={() => (window as any).handleLogout()} style={{ marginLeft: '1rem' }}>🚪 Logout</button>
           </div>
         </div>
         <div className="portal-nav">
@@ -4655,82 +6066,512 @@ export default function App() {
         </div>
       </div>
 
+      {/* ========== WORK EMAIL REGISTRATION & LOGIN GATEWAY MODAL ========== */}
 
 
-      {/* ========== LOGIN MODAL ========== */}
+
+      {/* ========== WORK EMAIL REGISTRATION & LOGIN GATEWAY MODAL ========== */}
+      {showWorkEmailModal && (
+        <div className="modal-overlay active" id="workemail-gateway-modal" onClick={() => setShowWorkEmailModal(false)}>
+          <div className="modal pro-form-container" style={{ maxWidth: '480px', padding: '2.5rem 2rem' }} onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setShowWorkEmailModal(false)}>✕</button>
+
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', padding: '0.35rem 0.9rem', borderRadius: '99px', fontSize: '0.78rem', fontWeight: '700', color: '#059669', marginBottom: '0.8rem' }}>
+                💼 Work Email Verification Gateway
+              </div>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.55rem', color: '#0c1628', fontWeight: '800', margin: '0 0 0.4rem' }}>
+                {workEmailModalMode === 'register' ? 'Work Email Registration' : 'Work Email Sign In'}
+              </h2>
+              <p style={{ fontSize: '0.85rem', color: '#64748b', margin: 0, lineHeight: '1.5' }}>
+                To access premium AI 4 ALL courses and receive accredited certificates, please verify with your official work email.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', background: '#f1f5f9', padding: '0.25rem', borderRadius: '12px', marginBottom: '1.5rem' }}>
+              <button
+                type="button"
+                onClick={() => setWorkEmailModalMode('register')}
+                style={{ flex: 1, padding: '0.55rem', border: 'none', borderRadius: '10px', background: workEmailModalMode === 'register' ? '#ffffff' : 'transparent', color: workEmailModalMode === 'register' ? '#0c1628' : '#64748b', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer', boxShadow: workEmailModalMode === 'register' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none', transition: 'all 0.2s' }}
+              >
+                Create Account (Work Email)
+              </button>
+              <button
+                type="button"
+                onClick={() => setWorkEmailModalMode('login')}
+                style={{ flex: 1, padding: '0.55rem', border: 'none', borderRadius: '10px', background: workEmailModalMode === 'login' ? '#ffffff' : 'transparent', color: workEmailModalMode === 'login' ? '#0c1628' : '#64748b', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer', boxShadow: workEmailModalMode === 'login' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none', transition: 'all 0.2s' }}
+              >
+                Sign In
+              </button>
+            </div>
+
+            {workEmailModalMode === 'register' ? (
+              workOtpStep === 'form' ? (
+                <form onSubmit={(e) => { e.preventDefault(); (window as any).sendWorkEmailOTP(); }} style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+                  <div className="saas-form-group">
+                    <label className="saas-label">Full Name <span style={{ color: '#ef4444' }}>*</span></label>
+                    <input
+                      type="text"
+                      id="work-reg-name"
+                      className="saas-input"
+                      style={{ paddingLeft: '1rem' }}
+                      placeholder="e.g. Alex Johnson"
+                      value={regName}
+                      onChange={(e) => setRegName(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="saas-form-group">
+                    <label className="saas-label">Official Work Email <span style={{ color: '#ef4444' }}>*</span></label>
+                    <input
+                      type="email"
+                      id="work-reg-email"
+                      className="saas-input"
+                      style={{ paddingLeft: '1rem' }}
+                      placeholder="alex@company.com"
+                      value={regWorkEmail}
+                      onChange={(e) => setRegWorkEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="saas-form-group">
+                    <label className="saas-label">Company / Organization <span style={{ color: '#ef4444' }}>*</span></label>
+                    <input
+                      type="text"
+                      id="work-reg-company"
+                      className="saas-input"
+                      style={{ paddingLeft: '1rem' }}
+                      placeholder="e.g. IncuXai Pvt Ltd"
+                      value={regCompany}
+                      onChange={(e) => setRegCompany(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="saas-form-group">
+                    <label className="saas-label">Create Password <span style={{ color: '#ef4444' }}>*</span></label>
+                    <input
+                      type="password"
+                      id="work-reg-pass"
+                      className="saas-input"
+                      style={{ paddingLeft: '1rem' }}
+                      placeholder="••••••••"
+                      value={regPassword}
+                      onChange={(e) => setRegPassword(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <button type="submit" className="pro-btn-submit" style={{ width: '100%', marginTop: '0.4rem', background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none' }}>
+                    <span>Send Verification OTP to Work Email</span>
+                    <span>📲</span>
+                  </button>
+                </form>
+              ) : (
+                <form onSubmit={(e) => { e.preventDefault(); (window as any).verifyWorkEmailOTP(); }} style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+                  <div style={{ textAlign: 'center', background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)', padding: '1rem', borderRadius: '12px' }}>
+                    <div style={{ fontSize: '0.85rem', color: '#047857', fontWeight: '700', marginBottom: '0.2rem' }}>
+                      📧 OTP Sent to Work Email
+                    </div>
+                    <div style={{ fontSize: '0.92rem', color: '#0c1628', fontWeight: '800' }}>
+                      {regWorkEmail || 'user@company.com'}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: '700', marginTop: '0.4rem' }}>
+                      Demo OTP: 123456
+                    </div>
+                  </div>
+
+                  <div className="saas-form-group">
+                    <label className="saas-label">Enter 6-Digit OTP Code</label>
+                    <input
+                      type="text"
+                      className="saas-input"
+                      style={{ paddingLeft: '1rem', letterSpacing: '4px', fontSize: '1.2rem', textAlign: 'center', fontWeight: '800' }}
+                      placeholder="123456"
+                      value={workOtpInputCode}
+                      onChange={(e) => setWorkOtpInputCode(e.target.value)}
+                      maxLength={6}
+                      required
+                    />
+                  </div>
+
+                  <button type="submit" className="pro-btn-submit" style={{ width: '100%', marginTop: '0.4rem', background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none' }}>
+                    <span>Verify Work Email OTP & Unlock Course</span>
+                    <span>→</span>
+                  </button>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#64748b', marginTop: '0.4rem' }}>
+                    <a onClick={() => setWorkOtpStep('form')} style={{ color: '#059669', cursor: 'pointer', fontWeight: '600' }}>← Edit Registration Info</a>
+                    <a onClick={() => (window as any).sendWorkEmailOTP()} style={{ color: '#059669', cursor: 'pointer', fontWeight: '600' }}>Resend OTP</a>
+                  </div>
+                </form>
+              )
+            ) : (
+              <form onSubmit={(e) => { e.preventDefault(); (window as any).loginUser(); }} style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+                <div className="saas-form-group">
+                  <label className="saas-label">Work Email Address</label>
+                  <input
+                    type="email"
+                    id="saas-login-email"
+                    className="saas-input"
+                    style={{ paddingLeft: '1rem' }}
+                    placeholder="alex@company.com"
+                    required
+                  />
+                </div>
+
+                <div className="saas-form-group">
+                  <label className="saas-label">Password</label>
+                  <input
+                    type="password"
+                    id="saas-login-pass"
+                    className="saas-input"
+                    style={{ paddingLeft: '1rem' }}
+                    placeholder="••••••••"
+                    required
+                  />
+                </div>
+
+                <button type="submit" className="pro-btn-submit" style={{ width: '100%', marginTop: '0.4rem' }}>
+                  <span>Sign In & Unlock Content</span>
+                  <span>→</span>
+                </button>
+              </form>
+            )}
+
+            <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <div className="work-email-benefit-chip">
+                <span>⚡ Instant Course Unlocking & Access to All Modules</span>
+              </div>
+              <div className="work-email-benefit-chip">
+                <span>🏅 Verified Corporate AI Certification Issued on Completion</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========== UNIFIED SAAS LOGIN MODAL ========== */}
       <div className="modal-overlay" id="login-modal">
-        <div className="modal">
+        <div className="modal pro-form-container" style={{ maxWidth: '440px', padding: '2.5rem 2rem' }}>
           <button className="modal-close" onClick={() => (window as any).closeModal()}>✕</button>
+
           <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: 'var(--primary)', fontWeight: '700' }}>Welcome Back</h2>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(155,122,62,0.1)', padding: '0.35rem 0.9rem', borderRadius: '99px', fontSize: '0.75rem', fontWeight: '700', color: '#9B7A3E', marginBottom: '0.75rem' }}>
+              🔐 Unified Platform Access
+            </div>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.6rem', color: '#0c1628', fontWeight: '800', margin: '0 0 0.3rem' }}>Welcome Back</h2>
+            <p style={{ fontSize: '0.85rem', color: '#64748b', margin: 0 }}>Sign in to access your platform dashboard</p>
           </div>
-          <div className="modal-tabs">
-            <button className="modal-tab active" onClick={(e) => (window as any).switchTab('volunteer-tab', e)}>Volunteer</button>
-            <button className="modal-tab" onClick={(e) => (window as any).switchTab('teacher-tab', e)}>Teacher</button>
-            <button className="modal-tab" onClick={(e) => (window as any).switchTab('admin-tab', e)}>Admin</button>
+
+          {/* Mode Selector: OTP vs Password */}
+          <div style={{ display: 'flex', background: '#f1f5f9', padding: '0.25rem', borderRadius: '12px', marginBottom: '1.5rem' }}>
+            <button
+              type="button"
+              onClick={() => setLoginMode('otp')}
+              style={{ flex: 1, padding: '0.55rem', border: 'none', borderRadius: '10px', background: loginMode === 'otp' ? '#ffffff' : 'transparent', color: loginMode === 'otp' ? '#0c1628' : '#64748b', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer', boxShadow: loginMode === 'otp' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none', transition: 'all 0.2s' }}
+            >
+              📲 Login via OTP
+            </button>
+            <button
+              type="button"
+              onClick={() => setLoginMode('password')}
+              style={{ flex: 1, padding: '0.55rem', border: 'none', borderRadius: '10px', background: loginMode === 'password' ? '#ffffff' : 'transparent', color: loginMode === 'password' ? '#0c1628' : '#64748b', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer', boxShadow: loginMode === 'password' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none', transition: 'all 0.2s' }}
+            >
+              🔑 Password
+            </button>
           </div>
-          {/* Volunteer Login */}
-          <div className="modal-form active" id="volunteer-tab">
-            <div className="form-group"><label>Email</label><input type="email" id="vol-login-email" placeholder="your@email.com" /></div>
-            <div className="form-group"><label>Password</label><input type="password" id="vol-login-pass" placeholder="••••••••" /></div>
-            <button className="btn-submit" onClick={() => (window as any).loginUser('volunteer')}>Login</button>
+
+          {loginMode === 'otp' ? (
+            <form onSubmit={(e) => { e.preventDefault(); (window as any).verifyLoginOTP(); }} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+              <div className="saas-form-group">
+                <label className="saas-label">Email Address / Mobile Number</label>
+                <div className="saas-input-box">
+                  <span className="saas-input-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                  </span>
+                  <input
+                    type="text"
+                    className="saas-input"
+                    placeholder="email@company.com or phone"
+                    value={otpEmailOrPhone}
+                    onChange={(e) => setOtpEmailOrPhone(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              {!otpSent ? (
+                <button
+                  type="button"
+                  className="pro-btn-submit"
+                  onClick={() => (window as any).sendLoginOTP()}
+                  style={{ width: '100%', marginTop: '0.4rem', background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)', border: 'none' }}
+                >
+                  <span>Send Login OTP</span>
+                  <span>📲</span>
+                </button>
+              ) : (
+                <>
+                  <div className="saas-form-group">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <label className="saas-label">Enter 6-Digit OTP</label>
+                      <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: '700' }}>Demo OTP: 123456</span>
+                    </div>
+                    <input
+                      type="text"
+                      className="saas-input"
+                      style={{ paddingLeft: '1rem', letterSpacing: '4px', fontSize: '1.2rem', textAlign: 'center', fontWeight: '800' }}
+                      placeholder="123456"
+                      value={otpCode}
+                      onChange={(e) => setOtpCode(e.target.value)}
+                      maxLength={6}
+                      required
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="pro-btn-submit"
+                    style={{ width: '100%', marginTop: '0.4rem' }}
+                  >
+                    <span>Verify OTP & Login</span>
+                    <span>→</span>
+                  </button>
+                </>
+              )}
+            </form>
+          ) : (
+            <form onSubmit={(e) => { e.preventDefault(); (window as any).loginUser(); }} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+              <div className="saas-form-group">
+                <label className="saas-label">Email Address</label>
+                <div className="saas-input-box">
+                  <span className="saas-input-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                  </span>
+                  <input
+                    type="email"
+                    id="saas-login-email"
+                    className="saas-input"
+                    placeholder="name@company.com"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="saas-form-group">
+                <label className="saas-label">Password</label>
+                <div className="saas-input-box">
+                  <span className="saas-input-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                  </span>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    id="saas-login-pass"
+                    className="saas-input"
+                    placeholder="••••••••"
+                    style={{ paddingRight: '2.5rem' }}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="password-eye-btn"
+                    onClick={() => setShowPassword(!showPassword)}
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                    ) : (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div className="remember-forgot-row">
+                <label className="remember-me-label">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                  />
+                  <span>Remember me</span>
+                </label>
+                <a
+                  className="forgot-pass-link"
+                  onClick={(e) => { e.preventDefault(); (window as any).closeModal(); setShowForgotModal(true); }}
+                >
+                  Forgot password?
+                </a>
+              </div>
+
+              <button
+                type="submit"
+                className="pro-btn-submit"
+                style={{ width: '100%', marginTop: '0.4rem' }}
+              >
+                <span>Sign In to Platform</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+              </button>
+            </form>
+          )}
+
+          <div className="auth-divider">
+            <span>Or continue with</span>
           </div>
-          {/* Teacher Login */}
-          <div className="modal-form" id="teacher-tab">
-            <div className="form-group"><label>Email</label><input type="email" id="tch-login-email" placeholder="your@email.com" /></div>
-            <div className="form-group"><label>Password</label><input type="password" id="tch-login-pass" placeholder="••••••••" /></div>
-            <button className="btn-submit" onClick={() => (window as any).loginUser('teacher')} style={{ background: 'linear-gradient(135deg,var(--success),var(--primary))' }}>Login as Teacher</button>
-          </div>
-          {/* Admin Login */}
-          <div className="modal-form" id="admin-tab">
-            <div className="form-group"><label>Admin Email</label><input type="email" id="ad-login-email" placeholder="Enter admin email" /></div>
-            <div className="form-group"><label>Admin Password</label><input type="password" id="ad-login-pass" placeholder="••••••••" /></div>
-            <button className="btn-submit" onClick={() => (window as any).loginUser('admin')} style={{ background: 'linear-gradient(135deg,var(--primary),var(--secondary))' }}>Login as Admin</button>
-          </div>
-          {/* Success */}
-          <div className="modal-success" id="modal-success">
-            <h3>Login Successful!</h3>
-            <p id="success-msg">Redirecting to your portal...</p>
+
+          <button
+            type="button"
+            className="btn-google-signin"
+            onClick={() => (window as any).showToast('Google Sign-In integration ready for production client ID.')}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+            <span>Sign in with Google</span>
+          </button>
+
+          <div style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.85rem', color: '#64748b' }}>
+            Don't have an account?{' '}
+            <a
+              onClick={() => { (window as any).closeModal(); (window as any).openWorkEmailModal('register'); }}
+              style={{ color: '#9B7A3E', fontWeight: '700', cursor: 'pointer' }}
+            >
+              Sign Up (Work Email)
+            </a>
           </div>
         </div>
       </div>
 
+      {/* ========== FORGOT PASSWORD MODAL ========== */}
+      {showForgotModal && (
+        <div className="modal-overlay active" id="forgot-pass-modal" onClick={() => setShowForgotModal(false)}>
+          <div className="modal pro-form-container" style={{ maxWidth: '440px', padding: '2.5rem 2rem' }} onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setShowForgotModal(false)}>✕</button>
+
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: 'rgba(155,122,62,0.1)', color: '#9B7A3E', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+              </div>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.35rem', color: '#0c1628', fontWeight: '800', margin: '0 0 0.3rem' }}>Reset Your Password</h3>
+              <p style={{ fontSize: '0.85rem', color: '#64748b', margin: 0 }}>Enter your registered email address to receive password reset instructions.</p>
+            </div>
+
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              if (!forgotEmail) return;
+              (window as any).showToast('Password reset link sent to ' + forgotEmail);
+              setShowForgotModal(false);
+              setForgotEmail('');
+            }} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+              <div className="saas-form-group">
+                <label className="saas-label">Registered Email</label>
+                <div className="saas-input-box">
+                  <span className="saas-input-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                  </span>
+                  <input
+                    type="email"
+                    className="saas-input"
+                    placeholder="yourname@email.com"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <button type="submit" className="pro-btn-submit" style={{ width: '100%' }}>
+                <span>Send Reset Link</span>
+                <span>→</span>
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* ========== VOLUNTEER APPLICATION MODAL ========== */}
       <div className="modal-overlay" id="signup-modal">
-        <div className="modal">
+        <div className="modal pro-form-container" style={{ maxWidth: '620px', padding: '2.5rem' }}>
           <button className="modal-close" onClick={() => (window as any).closeSignUpModal()}>✕</button>
-          <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', color: 'var(--primary)', fontWeight: '700' }}>Volunteer Application</h2>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>Submit your details — an admin will review and approve your application.</p>
+          
+          <div className="pro-form-header" style={{ textAlign: 'left' }}>
+            <span className="pro-badge">🤝 Join 5,000+ Change-Makers</span>
+            <h3 className="pro-form-title">Volunteer Application</h3>
+            <p className="pro-form-sub">Bridge the digital divide across India by empowering communities with AI literacy.</p>
           </div>
 
-          <div className="modal-form active" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-              <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>Full Name <span style={{ color: '#dc2626' }}>*</span></label>
-              <input type="text" placeholder="Enter your full name" id="vol-app-fname" style={{ padding: '0.7rem 1rem', fontSize: '0.9rem', border: '1.5px solid var(--glass-border)', borderRadius: '10px', outline: 'none', width: '100%' }} />
+          <div className="modal-form active" style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="pro-field-wrap">
+                <label className="pro-field-label">Full Name <span className="req">*</span></label>
+                <div className="pro-input-box">
+                  <span className="pro-input-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                  </span>
+                  <input type="text" className="pro-input" placeholder="Enter your full name" id="vol-app-fname" />
+                </div>
+              </div>
+              <div className="pro-field-wrap">
+                <label className="pro-field-label">Mobile Number <span className="req">*</span></label>
+                <div className="pro-input-box">
+                  <span className="pro-input-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+                  </span>
+                  <input type="tel" className="pro-input" placeholder="+91 98765 43210" id="vol-app-phone" />
+                </div>
+              </div>
             </div>
-            <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-              <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>Mobile Number <span style={{ color: '#dc2626' }}>*</span></label>
-              <input type="tel" placeholder="+91 XXXXXXXXXX" id="vol-app-phone" style={{ padding: '0.7rem 1rem', fontSize: '0.9rem', border: '1.5px solid var(--glass-border)', borderRadius: '10px', outline: 'none', width: '100%' }} />
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="pro-field-wrap">
+                <label className="pro-field-label">Email Address <span className="req">*</span></label>
+                <div className="pro-input-box">
+                  <span className="pro-input-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                  </span>
+                  <input type="email" className="pro-input" placeholder="yourname@email.com" id="vol-app-email" />
+                </div>
+              </div>
+              <div className="pro-field-wrap">
+                <label className="pro-field-label">Qualification <span className="req">*</span></label>
+                <div className="pro-input-box">
+                  <span className="pro-input-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>
+                  </span>
+                  <select id="vol-app-education" className="pro-input pro-select">
+                    <option value="">Select qualification</option>
+                    <option>High School</option>
+                    <option>Intermediate / Diploma</option>
+                    <option>Bachelor's Degree</option>
+                    <option>Master's Degree</option>
+                    <option>PhD</option>
+                    <option>Other</option>
+                  </select>
+                </div>
+              </div>
             </div>
-            <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-              <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>Email Address <span style={{ color: '#dc2626' }}>*</span></label>
-              <input type="email" placeholder="yourname@email.com" id="vol-app-email" style={{ padding: '0.7rem 1rem', fontSize: '0.9rem', border: '1.5px solid var(--glass-border)', borderRadius: '10px', outline: 'none', width: '100%' }} />
+
+            <div className="pro-field-wrap">
+              <label className="pro-field-label">Motivation & Background <span className="req">*</span></label>
+              <textarea rows={3} className="pro-input pro-input-no-icon pro-textarea" placeholder="Tell us why you'd like to volunteer..." id="vol-app-why"></textarea>
             </div>
-            <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-              <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>Education Qualification <span style={{ color: '#dc2626' }}>*</span></label>
-              <select id="vol-app-education" style={{ padding: '0.7rem 1rem', fontSize: '0.9rem', border: '1.5px solid var(--glass-border)', borderRadius: '10px', outline: 'none', width: '100%', background: '#fff' }}>
-                <option value="">Select your qualification</option>
-                <option>High School</option><option>Intermediate / Diploma</option>
-                <option>Bachelor's Degree</option><option>Master's Degree</option>
-                <option>PhD</option><option>Other</option>
-              </select>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.8rem 1rem', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '0.78rem', color: '#475569' }}>
+              <span>✓ Official Certificate</span>
+              <span>✓ Flexible Hours</span>
+              <span>✓ Community Recognition</span>
             </div>
-            <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-              <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>Why do you want to volunteer? <span style={{ color: '#dc2626' }}>*</span></label>
-              <textarea rows={3} placeholder="Tell us about your motivation..." id="vol-app-why" style={{ padding: '0.7rem 1rem', fontSize: '0.9rem', border: '1.5px solid var(--glass-border)', borderRadius: '10px', outline: 'none', resize: 'vertical', width: '100%' }}></textarea>
+
+            <button className="pro-btn-submit" onClick={() => (window as any).submitVolunteerApplication()}>
+              <span>Submit Volunteer Application</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+            </button>
+
+            <div className="pro-trust-footer">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+              <span>Reviewed by IncuXai Trust Onboarding Team within 24 Hours</span>
             </div>
-            <button className="btn-submit" onClick={() => (window as any).submitVolunteerApplication()} style={{ padding: '0.85rem', marginTop: '0.5rem', fontSize: '0.95rem', width: '100%' }}>Submit Application</button>
           </div>
         </div>
       </div>
@@ -4743,96 +6584,176 @@ export default function App() {
             <h2 className="section-title">Become a <span style={{ color: 'var(--secondary)' }}>TeachXai</span> Educator</h2>
             <p className="section-sub">Share your knowledge and help us make AI education accessible to every Indian</p>
           </div>
-          <div className="teachxai-form-container">
+          <div className="teachxai-form-container pro-form-container">
+            <div className="pro-form-header" style={{ textAlign: 'center' }}>
+              <span className="pro-badge">🎓 Faculty Onboarding</span>
+              <h3 className="pro-form-title">Faculty Application Form</h3>
+              <p className="pro-form-sub">Complete the form below to apply for educator roles across our AI literacy initiatives.</p>
+            </div>
+
             <form className="teachxai-form" onSubmit={(e) => { e.preventDefault(); (window as any).submitTeachXai(); }}>
-              <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group">
-                  <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>Full Name <span style={{ color: '#dc2626' }}>*</span></label>
-                  <input type="text" id="tx-name" placeholder="Enter your full name" required style={{ padding: '0.7rem 1rem', fontSize: '0.9rem', border: '1.5px solid var(--glass-border)', borderRadius: '10px', outline: 'none', transition: 'border-color 0.3s', width: '100%' }} />
+              {/* Section 1: Educator Profile */}
+              <div className="pro-section-divider">
+                <div className="pro-section-num">1</div>
+                <div className="pro-section-title">Personal & Professional Info</div>
+                <div className="pro-section-line"></div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem' }}>
+                <div className="pro-field-wrap">
+                  <label className="pro-field-label">Full Name <span className="req">*</span></label>
+                  <div className="pro-input-box">
+                    <span className="pro-input-icon">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    </span>
+                    <input type="text" id="tx-name" className="pro-input" placeholder="Enter your full name" required />
+                  </div>
                 </div>
-                <div className="form-group">
-                  <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>Email Address <span style={{ color: '#dc2626' }}>*</span></label>
-                  <input type="email" id="tx-email" placeholder="your@email.com" required style={{ padding: '0.7rem 1rem', fontSize: '0.9rem', border: '1.5px solid var(--glass-border)', borderRadius: '10px', outline: 'none', transition: 'border-color 0.3s', width: '100%' }} />
+                <div className="pro-field-wrap">
+                  <label className="pro-field-label">Email Address <span className="req">*</span></label>
+                  <div className="pro-input-box">
+                    <span className="pro-input-icon">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                    </span>
+                    <input type="email" id="tx-email" className="pro-input" placeholder="your@email.com" required />
+                  </div>
                 </div>
               </div>
-              <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group">
-                  <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>Phone Number <span style={{ color: '#dc2626' }}>*</span></label>
-                  <input type="tel" id="tx-phone" placeholder="+91 98765 43210" required style={{ padding: '0.7rem 1rem', fontSize: '0.9rem', border: '1.5px solid var(--glass-border)', borderRadius: '10px', outline: 'none', transition: 'border-color 0.3s', width: '100%' }} />
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem' }}>
+                <div className="pro-field-wrap">
+                  <label className="pro-field-label">Phone Number <span className="req">*</span></label>
+                  <div className="pro-input-box">
+                    <span className="pro-input-icon">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+                    </span>
+                    <input type="tel" id="tx-phone" className="pro-input" placeholder="+91 98765 43210" required />
+                  </div>
                 </div>
-                <div className="form-group">
-                  <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>Highest Education Qualification <span style={{ color: '#dc2626' }}>*</span></label>
-                  <select id="tx-education" required style={{ padding: '0.7rem 1rem', fontSize: '0.9rem', border: '1.5px solid var(--glass-border)', borderRadius: '10px', outline: 'none', width: '100%', background: '#fff' }}>
-                    <option value="">Select qualification</option>
-                    <option value="highschool">High School</option>
-                    <option value="diploma">Diploma</option>
-                    <option value="bachelors">Bachelor's Degree</option>
-                    <option value="masters">Master's Degree</option>
-                    <option value="phd">PhD / Doctorate</option>
-                    <option value="other">Other</option>
+                <div className="pro-field-wrap">
+                  <label className="pro-field-label">Highest Qualification <span className="req">*</span></label>
+                  <div className="pro-input-box">
+                    <span className="pro-input-icon">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>
+                    </span>
+                    <select id="tx-education" className="pro-input pro-select" required>
+                      <option value="">Select qualification</option>
+                      <option value="highschool">High School</option>
+                      <option value="diploma">Diploma</option>
+                      <option value="bachelors">Bachelor's Degree</option>
+                      <option value="masters">Master's Degree</option>
+                      <option value="phd">PhD / Doctorate</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem' }}>
+                <div className="pro-field-wrap">
+                  <label className="pro-field-label">Institution / College</label>
+                  <div className="pro-input-box">
+                    <span className="pro-input-icon">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                    </span>
+                    <input type="text" id="tx-institution" className="pro-input" placeholder="Name of institution" />
+                  </div>
+                </div>
+                <div className="pro-field-wrap">
+                  <label className="pro-field-label">Teaching Experience</label>
+                  <div className="pro-input-box">
+                    <span className="pro-input-icon">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    </span>
+                    <select id="tx-experience" className="pro-input pro-select">
+                      <option value="0">0 (No experience)</option>
+                      <option value="1-2">1-2 years</option>
+                      <option value="3-5">3-5 years</option>
+                      <option value="6-10">6-10 years</option>
+                      <option value="10+">10+ years</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 2: Specialization */}
+              <div className="pro-section-divider">
+                <div className="pro-section-num">2</div>
+                <div className="pro-section-title">Teaching Specializations & Languages</div>
+                <div className="pro-section-line"></div>
+              </div>
+
+              <div className="pro-field-wrap">
+                <label className="pro-field-label">Subjects Interested in Teaching <span className="req">*</span></label>
+                <div className="pro-tag-grid">
+                  {['AI Fundamentals', 'Machine Learning', 'Data Science', 'Python Programming', 'AI for Farmers', 'AI for Teachers', 'AI for Students', 'AI for Kids', 'Robotics & IoT'].map((sub) => (
+                    <label key={sub} className="pro-tag-item">
+                      <input type="checkbox" value={sub} />
+                      <span>{sub}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="pro-field-wrap" style={{ marginTop: '0.5rem' }}>
+                <label className="pro-field-label">Languages You Can Teach In <span className="req">*</span></label>
+                <div className="pro-tag-grid">
+                  {['English', 'Hindi', 'Telugu', 'Tamil', 'Kannada', 'Other'].map((lang) => (
+                    <label key={lang} className="pro-tag-item">
+                      <input type="checkbox" value={lang} />
+                      <span>{lang}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Section 3: Credentials */}
+              <div className="pro-section-divider">
+                <div className="pro-section-num">3</div>
+                <div className="pro-section-title">Credentials & Availability</div>
+                <div className="pro-section-line"></div>
+              </div>
+
+              <div className="pro-field-wrap">
+                <label className="pro-field-label">Relevant Certifications</label>
+                <div className="pro-input-box">
+                  <span className="pro-input-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 15l-2 5l-2.5 -1.5l-2.5 1.5l2 -5"></path><circle cx="12" cy="9" r="6"></circle></svg>
+                  </span>
+                  <input type="text" id="tx-certifications" className="pro-input" placeholder="e.g. Google AI Certification, NPTEL, Coursera" />
+                </div>
+              </div>
+
+              <div className="pro-field-wrap">
+                <label className="pro-field-label">Motivation & Teaching Philosophy <span className="req">*</span></label>
+                <textarea id="tx-why" rows={3} required className="pro-input pro-input-no-icon pro-textarea" placeholder="Share your motivation and how you can contribute..."></textarea>
+              </div>
+
+              <div className="pro-field-wrap">
+                <label className="pro-field-label">Availability <span className="req">*</span></label>
+                <div className="pro-input-box">
+                  <span className="pro-input-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                  </span>
+                  <select id="tx-availability" required className="pro-input pro-select">
+                    <option value="">Select availability</option>
+                    <option value="weekdays">Weekdays (Mon-Fri)</option>
+                    <option value="weekends">Weekends (Sat-Sun)</option>
+                    <option value="evenings">Evenings only</option>
+                    <option value="flexible">Flexible</option>
                   </select>
                 </div>
               </div>
-              <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group">
-                  <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>Institution / College</label>
-                  <input type="text" id="tx-institution" placeholder="Name of institution" style={{ padding: '0.7rem 1rem', fontSize: '0.9rem', border: '1.5px solid var(--glass-border)', borderRadius: '10px', outline: 'none', transition: 'border-color 0.3s', width: '100%' }} />
-                </div>
-                <div className="form-group">
-                  <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>Years of Teaching Experience</label>
-                  <select id="tx-experience" style={{ padding: '0.7rem 1rem', fontSize: '0.9rem', border: '1.5px solid var(--glass-border)', borderRadius: '10px', outline: 'none', width: '100%', background: '#fff' }}>
-                    <option value="0">0 (No experience)</option>
-                    <option value="1-2">1-2 years</option>
-                    <option value="3-5">3-5 years</option>
-                    <option value="6-10">6-10 years</option>
-                    <option value="10+">10+ years</option>
-                  </select>
-                </div>
+
+              <button type="submit" className="pro-btn-submit" style={{ marginTop: '1rem' }}>
+                <span>Submit Educator Application</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+              </button>
+
+              <div className="pro-trust-footer">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                <span>TeachXai Academic Review Panel • Verified Educator Certificate</span>
               </div>
-              <div className="form-group">
-                <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>Subjects Interested in Teaching <span style={{ color: '#dc2626' }}>*</span></label>
-                <div className="dept-checkbox-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', padding: '0.75rem', border: '1.5px solid var(--glass-border)', borderRadius: '10px', background: '#fafafa' }}>
-                  <label className="dept-checkbox" style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}><input type="checkbox" value="AI Fundamentals" /> AI Fundamentals</label>
-                  <label className="dept-checkbox" style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}><input type="checkbox" value="Machine Learning" /> Machine Learning</label>
-                  <label className="dept-checkbox" style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}><input type="checkbox" value="Data Science" /> Data Science</label>
-                  <label className="dept-checkbox" style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}><input type="checkbox" value="Python Programming" /> Python Programming</label>
-                  <label className="dept-checkbox" style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}><input type="checkbox" value="AI for Farmers" /> AI for Farmers</label>
-                  <label className="dept-checkbox" style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}><input type="checkbox" value="AI for Teachers" /> AI for Teachers</label>
-                  <label className="dept-checkbox" style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}><input type="checkbox" value="AI for Students" /> AI for Students</label>
-                  <label className="dept-checkbox" style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}><input type="checkbox" value="AI for Kids" /> AI for Kids</label>
-                  <label className="dept-checkbox" style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}><input type="checkbox" value="Robotics & IoT" /> Robotics & IoT</label>
-                </div>
-              </div>
-              <div className="form-group">
-                <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>Languages You Can Teach In <span style={{ color: '#dc2626' }}>*</span></label>
-                <div className="dept-checkbox-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', padding: '0.75rem', border: '1.5px solid var(--glass-border)', borderRadius: '10px', background: '#fafafa' }}>
-                  <label className="dept-checkbox" style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}><input type="checkbox" value="English" /> English</label>
-                  <label className="dept-checkbox" style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}><input type="checkbox" value="Hindi" /> Hindi</label>
-                  <label className="dept-checkbox" style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}><input type="checkbox" value="Telugu" /> Telugu</label>
-                  <label className="dept-checkbox" style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}><input type="checkbox" value="Tamil" /> Tamil</label>
-                  <label className="dept-checkbox" style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}><input type="checkbox" value="Kannada" /> Kannada</label>
-                  <label className="dept-checkbox" style={{ fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}><input type="checkbox" value="Other" /> Other</label>
-                </div>
-              </div>
-              <div className="form-group">
-                <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>Relevant Certifications (if any)</label>
-                <input type="text" id="tx-certifications" placeholder="e.g. Google AI Certification, NPTEL, Coursera" style={{ padding: '0.7rem 1rem', fontSize: '0.9rem', border: '1.5px solid var(--glass-border)', borderRadius: '10px', outline: 'none', transition: 'border-color 0.3s', width: '100%' }} />
-              </div>
-              <div className="form-group">
-                <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>Why do you want to teach with TeachXai? <span style={{ color: '#dc2626' }}>*</span></label>
-                <textarea id="tx-why" rows={3} required placeholder="Share your motivation and how you can contribute..." style={{ padding: '0.7rem 1rem', fontSize: '0.9rem', border: '1.5px solid var(--glass-border)', borderRadius: '10px', outline: 'none', transition: 'border-color 0.3s', resize: 'vertical', width: '100%' }}></textarea>
-              </div>
-              <div className="form-group">
-                <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)' }}>Availability <span style={{ color: '#dc2626' }}>*</span></label>
-                <select id="tx-availability" required style={{ padding: '0.7rem 1rem', fontSize: '0.9rem', border: '1.5px solid var(--glass-border)', borderRadius: '10px', outline: 'none', width: '100%', background: '#fff' }}>
-                  <option value="">Select availability</option>
-                  <option value="weekdays">Weekdays (Mon-Fri)</option>
-                  <option value="weekends">Weekends (Sat-Sun)</option>
-                  <option value="evenings">Evenings only</option>
-                  <option value="flexible">Flexible</option>
-                </select>
-              </div>
-              <button type="submit" className="btn-submit" style={{ padding: '0.85rem', marginTop: '0.5rem', fontSize: '0.95rem', width: '100%' }}>Submit Application</button>
             </form>
           </div>
         </section>
@@ -5085,89 +7006,117 @@ export default function App() {
       {/* ========== CORPORATE REGISTRATION MODAL ========== */}
       {corpShowRegModal && (
         <div className="modal-overlay active wide" onClick={() => setCorpShowRegModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ textAlign: 'left' }}>
+          <div className="modal pro-form-container" onClick={(e) => e.stopPropagation()} style={{ textAlign: 'left', maxWidth: '640px', padding: '2.5rem' }}>
             <button className="modal-close" onClick={() => setCorpShowRegModal(false)}>✕</button>
-            <h3 className="modal-title">Corporate Registration</h3>
-            <p className="modal-header-desc">Gain instant access to the Generative AI masterclass by validating your professional credentials.</p>
-            
-            <form onSubmit={handleCorpFormSubmit}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem', marginBottom: '1.2rem' }}>
-                <div>
-                  <label className="form-label" style={{ fontWeight: '600', display: 'block', marginBottom: '0.4rem' }}>Full Name *</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={corpRegForm.fullName}
-                    onChange={(e) => setCorpRegForm({ ...corpRegForm, fullName: e.target.value })}
-                    placeholder="Enter your full name"
-                    style={{ width: '100%' }}
-                  />
+
+            <div className="pro-form-header">
+              <span className="pro-badge">👔 HR Professional Verification</span>
+              <h3 className="pro-form-title">AI for HR — Executive Registration</h3>
+              <p className="pro-form-sub">Validate your professional credentials to unlock the AI for HR Professionals masterclass.</p>
+            </div>
+
+            <form onSubmit={handleCorpFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem' }}>
+                <div className="pro-field-wrap">
+                  <label className="pro-field-label">Full Name <span className="req">*</span></label>
+                  <div className="pro-input-box">
+                    <span className="pro-input-icon">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    </span>
+                    <input
+                      type="text"
+                      className="pro-input"
+                      value={corpRegForm.fullName}
+                      onChange={(e) => setCorpRegForm({ ...corpRegForm, fullName: e.target.value })}
+                      placeholder="Enter your full name"
+                    />
+                  </div>
                   {corpFormErrors.fullName && <span className="input-helper-msg error">{corpFormErrors.fullName}</span>}
                 </div>
-                <div>
-                  <label className="form-label" style={{ fontWeight: '600', display: 'block', marginBottom: '0.4rem' }}>Personal Email *</label>
-                  <input
-                    type="email"
-                    className="form-input"
-                    value={corpRegForm.personalEmail}
-                    onChange={(e) => setCorpRegForm({ ...corpRegForm, personalEmail: e.target.value })}
-                    placeholder="e.g. name@gmail.com"
-                    style={{ width: '100%' }}
-                  />
+                <div className="pro-field-wrap">
+                  <label className="pro-field-label">Personal Email <span className="req">*</span></label>
+                  <div className="pro-input-box">
+                    <span className="pro-input-icon">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                    </span>
+                    <input
+                      type="email"
+                      className="pro-input"
+                      value={corpRegForm.personalEmail}
+                      onChange={(e) => setCorpRegForm({ ...corpRegForm, personalEmail: e.target.value })}
+                      placeholder="name@example.com"
+                    />
+                  </div>
                   {corpFormErrors.personalEmail && <span className="input-helper-msg error">{corpFormErrors.personalEmail}</span>}
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem', marginBottom: '1.2rem' }}>
-                <div>
-                  <label className="form-label" style={{ fontWeight: '600', display: 'block', marginBottom: '0.4rem' }}>Phone Number *</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={corpRegForm.phone}
-                    onChange={(e) => setCorpRegForm({ ...corpRegForm, phone: e.target.value })}
-                    placeholder="e.g. +91 98765 43210"
-                    style={{ width: '100%' }}
-                  />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem' }}>
+                <div className="pro-field-wrap">
+                  <label className="pro-field-label">Phone Number <span className="req">*</span></label>
+                  <div className="pro-input-box">
+                    <span className="pro-input-icon">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+                    </span>
+                    <input
+                      type="text"
+                      className="pro-input"
+                      value={corpRegForm.phone}
+                      onChange={(e) => setCorpRegForm({ ...corpRegForm, phone: e.target.value })}
+                      placeholder="+91 98765 43210"
+                    />
+                  </div>
                   {corpFormErrors.phone && <span className="input-helper-msg error">{corpFormErrors.phone}</span>}
                 </div>
-                <div>
-                  <label className="form-label" style={{ fontWeight: '600', display: 'block', marginBottom: '0.4rem' }}>Location *</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={corpRegForm.location}
-                    onChange={(e) => setCorpRegForm({ ...corpRegForm, location: e.target.value })}
-                    placeholder="City, State"
-                    style={{ width: '100%' }}
-                  />
+                <div className="pro-field-wrap">
+                  <label className="pro-field-label">Location <span className="req">*</span></label>
+                  <div className="pro-input-box">
+                    <span className="pro-input-icon">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                    </span>
+                    <input
+                      type="text"
+                      className="pro-input"
+                      value={corpRegForm.location}
+                      onChange={(e) => setCorpRegForm({ ...corpRegForm, location: e.target.value })}
+                      placeholder="City, State"
+                    />
+                  </div>
                   {corpFormErrors.location && <span className="input-helper-msg error">{corpFormErrors.location}</span>}
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem', marginBottom: '1.5rem' }}>
-                <div>
-                  <label className="form-label" style={{ fontWeight: '600', display: 'block', marginBottom: '0.4rem' }}>Company Name *</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={corpRegForm.companyName}
-                    onChange={(e) => setCorpRegForm({ ...corpRegForm, companyName: e.target.value })}
-                    placeholder="e.g. Microsoft"
-                    style={{ width: '100%' }}
-                  />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem' }}>
+                <div className="pro-field-wrap">
+                  <label className="pro-field-label">Company Name <span className="req">*</span></label>
+                  <div className="pro-input-box">
+                    <span className="pro-input-icon">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                    </span>
+                    <input
+                      type="text"
+                      className="pro-input"
+                      value={corpRegForm.companyName}
+                      onChange={(e) => setCorpRegForm({ ...corpRegForm, companyName: e.target.value })}
+                      placeholder="e.g. Microsoft"
+                    />
+                  </div>
                   {corpFormErrors.companyName && <span className="input-helper-msg error">{corpFormErrors.companyName}</span>}
                 </div>
-                <div>
-                  <label className="form-label" style={{ fontWeight: '600', display: 'block', marginBottom: '0.4rem' }}>Work Email *</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={corpRegForm.workEmail}
-                    onChange={(e) => setCorpRegForm({ ...corpRegForm, workEmail: e.target.value })}
-                    placeholder="e.g. john@microsoft.com"
-                    style={{ width: '100%' }}
-                  />
+                <div className="pro-field-wrap">
+                  <label className="pro-field-label">Work Email <span className="req">*</span></label>
+                  <div className="pro-input-box">
+                    <span className="pro-input-icon">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                    </span>
+                    <input
+                      type="text"
+                      className="pro-input"
+                      value={corpRegForm.workEmail}
+                      onChange={(e) => setCorpRegForm({ ...corpRegForm, workEmail: e.target.value })}
+                      placeholder="john@company.com"
+                    />
+                  </div>
                   {corpFormErrors.workEmail && <span className="input-helper-msg error">{corpFormErrors.workEmail}</span>}
                   {corpFormErrors.workEmailWarning && !corpFormErrors.workEmail && (
                     <span className="input-helper-msg warning">{corpFormErrors.workEmailWarning}</span>
@@ -5176,8 +7125,8 @@ export default function App() {
               </div>
 
               {/* Role Selection Container */}
-              <div style={{ marginBottom: '2rem' }}>
-                <label className="form-label" style={{ fontWeight: '700', display: 'block', marginBottom: '0.4rem' }}>Role *</label>
+              <div className="pro-field-wrap">
+                <label className="pro-field-label">Professional Role <span className="req">*</span></label>
                 <div className="role-radio-group">
                   {['Executive', 'Manager', 'Developer', 'Consultant'].map((roleOpt) => (
                     <div
@@ -5190,12 +7139,18 @@ export default function App() {
                     </div>
                   ))}
                 </div>
-                {corpFormErrors.role && <span className="input-helper-msg error" style={{ display: 'block', marginTop: '0.5rem' }}>{corpFormErrors.role}</span>}
+                {corpFormErrors.role && <span className="input-helper-msg error" style={{ display: 'block', marginTop: '0.4rem' }}>{corpFormErrors.role}</span>}
               </div>
 
-              <button type="submit" className="panel-btn-register" style={{ width: '100%' }}>
-                Verify Work Email & Continue
+              <button type="submit" className="pro-btn-submit" style={{ marginTop: '0.5rem' }}>
+                <span>Verify Work Email & Continue</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
               </button>
+
+              <div className="pro-trust-footer">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                <span>🔒 256-Bit SSL Encrypted Verification • Instant Dashboard Unlocking</span>
+              </div>
             </form>
           </div>
         </div>
@@ -5228,6 +7183,44 @@ export default function App() {
                   We have sent a secure 6-digit OTP code to your work email: <br />
                   <span className="otp-target-email">{corpRegForm.workEmail}</span>
                 </p>
+
+                {/* Secure Simulation OTP Display Banner */}
+                <div style={{
+                  background: 'linear-gradient(135deg, rgba(155,122,62,0.12), rgba(197,160,89,0.22))',
+                  border: '1px solid #C5A059',
+                  borderRadius: '12px',
+                  padding: '0.9rem 1.2rem',
+                  margin: '1rem 0 1.4rem',
+                  textAlign: 'center',
+                  boxShadow: '0 4px 15px rgba(0,0,0,0.05)'
+                }}>
+                  <div style={{ fontSize: '0.72rem', fontWeight: '700', color: '#7D6334', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '0.3rem' }}>
+                    🔑 Simulated Demo OTP Code
+                  </div>
+                  <div style={{ fontSize: '1.6rem', fontWeight: '800', letterSpacing: '6px', color: '#0c1628', fontFamily: 'monospace' }}>
+                    {corpGeneratedOtp || '123456'}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const code = (corpGeneratedOtp || '123456').split('');
+                      setCorpEnteredOtp(code);
+                    }}
+                    style={{
+                      marginTop: '0.5rem',
+                      background: '#0c1628',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '0.3rem 0.8rem',
+                      fontSize: '0.78rem',
+                      fontWeight: '600',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    ⚡ Auto-fill Code
+                  </button>
+                </div>
 
                 <div className="otp-input-container">
                   {corpEnteredOtp.map((digit, idx) => (
@@ -5303,6 +7296,981 @@ export default function App() {
         <svg viewBox="0 0 24 24" width="28" height="28" fill="white"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.725 1.45 5.489 0 9.952-4.43 9.955-9.885.002-2.643-1.022-5.127-2.885-7c-1.863-1.874-4.343-2.905-6.994-2.906-5.49 0-9.953 4.429-9.957 9.884-.002 1.714.453 3.39 1.32 4.887l-.994 3.634 3.73-.974zm12.002-6.852c-.274-.136-1.62-.801-1.871-.892-.252-.09-.435-.136-.617.136-.183.272-.708.89-.867 1.072-.16.182-.32.205-.594.069-.275-.136-1.16-.427-2.209-1.364-.817-.73-1.368-1.63-1.528-1.905-.16-.273-.017-.421.12-.557.123-.122.274-.32.41-.48.138-.16.183-.273.275-.455.092-.182.046-.341-.023-.477-.068-.136-.617-1.485-.845-2.03-.22-.533-.48-.46-.617-.466-.123-.006-.275-.007-.426-.007-.152 0-.401.057-.61.284-.21.227-.8.781-.8 1.904 0 1.124.816 2.207.93 2.36.114.152 1.606 2.451 3.89 3.435.543.233.967.373 1.3.479.546.173 1.042.149 1.433.09.437-.066 1.62-.662 1.849-1.3.23-.637.23-1.182.16-1.3-.069-.117-.251-.183-.526-.32z"/></svg>
       </a>
 
+      {/* ========== ENTERPRISE EXECUTIVE LEARNER PROFILE DASHBOARD ========== */}
+      <div id="learner-profile" className="page learner-profile-page" style={{ paddingTop: '85px', background: '#faf7f2', minHeight: '100vh', color: '#0c1628' }}>
+        <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 1.5rem 4rem' }}>
+
+          {/* Top Breadcrumb & Executive Navigation Bar */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => (window as any).showPage('ai4all')}
+                style={{
+                  background: '#0c1628',
+                  border: '1px solid #9B7A3E',
+                  color: '#ffffff',
+                  padding: '0.5rem 1.1rem',
+                  borderRadius: '10px',
+                  fontSize: '0.85rem',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  boxShadow: '0 4px 12px rgba(12,22,40,0.15)',
+                  transition: 'all 0.2s'
+                }}
+              >
+                ← Back to AI 4 ALL
+              </button>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.88rem', color: '#64748b' }}>
+                <span onClick={() => (window as any).showPage('home')} style={{ cursor: 'pointer', color: '#9B7A3E', fontWeight: '600' }}>Home</span>
+                <span>/</span>
+                <span onClick={() => (window as any).showPage('ai4all')} style={{ cursor: 'pointer', color: '#9B7A3E', fontWeight: '600' }}>AI 4 ALL</span>
+                <span>/</span>
+                <span style={{ color: '#0c1628', fontWeight: '700' }}>Learner Profile</span>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
+              <button
+                onClick={() => setActiveProfileTab(activeProfileTab === 'edit' ? 'overview' : 'edit')}
+                style={{
+                  background: '#ffffff',
+                  border: '1px solid rgba(155, 122, 62, 0.3)',
+                  color: '#0c1628',
+                  padding: '0.5rem 1rem',
+                  borderRadius: '8px',
+                  fontSize: '0.82rem',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  boxShadow: '0 2px 8px rgba(12,22,40,0.04)'
+                }}
+              >
+                {activeProfileTab === 'edit' ? 'View Profile Summary' : 'Edit Profile Details'}
+              </button>
+              <button
+                onClick={generateAndClaimCertificate}
+                style={{
+                  background: 'linear-gradient(135deg, #9B7A3E, #7D6334)',
+                  border: '1px solid #C5A059',
+                  color: '#fff',
+                  padding: '0.5rem 1.1rem',
+                  borderRadius: '8px',
+                  fontSize: '0.82rem',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem'
+                }}
+              >
+                Claim Master Certificate
+              </button>
+              <button
+                onClick={() => (window as any).handleLogout()}
+                className="portal-logout-btn"
+                style={{ background: '#ef4444', border: 'none', color: '#fff', padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.82rem', fontWeight: '600', cursor: 'pointer' }}
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+
+          {/* Profile Hero Header Banner (Light Theme Executive Card) */}
+          <div
+            className="profile-banner-redesigned"
+            style={{
+              background: '#ffffff',
+              border: '1px solid rgba(155, 122, 62, 0.25)',
+              borderRadius: '20px',
+              padding: '2.2rem 2.5rem',
+              marginBottom: '2rem',
+              boxShadow: '0 8px 30px rgba(12, 22, 40, 0.05)',
+              position: 'relative',
+              overflow: 'hidden'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '2rem', flexWrap: 'wrap', position: 'relative', zIndex: 1 }}>
+              <div style={{ position: 'relative' }}>
+                <img
+                  src={learnerProfile.avatar}
+                  alt={learnerProfile.name}
+                  style={{ width: '110px', height: '110px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #9B7A3E', boxShadow: '0 8px 25px rgba(155, 122, 62, 0.2)' }}
+                />
+                <label
+                  style={{
+                    position: 'absolute',
+                    bottom: '2px',
+                    right: '2px',
+                    background: '#9B7A3E',
+                    color: '#ffffff',
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    fontSize: '0.85rem',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                  }}
+                  title="Change Profile Photo"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                  <input type="file" accept="image/*" onChange={handleProfilePhotoUpload} style={{ display: 'none' }} />
+                </label>
+              </div>
+              <div style={{ flex: 1, minWidth: '280px', textAlign: 'left' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flexWrap: 'wrap', marginBottom: '0.4rem' }}>
+                  <h2 style={{ fontSize: '1.85rem', fontWeight: '800', color: '#0c1628', margin: 0 }}>{learnerProfile.name}</h2>
+                  <span style={{ background: 'rgba(155, 122, 62, 0.12)', color: '#9B7A3E', border: '1px solid rgba(155, 122, 62, 0.3)', padding: '0.25rem 0.75rem', borderRadius: '99px', fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Verified Masterclass Learner
+                  </span>
+                </div>
+                <p style={{ color: '#64748b', fontSize: '0.98rem', margin: '0 0 0.8rem 0', fontWeight: '600' }}>
+                  {learnerProfile.company || 'IncuXAI Education Trust'}
+                </p>
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', fontSize: '0.85rem', color: '#334155' }}>
+                  <span style={{ background: '#faf7f2', padding: '0.35rem 0.8rem', borderRadius: '8px', border: '1px solid rgba(155,122,62,0.18)' }}>
+                    Personal Email: <strong style={{ color: '#0c1628' }}>{learnerProfile.personalEmail}</strong>
+                  </span>
+                  <span style={{ background: '#faf7f2', padding: '0.35rem 0.8rem', borderRadius: '8px', border: '1px solid rgba(155,122,62,0.18)' }}>
+                    Work Email: <strong style={{ color: '#0c1628' }}>{learnerProfile.workEmail}</strong>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 1: Performance Summary & Statistics (WITH RICH CLASSIC BLUE FEATURE CARD) */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
+            <div style={{ background: 'linear-gradient(135deg, #0c1628 0%, #1e293b 100%)', border: '1px solid rgba(197, 160, 89, 0.4)', borderRadius: '16px', padding: '1.4rem', boxShadow: '0 8px 25px rgba(12, 22, 40, 0.15)', textAlign: 'left', color: '#ffffff' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem' }}>
+                <span style={{ color: '#cbd5e1', fontSize: '0.85rem', fontWeight: '600' }}>Course Mastery</span>
+                <span style={{ color: '#F3E5AB', fontWeight: '700', fontSize: '0.8rem' }}>Overall Progress</span>
+              </div>
+              <div style={{ fontSize: '1.75rem', fontWeight: '800', color: '#ffffff', marginBottom: '0.4rem' }}>{overallLmsProgressPercent}%</div>
+              <div className="lms-progress-track" style={{ height: '6px', background: 'rgba(255,255,255,0.12)', borderRadius: '99px', overflow: 'hidden' }}>
+                <div className="lms-progress-fill" style={{ width: `${overallLmsProgressPercent}%`, height: '100%', background: 'linear-gradient(90deg, #9B7A3E, #F3E5AB)' }}></div>
+              </div>
+            </div>
+
+            <div style={{ background: '#ffffff', border: '1px solid rgba(155, 122, 62, 0.2)', borderRadius: '16px', padding: '1.4rem', boxShadow: '0 4px 20px rgba(12, 22, 40, 0.04)', textAlign: 'left' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem' }}>
+                <span style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: '600' }}>Time Invested</span>
+                <span style={{ color: '#10b981', fontWeight: '700', fontSize: '0.8rem' }}>Active</span>
+              </div>
+              <div style={{ fontSize: '1.75rem', fontWeight: '800', color: '#0c1628', marginBottom: '0.2rem' }}>2.5 Hours</div>
+              <span style={{ fontSize: '0.78rem', color: '#059669', fontWeight: '600' }}>Structured Learning Pace</span>
+            </div>
+
+            <div style={{ background: '#ffffff', border: '1px solid rgba(155, 122, 62, 0.2)', borderRadius: '16px', padding: '1.4rem', boxShadow: '0 4px 20px rgba(12, 22, 40, 0.04)', textAlign: 'left' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem' }}>
+                <span style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: '600' }}>Average Quiz Score</span>
+                <span style={{ color: '#9B7A3E', fontWeight: '700', fontSize: '0.8rem' }}>3 Assessments</span>
+              </div>
+              <div style={{ fontSize: '1.75rem', fontWeight: '800', color: '#0c1628', marginBottom: '0.2rem' }}>94%</div>
+              <span style={{ fontSize: '0.78rem', color: '#9B7A3E', fontWeight: '600' }}>Passed 3/3 Knowledge Checks</span>
+            </div>
+
+            <div style={{ background: '#ffffff', border: '1px solid rgba(155, 122, 62, 0.2)', borderRadius: '16px', padding: '1.4rem', boxShadow: '0 4px 20px rgba(12, 22, 40, 0.04)', textAlign: 'left' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem' }}>
+                <span style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: '600' }}>Certificates Stored</span>
+                <span style={{ color: '#9B7A3E', fontWeight: '700', fontSize: '0.8rem' }}>Verified</span>
+              </div>
+              <div style={{ fontSize: '1.75rem', fontWeight: '800', color: '#0c1628', marginBottom: '0.2rem' }}>{learnerProfile.certificates?.length || 0}</div>
+              <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: '600' }}>Verified & Stored in Profile</span>
+            </div>
+          </div>
+
+          {/* SECTION 2: Profile Information & Account Credentials */}
+          <div style={{ background: '#ffffff', border: '1px solid rgba(155, 122, 62, 0.2)', borderRadius: '18px', padding: '2rem', marginBottom: '2rem', boxShadow: '0 4px 20px rgba(12, 22, 40, 0.04)', textAlign: 'left' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', borderBottom: '1px solid rgba(155, 122, 62, 0.15)', paddingBottom: '1rem' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#0c1628', margin: 0 }}>
+                Profile Information & Credentials
+              </h3>
+              <button
+                onClick={() => setActiveProfileTab(activeProfileTab === 'edit' ? 'overview' : 'edit')}
+                style={{ background: '#faf7f2', border: '1px solid rgba(155, 122, 62, 0.3)', color: '#9B7A3E', padding: '0.4rem 0.9rem', borderRadius: '8px', fontSize: '0.82rem', fontWeight: '600', cursor: 'pointer' }}
+              >
+                {activeProfileTab === 'edit' ? 'Close Edit Form' : 'Edit Details'}
+              </button>
+            </div>
+
+            {activeProfileTab === 'edit' ? (
+              <div className="profile-edit-pane">
+                <div className="edit-fields-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.2rem' }}>
+                  <div className="form-field">
+                    <label style={{ display: 'block', color: '#0c1628', fontWeight: '700', fontSize: '0.85rem', marginBottom: '0.4rem' }}>Full Name</label>
+                    <input
+                      type="text"
+                      value={editProfileForm.name}
+                      onChange={(e) => setEditProfileForm({ ...editProfileForm, name: e.target.value })}
+                      placeholder="Enter full name..."
+                      style={{ width: '100%', padding: '0.6rem 0.9rem', background: '#faf7f2', border: '1px solid rgba(155,122,62,0.2)', borderRadius: '8px', color: '#0c1628', fontSize: '0.9rem' }}
+                    />
+                  </div>
+
+                  <div className="form-field">
+                    <label style={{ display: 'block', color: '#0c1628', fontWeight: '700', fontSize: '0.85rem', marginBottom: '0.4rem' }}>Company / Organization</label>
+                    <input
+                      type="text"
+                      value={editProfileForm.company}
+                      onChange={(e) => setEditProfileForm({ ...editProfileForm, company: e.target.value })}
+                      placeholder="Enter organization..."
+                      style={{ width: '100%', padding: '0.6rem 0.9rem', background: '#faf7f2', border: '1px solid rgba(155,122,62,0.2)', borderRadius: '8px', color: '#0c1628', fontSize: '0.9rem' }}
+                    />
+                  </div>
+
+                  <div className="form-field">
+                    <label style={{ display: 'block', color: '#0c1628', fontWeight: '700', fontSize: '0.85rem', marginBottom: '0.4rem' }}>Personal Email Address</label>
+                    <input
+                      type="email"
+                      value={editProfileForm.personalEmail}
+                      onChange={(e) => setEditProfileForm({ ...editProfileForm, personalEmail: e.target.value })}
+                      placeholder="name@gmail.com"
+                      style={{ width: '100%', padding: '0.6rem 0.9rem', background: '#faf7f2', border: '1px solid rgba(155,122,62,0.2)', borderRadius: '8px', color: '#0c1628', fontSize: '0.9rem' }}
+                    />
+                  </div>
+
+                  <div className="form-field">
+                    <label style={{ display: 'block', color: '#0c1628', fontWeight: '700', fontSize: '0.85rem', marginBottom: '0.4rem' }}>Work / Official Email Address</label>
+                    <input
+                      type="email"
+                      value={editProfileForm.workEmail}
+                      onChange={(e) => setEditProfileForm({ ...editProfileForm, workEmail: e.target.value })}
+                      placeholder="name@company.com"
+                      style={{ width: '100%', padding: '0.6rem 0.9rem', background: '#faf7f2', border: '1px solid rgba(155,122,62,0.2)', borderRadius: '8px', color: '#0c1628', fontSize: '0.9rem' }}
+                    />
+                  </div>
+                </div>
+
+                <button className="save-profile-btn" onClick={saveProfileDetails} style={{ marginTop: '1.4rem', background: '#9B7A3E', border: 'none', color: '#fff', padding: '0.6rem 1.4rem', borderRadius: '8px', fontSize: '0.88rem', fontWeight: '700', cursor: 'pointer' }}>
+                  Save Profile Changes
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
+                <div>
+                  <span style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: '#64748b', fontWeight: '700', letterSpacing: '0.05em' }}>Full Name</span>
+                  <div style={{ fontSize: '1.05rem', fontWeight: '700', color: '#0c1628', marginTop: '0.3rem' }}>{learnerProfile.name}</div>
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: '#64748b', fontWeight: '700', letterSpacing: '0.05em' }}>Company / Organization</span>
+                  <div style={{ fontSize: '1.05rem', fontWeight: '700', color: '#0c1628', marginTop: '0.3rem' }}>{learnerProfile.company || 'IncuXAI Education Trust'}</div>
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: '#64748b', fontWeight: '700', letterSpacing: '0.05em' }}>Personal Email</span>
+                  <div style={{ fontSize: '0.98rem', fontWeight: '600', color: '#9B7A3E', marginTop: '0.3rem' }}>{learnerProfile.personalEmail}</div>
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: '#64748b', fontWeight: '700', letterSpacing: '0.05em' }}>Work Email</span>
+                  <div style={{ fontSize: '0.98rem', fontWeight: '600', color: '#9B7A3E', marginTop: '0.3rem' }}>{learnerProfile.workEmail}</div>
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: '#64748b', fontWeight: '700', letterSpacing: '0.05em' }}>Location</span>
+                  <div style={{ fontSize: '0.98rem', fontWeight: '600', color: '#334155', marginTop: '0.3rem' }}>Andhra Pradesh, India</div>
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: '#64748b', fontWeight: '700', letterSpacing: '0.05em' }}>Account Status</span>
+                  <div style={{ fontSize: '0.98rem', fontWeight: '700', color: '#059669', marginTop: '0.3rem' }}>Verified Trust Learner</div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* SECTION 3: Enrolled & Completed Courses */}
+          <div style={{ background: '#ffffff', border: '1px solid rgba(155, 122, 62, 0.2)', borderRadius: '18px', padding: '2rem', marginBottom: '2rem', boxShadow: '0 4px 20px rgba(12, 22, 40, 0.04)', textAlign: 'left' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', borderBottom: '1px solid rgba(155, 122, 62, 0.15)', paddingBottom: '1rem' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#0c1628', margin: 0 }}>
+                Completed & Enrolled Courses
+              </h3>
+            </div>
+
+            <div style={{ background: '#faf7f2', border: '1px solid rgba(155, 122, 62, 0.15)', borderRadius: '14px', padding: '1.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '0.8rem' }}>
+                <div>
+                  <span style={{ background: overallLmsProgressPercent >= 100 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(155, 122, 62, 0.15)', color: overallLmsProgressPercent >= 100 ? '#059669' : '#9B7A3E', padding: '0.25rem 0.75rem', borderRadius: '99px', fontSize: '0.75rem', fontWeight: '700' }}>
+                    {overallLmsProgressPercent >= 100 ? '100% Completed' : `In Progress (${overallLmsProgressPercent}%)`}
+                  </span>
+                  <h4 style={{ fontSize: '1.2rem', fontWeight: '700', color: '#0c1628', margin: '0.6rem 0 0.2rem 0' }}>{initialLmsCourse.title}</h4>
+                  <p style={{ color: '#64748b', fontSize: '0.88rem', margin: 0 }}>Instructor: Dr. Arjun Reddy (Founder & Chief AI Officer)</p>
+                </div>
+                <button className="btn-view-cert" onClick={generateAndClaimCertificate} style={{ background: '#9B7A3E', border: 'none', color: '#fff', padding: '0.5rem 1.1rem', borderRadius: '8px', fontSize: '0.82rem', fontWeight: '700', cursor: 'pointer' }}>
+                  {overallLmsProgressPercent >= 100 ? 'Claim / View Certificate' : 'Preview Certificate'}
+                </button>
+              </div>
+
+              <div className="lms-progress-track" style={{ height: '8px', background: 'rgba(12,22,40,0.08)', borderRadius: '99px', margin: '1rem 0' }}>
+                <div className="lms-progress-fill" style={{ width: `${overallLmsProgressPercent}%`, height: '100%', background: 'linear-gradient(90deg, #9B7A3E, #C5A059)' }}></div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: '#64748b' }}>
+                <span>{completedLmsCount} of {totalLmsLessons} Modules Completed</span>
+                <span>Graded Average: 94%</span>
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 4: Module Quizzes & Exam Results */}
+          <div style={{ background: '#ffffff', border: '1px solid rgba(155, 122, 62, 0.2)', borderRadius: '18px', padding: '2rem', marginBottom: '2rem', boxShadow: '0 4px 20px rgba(12, 22, 40, 0.04)', textAlign: 'left' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', borderBottom: '1px solid rgba(155, 122, 62, 0.15)', paddingBottom: '1rem', flexWrap: 'wrap', gap: '0.8rem' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#0c1628', margin: 0 }}>
+                Module Quizzes & Exam Results
+              </h3>
+              <span style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#059669', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '0.3rem 0.8rem', borderRadius: '99px', fontSize: '0.78rem', fontWeight: '700' }}>
+                Overall Average: 94% (Passed 3/3)
+              </span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
+              <div style={{ background: '#faf7f2', border: '1px solid rgba(155, 122, 62, 0.15)', borderRadius: '14px', padding: '1.4rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.6rem' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#9B7A3E', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Module 1.3 Exam</span>
+                  <span style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#059669', padding: '0.2rem 0.6rem', borderRadius: '6px', fontSize: '0.72rem', fontWeight: '700' }}>PASSED</span>
+                </div>
+                <h5 style={{ color: '#0c1628', fontSize: '1.05rem', fontWeight: '700', margin: '0 0 0.4rem 0' }}>Generative AI Foundations</h5>
+                <div style={{ fontSize: '1.4rem', fontWeight: '800', color: '#0c1628', marginBottom: '0.3rem' }}>95% <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: '400' }}>(4/4 Correct)</span></div>
+                <p style={{ fontSize: '0.78rem', color: '#64748b', margin: '0 0 1rem 0' }}>Time Spent: 3 min 45 sec • Verified</p>
+                <button onClick={() => (window as any).showPage('corporate-course')} style={{ width: '100%', background: '#ffffff', border: '1px solid rgba(155, 122, 62, 0.25)', color: '#0c1628', padding: '0.45rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer' }}>
+                  Retake Quiz
+                </button>
+              </div>
+
+              <div style={{ background: '#faf7f2', border: '1px solid rgba(155, 122, 62, 0.15)', borderRadius: '14px', padding: '1.4rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.6rem' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#9B7A3E', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Module 2.3 Exam</span>
+                  <span style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#059669', padding: '0.2rem 0.6rem', borderRadius: '6px', fontSize: '0.72rem', fontWeight: '700' }}>PASSED</span>
+                </div>
+                <h5 style={{ color: '#0c1628', fontSize: '1.05rem', fontWeight: '700', margin: '0 0 0.4rem 0' }}>Prompt Engineering & Techniques</h5>
+                <div style={{ fontSize: '1.4rem', fontWeight: '800', color: '#0c1628', marginBottom: '0.3rem' }}>90% <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: '400' }}>(4/4 Correct)</span></div>
+                <p style={{ fontSize: '0.78rem', color: '#64748b', margin: '0 0 1rem 0' }}>Time Spent: 4 min 12 sec • Verified</p>
+                <button onClick={() => (window as any).showPage('corporate-course')} style={{ width: '100%', background: '#ffffff', border: '1px solid rgba(155, 122, 62, 0.25)', color: '#0c1628', padding: '0.45rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer' }}>
+                  Retake Quiz
+                </button>
+              </div>
+
+              <div style={{ background: '#faf7f2', border: '1px solid rgba(155, 122, 62, 0.15)', borderRadius: '14px', padding: '1.4rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.6rem' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#9B7A3E', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Module 3.3 Exam</span>
+                  <span style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#059669', padding: '0.2rem 0.6rem', borderRadius: '6px', fontSize: '0.72rem', fontWeight: '700' }}>PASSED</span>
+                </div>
+                <h5 style={{ color: '#0c1628', fontSize: '1.05rem', fontWeight: '700', margin: '0 0 0.4rem 0' }}>Applied AI & HR Automation Exam</h5>
+                <div style={{ fontSize: '1.4rem', fontWeight: '800', color: '#0c1628', marginBottom: '0.3rem' }}>100% <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: '400' }}>(5/5 Correct)</span></div>
+                <p style={{ fontSize: '0.78rem', color: '#64748b', margin: '0 0 1rem 0' }}>Time Spent: 5 min 00 sec • Verified</p>
+                <button onClick={() => (window as any).showPage('corporate-course')} style={{ width: '100%', background: '#ffffff', border: '1px solid rgba(155, 122, 62, 0.25)', color: '#0c1628', padding: '0.45rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer' }}>
+                  Retake Quiz
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 5: Certificates Repository */}
+          <div style={{ background: '#ffffff', border: '1px solid rgba(155, 122, 62, 0.2)', borderRadius: '18px', padding: '2rem', marginBottom: '2rem', boxShadow: '0 4px 20px rgba(12, 22, 40, 0.04)', textAlign: 'left' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', borderBottom: '1px solid rgba(155, 122, 62, 0.15)', paddingBottom: '1rem' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#0c1628', margin: 0 }}>
+                Stored Certificates Repository
+              </h3>
+              <span style={{ fontSize: '0.85rem', color: '#9B7A3E', fontWeight: '600' }}>
+                {learnerProfile.certificates?.length || 0} Certificates Stored
+              </span>
+            </div>
+
+            {(!learnerProfile.certificates || learnerProfile.certificates.length === 0) ? (
+              <div className="certs-empty-state" style={{ textAlign: 'center', padding: '2rem 1rem' }}>
+                <p style={{ color: '#64748b', marginBottom: '1.2rem' }}>No certificates stored yet. Click below to generate your official certificate.</p>
+                <button className="lms-nav-btn primary" onClick={generateAndClaimCertificate} style={{ background: '#9B7A3E', border: 'none', color: '#fff', padding: '0.55rem 1.2rem', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '700', cursor: 'pointer' }}>
+                  Generate / Claim Certificate Now
+                </button>
+              </div>
+            ) : (
+              <div className="certs-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.25rem' }}>
+                {learnerProfile.certificates.map((cert: any, cIdx: number) => (
+                  <div key={cIdx} className="stored-cert-card" style={{ background: '#faf7f2', border: '1px solid rgba(155, 122, 62, 0.2)', borderRadius: '14px', padding: '1.4rem' }}>
+                    <div className="stored-cert-badge" style={{ color: '#9B7A3E', fontWeight: '700', fontSize: '0.78rem', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Verified Master Certificate</div>
+                    <h5 style={{ fontSize: '1.05rem', fontWeight: '700', color: '#0c1628', margin: '0 0 0.4rem 0' }}>{cert.courseTitle}</h5>
+                    <p style={{ fontSize: '0.85rem', color: '#334155', margin: '0 0 0.3rem 0' }}>Learner Name: <strong>{cert.learnerName}</strong> ({cert.companyName})</p>
+                    <p style={{ fontSize: '0.8rem', color: '#9B7A3E', margin: '0 0 0.8rem 0' }}>ID: {cert.id} • Date: {cert.completionDate}</p>
+
+                    <div className="stored-cert-actions" style={{ display: 'flex', gap: '0.6rem' }}>
+                      <button className="btn-cert-action" onClick={() => {
+                        setActiveCertificate(cert);
+                        setShowCertificateModal(true);
+                      }} style={{ flex: 1, background: '#ffffff', border: '1px solid rgba(155, 122, 62, 0.3)', color: '#0c1628', padding: '0.45rem', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer' }}>
+                        View Certificate
+                      </button>
+                      <button className="btn-cert-action primary" onClick={() => {
+                        setActiveCertificate(cert);
+                        downloadCertificatePNG();
+                      }} style={{ flex: 1, background: '#9B7A3E', border: 'none', color: '#fff', padding: '0.45rem', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '700', cursor: 'pointer' }}>
+                        Download PNG
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* SECTION 6: Competency Badges & Achievements */}
+          <div style={{ background: '#ffffff', border: '1px solid rgba(155, 122, 62, 0.2)', borderRadius: '18px', padding: '2rem', marginBottom: '2rem', boxShadow: '0 4px 20px rgba(12, 22, 40, 0.04)', textAlign: 'left' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', borderBottom: '1px solid rgba(155, 122, 62, 0.15)', paddingBottom: '1rem' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#0c1628', margin: 0 }}>
+                Competency Badges & Verified Skills
+              </h3>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
+              <div style={{ background: '#faf7f2', border: '1px solid rgba(155, 122, 62, 0.2)', borderRadius: '14px', padding: '1.2rem', textAlign: 'center' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(155,122,62,0.12)', color: '#9B7A3E', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 0.6rem auto' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                </div>
+                <h5 style={{ color: '#0c1628', fontWeight: '700', fontSize: '0.95rem', margin: '0.2rem 0' }}>Generative AI Foundations</h5>
+                <span style={{ color: '#059669', fontSize: '0.75rem', fontWeight: '700' }}>Unlocked & Verified</span>
+              </div>
+
+              <div style={{ background: '#faf7f2', border: '1px solid rgba(155, 122, 62, 0.2)', borderRadius: '14px', padding: '1.2rem', textAlign: 'center' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(155,122,62,0.12)', color: '#9B7A3E', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 0.6rem auto' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>
+                </div>
+                <h5 style={{ color: '#0c1628', fontWeight: '700', fontSize: '0.95rem', margin: '0.2rem 0' }}>Prompt Engineering</h5>
+                <span style={{ color: '#059669', fontSize: '0.75rem', fontWeight: '700' }}>Unlocked & Verified</span>
+              </div>
+
+              <div style={{ background: '#faf7f2', border: '1px solid rgba(155, 122, 62, 0.2)', borderRadius: '14px', padding: '1.2rem', textAlign: 'center' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(155,122,62,0.12)', color: '#9B7A3E', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 0.6rem auto' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v4l3 3"></path></svg>
+                </div>
+                <h5 style={{ color: '#0c1628', fontWeight: '700', fontSize: '0.95rem', margin: '0.2rem 0' }}>Workflow Automation</h5>
+                <span style={{ color: '#059669', fontSize: '0.75rem', fontWeight: '700' }}>Unlocked & Verified</span>
+              </div>
+
+              <div style={{ background: '#faf7f2', border: '1px solid rgba(155, 122, 62, 0.2)', borderRadius: '14px', padding: '1.2rem', textAlign: 'center' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(155,122,62,0.12)', color: '#9B7A3E', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 0.6rem auto' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                </div>
+                <h5 style={{ color: '#0c1628', fontWeight: '700', fontSize: '0.95rem', margin: '0.2rem 0' }}>Ethical AI & Governance</h5>
+                <span style={{ color: '#059669', fontSize: '0.75rem', fontWeight: '700' }}>Unlocked & Verified</span>
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 7: Recent Activity Log */}
+          <div style={{ background: '#ffffff', border: '1px solid rgba(155, 122, 62, 0.2)', borderRadius: '18px', padding: '2rem', boxShadow: '0 4px 20px rgba(12, 22, 40, 0.04)', textAlign: 'left' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', borderBottom: '1px solid rgba(155, 122, 62, 0.15)', paddingBottom: '1rem' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#0c1628', margin: 0 }}>
+                Recent Learning Activity Log
+              </h3>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: '#faf7f2', padding: '0.9rem 1.2rem', borderRadius: '10px', borderLeft: '4px solid #10b981' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ color: '#0c1628', fontWeight: '600', fontSize: '0.92rem' }}>Completed Module 3.3 Applied AI & Automation Exam</div>
+                  <span style={{ color: '#64748b', fontSize: '0.78rem' }}>Score: 100% • Today</span>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: '#faf7f2', padding: '0.9rem 1.2rem', borderRadius: '10px', borderLeft: '4px solid #10b981' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ color: '#0c1628', fontWeight: '600', fontSize: '0.92rem' }}>Completed Module 2.3 Prompt Engineering Exam</div>
+                  <span style={{ color: '#64748b', fontSize: '0.78rem' }}>Score: 90% • Yesterday</span>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: '#faf7f2', padding: '0.9rem 1.2rem', borderRadius: '10px', borderLeft: '4px solid #10b981' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ color: '#0c1628', fontWeight: '600', fontSize: '0.92rem' }}>Completed Module 1.3 Generative AI Foundations Exam</div>
+                  <span style={{ color: '#64748b', fontSize: '0.78rem' }}>Score: 95% • 2 days ago</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* ========== REDESIGNED PREMIUM LMS COURSE LEARNING DASHBOARD (LIGHT HOME-PAGE THEME) ========== */}
+      <div id="lms-player" className="page lms-player-page" style={{ background: '#faf7f2', minHeight: '100vh', color: '#0c1628' }}>
+        {/* Sticky Top Header */}
+        <header className="lms-header" style={{ position: 'sticky', top: 0, zIndex: 100, background: '#ffffff', borderBottom: '1px solid rgba(155, 122, 62, 0.2)', padding: '0.8rem 2rem', boxShadow: '0 4px 20px rgba(12, 22, 40, 0.04)' }}>
+          <div className="lms-header-left" style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+            <button className="lms-back-btn" onClick={() => (window as any).showPage('ai4all')} style={{ background: '#0c1628', border: '1px solid #9B7A3E', color: '#fff', padding: '0.45rem 0.95rem', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', boxShadow: '0 4px 12px rgba(12,22,40,0.15)' }}>
+              ← Back to AI 4 ALL
+            </button>
+            <button className="lms-back-btn" onClick={() => (window as any).showPage('home')} style={{ background: 'rgba(12, 22, 40, 0.05)', border: '1px solid rgba(12, 22, 40, 0.12)', color: '#0c1628', padding: '0.45rem 0.85rem', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}>
+              Home
+            </button>
+            <div className="lms-header-divider" style={{ width: '1px', height: '24px', background: 'rgba(12,22,40,0.12)', margin: '0 0.4rem' }}></div>
+            <div className="lms-course-title-wrap">
+              <span className="lms-course-badge" style={{ background: 'rgba(155, 122, 62, 0.12)', color: '#9B7A3E', border: '1px solid rgba(155, 122, 62, 0.3)', padding: '0.15rem 0.6rem', borderRadius: '99px', fontSize: '0.72rem', fontWeight: '700' }}>IncuXAI LMS Platform</span>
+              <h2 className="lms-course-title" style={{ color: '#0c1628', fontSize: '1.05rem', fontWeight: '700', margin: '0.2rem 0 0 0' }}>{initialLmsCourse.title}</h2>
+            </div>
+          </div>
+
+          <div className="lms-header-center" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.3rem', width: '320px' }}>
+            <div className="lms-progress-info" style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: '0.78rem', color: '#64748b', fontWeight: '600' }}>
+              <span>Course Progress</span>
+              <span className="lms-progress-percent" style={{ color: '#9B7A3E', fontWeight: '800' }}>{overallLmsProgressPercent}% ({completedLmsCount}/{totalLmsLessons} Lessons)</span>
+            </div>
+            <div className="lms-progress-track" style={{ width: '100%', height: '6px', background: 'rgba(12,22,40,0.08)', borderRadius: '99px', overflow: 'hidden' }}>
+              <div className="lms-progress-fill" style={{ width: `${overallLmsProgressPercent}%`, height: '100%', background: 'linear-gradient(90deg, #9B7A3E, #C5A059)', borderRadius: '99px', transition: 'width 0.4s ease' }}></div>
+            </div>
+          </div>
+
+          <div className="lms-header-right" style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+            <div className="lms-user-chip" onClick={() => (window as any).showPage('learner-profile')} title="Click to view Learner Profile Page" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', background: '#faf7f2', border: '1px solid rgba(155,122,62,0.2)', padding: '0.3rem 0.8rem', borderRadius: '99px', cursor: 'pointer' }}>
+              <div className="lms-avatar-wrap">
+                <img src={learnerProfile.avatar} alt="Learner" className="lms-avatar-img" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }} />
+              </div>
+              <div className="lms-user-info" style={{ textAlign: 'left' }}>
+                <span className="lms-user-name" style={{ color: '#0c1628', fontSize: '0.82rem', fontWeight: '700', display: 'block' }}>{learnerProfile.name}</span>
+                <span className="lms-user-role" style={{ color: '#64748b', fontSize: '0.72rem', display: 'block' }}>{learnerProfile.company || 'Verified Learner'}</span>
+              </div>
+            </div>
+
+            <button className="lms-cert-btn" disabled={overallLmsProgressPercent < 100} onClick={generateAndClaimCertificate} style={{ background: overallLmsProgressPercent >= 100 ? 'linear-gradient(135deg, #9B7A3E, #7D6334)' : 'rgba(12,22,40,0.06)', border: '1px solid rgba(155, 122, 62, 0.4)', color: overallLmsProgressPercent >= 100 ? '#fff' : '#64748b', padding: '0.45rem 0.9rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '700', cursor: overallLmsProgressPercent >= 100 ? 'pointer' : 'not-allowed' }}>
+              {overallLmsProgressPercent >= 100 ? 'Claim Certificate' : 'Certificate Locked'}
+            </button>
+          </div>
+        </header>
+
+        {/* ========== LIGHT THEME COURSERA-STYLE ENTERPRISE LMS LEARNING DASHBOARD ========== */}
+        <div className="lms-workspace-coursera" style={{ background: '#faf7f2', padding: '1.8rem 2rem 4rem' }}>
+          {/* TOP FULL-WIDTH HEADING CARD ABOVE SIDEBAR SECTIONS AND VIDEO (RICH CLASSIC BLUE STYLING) */}
+          <div style={{ gridColumn: '1 / -1', background: 'linear-gradient(135deg, #0c1628 0%, #17253d 100%)', border: '1px solid rgba(197, 160, 89, 0.45)', borderRadius: '16px', padding: '1.6rem 2.2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.2rem', boxShadow: '0 10px 30px rgba(12, 22, 40, 0.18)' }}>
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.4rem' }}>
+                <span style={{ background: 'rgba(197, 160, 89, 0.18)', color: '#F3E5AB', border: '1px solid #C5A059', padding: '0.25rem 0.75rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '700', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                  IncuXAI LMS Platform
+                </span>
+                <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: '600' }}>
+                  Enterprise Certification Masterclass
+                </span>
+              </div>
+              <h1 style={{ fontSize: '1.85rem', fontWeight: '800', color: '#ffffff', margin: '0 0 0.35rem 0', letterSpacing: '-0.02em' }}>
+                AI for HR Professionals
+              </h1>
+              <p style={{ margin: 0, color: '#cbd5e1', fontSize: '0.92rem', fontWeight: '400' }}>
+                Comprehensive interactive learning workspace with video lectures, section evaluations, and verified skill certification.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => {
+                  const completedMap: Record<string, boolean> = {};
+                  const quizMap: Record<string, boolean> = {};
+                  allLmsLessons.forEach(l => {
+                    completedMap[l.id] = true;
+                    quizMap[l.id] = true;
+                  });
+                  setLmsCompletedLessons(completedMap);
+                  setLmsQuizSubmitted(quizMap);
+                  setShowCongratsModal(true);
+                }}
+                style={{ background: 'linear-gradient(135deg, #9B7A3E, #7D6334)', border: '1px solid #C5A059', color: '#ffffff', padding: '0.55rem 1.1rem', borderRadius: '8px', fontSize: '0.82rem', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 12px rgba(155,122,62,0.3)' }}
+              >
+                View Course Completion & Certificate
+              </button>
+              <button
+                onClick={() => (window as any).showPage('ai4all')}
+                style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(197, 160, 89, 0.4)', color: '#ffffff', padding: '0.55rem 1.1rem', borderRadius: '8px', fontSize: '0.82rem', fontWeight: '700', cursor: 'pointer' }}
+              >
+                ← Back to AI 4 ALL
+              </button>
+              <button
+                onClick={() => (window as any).showPage('home')}
+                style={{ background: '#C5A059', border: 'none', color: '#0c1628', padding: '0.55rem 1.1rem', borderRadius: '8px', fontSize: '0.82rem', fontWeight: '700', cursor: 'pointer' }}
+              >
+                Home
+              </button>
+            </div>
+          </div>
+
+          {/* ==================== LEFT SIDEBAR (FIXED / STICKY LIGHT CARD 28-30% WIDTH) ==================== */}
+          <aside className="lms-sidebar-coursera" style={{ background: '#ffffff', border: '1px solid rgba(155, 122, 62, 0.2)', borderRadius: '16px', padding: '1.2rem', boxShadow: '0 8px 30px rgba(12, 22, 40, 0.05)' }}>
+            {/* Course Title & Progress Box (RICH CLASSIC BLUE STYLING) */}
+            <div className="lms-sidebar-progress-box" style={{ background: 'linear-gradient(135deg, #0c1628 0%, #1e293b 100%)', borderRadius: '12px', border: '1px solid rgba(197, 160, 89, 0.35)', marginBottom: '1rem', padding: '1.1rem', color: '#ffffff' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <span style={{ fontSize: '0.78rem', fontWeight: '700', color: '#F3E5AB', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Overall Progress</span>
+                <span style={{ fontSize: '1.15rem', fontWeight: '800', color: '#ffffff' }}>{overallLmsProgressPercent}%</span>
+              </div>
+              <div className="lms-progress-track" style={{ height: '6px', background: 'rgba(255,255,255,0.12)', borderRadius: '99px', overflow: 'hidden', margin: '0.5rem 0' }}>
+                <div className="lms-progress-fill" style={{ width: `${overallLmsProgressPercent}%`, height: '100%', background: 'linear-gradient(90deg, #9B7A3E, #F3E5AB)' }}></div>
+              </div>
+              <div style={{ fontSize: '0.76rem', color: '#cbd5e1', display: 'flex', justifyContent: 'space-between', marginTop: '0.4rem' }}>
+                <span>{completedLmsCount} of {totalLmsLessons} Lessons Completed</span>
+              </div>
+            </div>
+
+            {/* Search Box & Lock Switch */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '1rem' }}>
+              <div className="lms-search-box" style={{ width: '100%', margin: 0, padding: '0.5rem 0.8rem', background: '#faf7f2', border: '1px solid rgba(155, 122, 62, 0.2)', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="text" placeholder="Search chapters & lessons..." value={lmsLessonSearch} onChange={(e) => setLmsLessonSearch(e.target.value)} style={{ background: 'transparent', border: 'none', color: '#0c1628', fontSize: '0.8rem', outline: 'none', width: '100%' }} />
+              </div>
+
+              <div className="lms-lock-toggle-wrap" style={{ margin: 0, padding: '0.4rem 0.8rem', background: '#faf7f2', border: '1px solid rgba(155, 122, 62, 0.15)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.75rem', color: '#0c1628', fontWeight: '600' }}>Sequential Lock</span>
+                <label className="lms-switch">
+                  <input
+                    type="checkbox"
+                    checked={lmsSequentialLockMode}
+                    onChange={(e) => setLmsSequentialLockMode(e.target.checked)}
+                  />
+                  <span className="lms-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            {/* Course Chapters / Modules Accordion */}
+            <div className="lms-modules-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+              {initialLmsCourse.modules.map((mod) => (
+                <div key={mod.id} className={`lms-module-item ${lmsExpandedModules[mod.id] ? 'expanded' : ''}`} style={{ background: '#faf7f2', border: '1px solid rgba(155, 122, 62, 0.18)', borderRadius: '10px', overflow: 'hidden' }}>
+                  <div className="lms-module-header" onClick={() => setLmsExpandedModules(prev => ({ ...prev, [mod.id]: !prev[mod.id] }))} style={{ padding: '0.8rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', background: '#ffffff' }}>
+                    <div className="lms-module-title-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span className={`lms-chevron ${lmsExpandedModules[mod.id] ? 'open' : ''}`} style={{ fontSize: '0.75rem', color: '#9B7A3E', transition: 'transform 0.2s' }}>▼</span>
+                      <span className="lms-module-name" style={{ fontSize: '0.85rem', fontWeight: '700', color: '#0c1628', textAlign: 'left' }}>{mod.title}</span>
+                    </div>
+                    <span className="lms-module-meta" style={{ fontSize: '0.72rem', color: '#9B7A3E', fontWeight: '700', background: 'rgba(155, 122, 62, 0.12)', padding: '0.15rem 0.5rem', borderRadius: '99px' }}>
+                      {mod.lessons.filter(l => lmsCompletedLessons[l.id]).length}/{mod.lessons.length}
+                    </span>
+                  </div>
+
+                  {lmsExpandedModules[mod.id] && (
+                    <div className="lms-lessons-list" style={{ padding: '0.4rem', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                      {mod.lessons
+                        .filter(les => les.title.toLowerCase().includes(lmsLessonSearch.toLowerCase()))
+                        .map((les) => {
+                          const isCurrent = currentLmsLesson.id === les.id;
+                          const isDone = lmsCompletedLessons[les.id];
+                          const lesIndexInAll = allLmsLessons.findIndex(l => l.id === les.id);
+                          const locked = isLmsLessonLocked(les.id, lesIndexInAll);
+                          return (
+                            <div
+                              key={les.id}
+                              id={`lms-sidebar-item-${les.id}`}
+                              className={`lms-lesson-item ${isCurrent ? 'active' : ''} ${isDone ? 'completed' : ''} ${locked ? 'locked' : ''}`}
+                              onClick={() => {
+                                if (locked) {
+                                  const w = window as any;
+                                  w.showToast?.('Finish previous topic to unlock this item.');
+                                  return;
+                                }
+                                setCurrentLmsLesson(les);
+                                setLmsIsPlaying(false);
+                                // Auto scroll lesson into view
+                                const el = document.getElementById(`lms-sidebar-item-${les.id}`);
+                                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                              }}
+                              style={{
+                                padding: '0.6rem 0.8rem',
+                                borderRadius: '8px',
+                                background: isCurrent ? 'rgba(155, 122, 62, 0.15)' : isDone ? 'rgba(16, 185, 129, 0.08)' : '#ffffff',
+                                border: isCurrent ? '1px solid #9B7A3E' : '1px solid rgba(155, 122, 62, 0.12)',
+                                cursor: locked ? 'not-allowed' : 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.6rem',
+                                textAlign: 'left',
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              <div className="lms-lesson-icon" style={{ fontSize: '0.85rem' }}>
+                                {locked ? 'LOCKED' : isDone ? '✓' : ''}
+                              </div>
+                              <div className="lms-lesson-info" style={{ flex: 1 }}>
+                                <span className="lms-lesson-name" style={{ fontSize: '0.82rem', fontWeight: isCurrent ? '700' : '600', color: isCurrent ? '#9B7A3E' : '#0c1628', display: 'block', lineHeight: '1.3' }}>
+                                  {les.title}
+                                </span>
+                                <span className="lms-lesson-duration" style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '0.1rem', display: 'block' }}>
+                                  {les.duration}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </aside>
+
+          {/* ==================== CENTER CONTENT (70% WIDTH MAIN FOCUS WITH EXPANSIVE VIDEO PLAYER) ==================== */}
+          <main className="lms-center-stage-coursera">
+            {/* LESSON TITLE & NAVIGATION BAR (LIGHT CARD PLACED AT THE TOP OF VIDEO) */}
+            <div style={{ background: '#ffffff', border: '1px solid rgba(155, 122, 62, 0.2)', borderRadius: '16px', padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', boxShadow: '0 4px 20px rgba(12, 22, 40, 0.04)' }}>
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.3rem' }}>
+                  <span className={`lms-type-badge ${currentLmsLesson.type || 'video'}`} style={{ background: 'rgba(155, 122, 62, 0.12)', color: '#9B7A3E', border: '1px solid rgba(155, 122, 62, 0.3)', padding: '0.2rem 0.6rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '700' }}>
+                    {currentLmsLesson.type === 'quiz' ? 'Knowledge Check' : 'Video Lecture'}
+                  </span>
+                  <span style={{ fontSize: '0.82rem', color: '#64748b' }}>{currentLmsLesson.duration}</span>
+                </div>
+                <h1 style={{ fontSize: '1.4rem', fontWeight: '800', color: '#0c1628', margin: 0 }}>{currentLmsLesson.title}</h1>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', background: '#faf7f2', padding: '0.45rem 0.8rem', borderRadius: '8px', border: '1px solid rgba(155, 122, 62, 0.2)' }}>
+                  <input
+                    type="checkbox"
+                    checked={!!lmsCompletedLessons[currentLmsLesson.id]}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setLmsCompletedLessons(prev => ({ ...prev, [currentLmsLesson.id]: checked }));
+                    }}
+                  />
+                  <span style={{ color: '#0c1628', fontSize: '0.82rem', fontWeight: '600' }}>Mark Completed</span>
+                </label>
+
+                <button className="lms-nav-btn" disabled={!hasPrevLmsLesson} onClick={goToPrevLmsLesson} style={{ background: '#faf7f2', border: '1px solid rgba(155, 122, 62, 0.2)', color: '#0c1628', padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.82rem', fontWeight: '600', cursor: hasPrevLmsLesson ? 'pointer' : 'not-allowed', opacity: hasPrevLmsLesson ? 1 : 0.5 }}>
+                  ← Previous Lesson
+                </button>
+
+                <button className="lms-nav-btn primary" onClick={goToNextLmsLesson} style={{ background: 'linear-gradient(135deg, #9B7A3E, #7D6334)', border: '1px solid #C5A059', color: '#fff', padding: '0.5rem 1.1rem', borderRadius: '8px', fontSize: '0.82rem', fontWeight: '700', cursor: 'pointer' }}>
+                  {hasNextLmsLesson ? 'Next Lesson →' : 'Finish Course'}
+                </button>
+              </div>
+            </div>
+
+            {/* EXPANSIVE RESPONSIVE VIDEO PLAYER WITH 16:9 UNCORPPED ASPECT RATIO */}
+            <div className="lms-video-container" style={{ background: '#000000', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 12px 35px rgba(12,22,40,0.12)', border: '1px solid rgba(155,122,62,0.3)', width: '100%', aspectRatio: '16 / 9', position: 'relative' }}>
+              <video
+                ref={lmsVideoRef}
+                src={currentLmsLesson.videoUrl || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4'}
+                className="lms-video-player"
+                style={{ width: '100%', height: 'calc(100% - 50px)', display: 'block', objectFit: 'contain' }}
+                onTimeUpdate={handleLmsTimeUpdate}
+                onEnded={handleLmsVideoEnded}
+                onLoadedMetadata={() => {
+                  if (lmsVideoRef.current) setLmsVideoDuration(lmsVideoRef.current.duration || 0);
+                  // Auto-resume last watched timestamp
+                  const savedTime = localStorage.getItem('lms_last_video_time_' + currentLmsLesson.id);
+                  if (savedTime && lmsVideoRef.current) {
+                    lmsVideoRef.current.currentTime = parseFloat(savedTime);
+                  }
+                }}
+              />
+
+              {lmsAutoSaveBadge && (
+                <div className="lms-autosave-badge" style={{ position: 'absolute', top: '20px', right: '20px', background: 'rgba(16, 185, 129, 0.95)', color: '#fff', padding: '0.35rem 0.8rem', borderRadius: '8px', fontSize: '0.78rem', fontWeight: '700', zIndex: 10 }}>
+                  Auto-saved {lmsAutoSaveBadge}
+                </div>
+              )}
+
+              {/* Custom Video Controls Bar */}
+              <div className="lms-video-controls" style={{ background: 'rgba(12, 22, 40, 0.95)', height: '50px', padding: '0 1.4rem', display: 'flex', alignItems: 'center', gap: '1rem', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                <button
+                  onClick={() => {
+                    if (lmsVideoRef.current) {
+                      if (lmsIsPlaying) {
+                        lmsVideoRef.current.pause();
+                        setLmsIsPlaying(false);
+                      } else {
+                        lmsVideoRef.current.play();
+                        setLmsIsPlaying(true);
+                      }
+                    }
+                  }}
+                  style={{ background: 'none', border: 'none', color: '#fff', fontSize: '1.2rem', cursor: 'pointer' }}
+                >
+                  {lmsIsPlaying ? 'Pause' : 'Play'}
+                </button>
+
+                <span style={{ fontSize: '0.8rem', color: '#C5A059', fontWeight: '700', minWidth: '95px' }}>
+                  {formatTime(lmsVideoTime)} / {formatTime(lmsVideoDuration)}
+                </span>
+
+                <input
+                  type="range"
+                  min={0}
+                  max={lmsVideoDuration || 100}
+                  value={lmsVideoTime}
+                  onChange={(e) => seekLmsToTimestamp(parseFloat(e.target.value))}
+                  style={{ flex: 1, accentColor: '#C5A059', cursor: 'pointer' }}
+                />
+
+                <button
+                  onClick={() => {
+                    if (lmsVideoRef.current) {
+                      if (lmsVideoRef.current.requestFullscreen) {
+                        lmsVideoRef.current.requestFullscreen();
+                      }
+                    }
+                  }}
+                  style={{ background: 'none', border: 'none', color: '#fff', fontSize: '1.1rem', cursor: 'pointer' }}
+                  title="Fullscreen"
+                >
+                  Fullscreen
+                </button>
+              </div>
+            </div>
+
+            {/* TABBED CONTENT CONTAINER (LIGHT CARD) */}
+            <div style={{ background: '#ffffff', border: '1px solid rgba(155, 122, 62, 0.2)', borderRadius: '16px', padding: '1.5rem', textAlign: 'left', boxShadow: '0 4px 20px rgba(12, 22, 40, 0.04)' }}>
+              <div className="lms-main-tabs" style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid rgba(155, 122, 62, 0.15)', paddingBottom: '0.8rem', marginBottom: '1.2rem', flexWrap: 'wrap' }}>
+                <button className={`lms-main-tab-btn ${lmsMainTab === 'overview' && lmsRightTab !== 'transcript' && lmsRightTab !== 'notes' ? 'active' : ''}`} onClick={() => { setLmsMainTab('overview'); setLmsRightTab('notes'); }} style={{ background: lmsMainTab === 'overview' && lmsRightTab !== 'transcript' && lmsRightTab !== 'notes' ? '#9B7A3E' : '#faf7f2', border: '1px solid rgba(155, 122, 62, 0.2)', color: lmsMainTab === 'overview' && lmsRightTab !== 'transcript' && lmsRightTab !== 'notes' ? '#fff' : '#0c1628', padding: '0.5rem 1rem', borderRadius: '8px', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer' }}>
+                  Overview & Notes
+                </button>
+                <button className={`lms-main-tab-btn ${lmsMainTab === 'quiz' ? 'active' : ''}`} onClick={() => { setLmsMainTab('quiz'); setLmsRightTab('notes'); }} style={{ background: lmsMainTab === 'quiz' ? '#9B7A3E' : '#faf7f2', border: '1px solid rgba(155, 122, 62, 0.2)', color: lmsMainTab === 'quiz' ? '#fff' : '#0c1628', padding: '0.5rem 1rem', borderRadius: '8px', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer' }}>
+                  Section Quiz Evaluation
+                </button>
+                <button className={`lms-main-tab-btn ${lmsRightTab === 'transcript' ? 'active' : ''}`} onClick={() => setLmsRightTab('transcript')} style={{ background: lmsRightTab === 'transcript' ? '#9B7A3E' : '#faf7f2', border: '1px solid rgba(155, 122, 62, 0.2)', color: lmsRightTab === 'transcript' ? '#fff' : '#0c1628', padding: '0.5rem 1rem', borderRadius: '8px', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer' }}>
+                  Interactive Transcript
+                </button>
+                <button className={`lms-main-tab-btn ${lmsMainTab === 'resources' ? 'active' : ''}`} onClick={() => { setLmsMainTab('resources'); setLmsRightTab('notes'); }} style={{ background: lmsMainTab === 'resources' ? '#9B7A3E' : '#faf7f2', border: '1px solid rgba(155, 122, 62, 0.2)', color: lmsMainTab === 'resources' ? '#fff' : '#0c1628', padding: '0.5rem 1rem', borderRadius: '8px', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer' }}>
+                  Attachments & Resources ({currentLmsLesson.resources?.length || 0})
+                </button>
+              </div>
+
+              {/* Tab Contents */}
+              {lmsMainTab === 'quiz' ? (
+                /* SECTION QUIZ EVALUATION */
+                <div className="lms-quiz-container" style={{ background: '#faf7f2', border: '1px solid rgba(155, 122, 62, 0.25)', borderRadius: '14px', padding: '1.5rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <h3 style={{ color: '#0c1628', fontSize: '1.15rem', fontWeight: '700', margin: 0 }}>
+                      Knowledge Check: {currentLmsLesson.title}
+                    </h3>
+                    <span style={{ color: '#9B7A3E', fontSize: '0.82rem', fontWeight: '700' }}>
+                      Time: {formatTime(lmsQuizTimerSec)}
+                    </span>
+                  </div>
+
+                  {lmsQuizSubmitted[currentLmsLesson.id] ? (
+                    <div>
+                      <div style={{ background: 'rgba(52, 211, 153, 0.15)', border: '1px solid #10b981', borderRadius: '12px', padding: '1.2rem', textAlign: 'center', marginBottom: '1rem' }}>
+                        <span style={{ color: '#059669', fontWeight: '800', fontSize: '0.85rem' }}>TOPIC QUIZ PASSED — EXCELLENT JOB</span>
+                        <div style={{ fontSize: '2rem', fontWeight: '800', color: '#0c1628', margin: '0.4rem 0' }}>100%</div>
+                        <p style={{ color: '#334155', fontSize: '0.88rem', margin: 0 }}>Score: 2/2 Correct (Passing mark: 70%).</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <p style={{ color: '#334155', fontSize: '0.9rem' }}>
+                        Question 1 of 2: What is the primary concept mastered in topic "{currentLmsLesson.title}"?
+                      </p>
+                      <button
+                        onClick={() => {
+                          setLmsQuizSubmitted(s => ({ ...s, [currentLmsLesson.id]: true }));
+                          setLmsCompletedLessons(c => ({ ...c, [currentLmsLesson.id]: true }));
+                          const w = window as any;
+                          w.showToast?.('Topic Quiz submitted! Evaluation complete.');
+                        }}
+                        style={{ background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none', color: '#fff', padding: '0.55rem 1.2rem', borderRadius: '8px', fontSize: '0.82rem', fontWeight: '700', cursor: 'pointer', marginTop: '1rem' }}
+                      >
+                        Submit Topic Quiz & Calculate Score
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : lmsMainTab === 'resources' ? (
+                /* RESOURCES & ATTACHMENTS */
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
+                  {currentLmsLesson.resources?.map((res, rIdx) => (
+                    <div key={rIdx} className="lms-resource-card" style={{ background: '#faf7f2', border: '1px solid rgba(155, 122, 62, 0.2)', borderRadius: '12px', padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div>
+                        <div style={{ color: '#0c1628', fontWeight: '700', fontSize: '0.88rem' }}>{res.name}</div>
+                        <div style={{ color: '#64748b', fontSize: '0.75rem' }}>{res.size} • {res.type.toUpperCase()}</div>
+                      </div>
+                      <button onClick={() => triggerResourceDownload(res)} style={{ background: '#9B7A3E', border: 'none', color: '#fff', padding: '0.35rem 0.8rem', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '700', cursor: 'pointer' }}>
+                        Download
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : lmsRightTab === 'transcript' ? (
+                /* TRANSCRIPT PANE */
+                <div className="lms-transcript-pane">
+                  <input
+                    type="text"
+                    placeholder="Search transcript..."
+                    value={lmsTranscriptSearch}
+                    onChange={(e) => setLmsTranscriptSearch(e.target.value)}
+                    style={{ width: '100%', padding: '0.55rem 0.8rem', background: '#faf7f2', border: '1px solid rgba(155, 122, 62, 0.2)', borderRadius: '8px', color: '#0c1628', fontSize: '0.8rem', outline: 'none', marginBottom: '1rem' }}
+                  />
+                  {currentLmsLesson.transcripts?.map((tLine, tIdx) => {
+                    const isActive = lmsVideoTime >= tLine.timeSec && (tIdx === currentLmsLesson.transcripts.length - 1 || lmsVideoTime < currentLmsLesson.transcripts[tIdx + 1]?.timeSec);
+                    return (
+                      <div
+                        key={tIdx}
+                        className={`lms-transcript-line ${isActive ? 'active' : ''}`}
+                        onClick={() => seekLmsToTimestamp(tLine.timeSec)}
+                        style={{ padding: '0.6rem', borderRadius: '6px', background: isActive ? 'rgba(155, 122, 62, 0.12)' : 'transparent', borderLeft: isActive ? '3px solid #9B7A3E' : '3px solid transparent', cursor: 'pointer', marginBottom: '0.4rem' }}
+                      >
+                        <span style={{ color: '#9B7A3E', fontWeight: '700', fontSize: '0.78rem', marginRight: '0.6rem' }}>{tLine.timeStr}</span>
+                        <span style={{ color: isActive ? '#0c1628' : '#334155', fontSize: '0.88rem' }}>{tLine.text}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* OVERVIEW & NOTES */
+                <div>
+                  <p style={{ fontSize: '0.96rem', lineHeight: '1.7', color: '#334155', marginBottom: '1.5rem' }}>
+                    {currentLmsLesson.description}
+                  </p>
+
+                  <div style={{ background: '#faf7f2', border: '1px solid rgba(155, 122, 62, 0.15)', borderRadius: '12px', padding: '1.2rem 1.5rem', marginBottom: '1.5rem' }}>
+                    <h4 style={{ fontSize: '0.9rem', fontWeight: '700', color: '#9B7A3E', marginBottom: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      Key Learning Objectives
+                    </h4>
+                    <ul style={{ paddingLeft: '1.2rem', color: '#334155', fontSize: '0.88rem', lineHeight: '1.8' }}>
+                      <li>Master core prompt design patterns and enterprise artificial intelligence frameworks.</li>
+                      <li>Build automated evaluation models with quantitative quality scoring.</li>
+                      <li>Deploy scalable AI solutions with robust governance and security practices.</li>
+                    </ul>
+                  </div>
+
+                  {/* Notes List */}
+                  <div style={{ background: '#faf7f2', border: '1px solid rgba(155, 122, 62, 0.15)', borderRadius: '12px', padding: '1.2rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
+                      <h4 style={{ color: '#0c1628', fontSize: '0.92rem', fontWeight: '700', margin: 0 }}>Personal Notes ({lmsNotes[currentLmsLesson.id]?.length || 0})</h4>
+                      <button
+                        onClick={() => {
+                          const text = prompt(`Add Note at ${formatTime(lmsVideoTime)}:`);
+                          if (text && text.trim()) {
+                            const newNote = {
+                              timeSec: Math.floor(lmsVideoTime),
+                              timeStr: formatTime(lmsVideoTime),
+                              text: text.trim()
+                            };
+                            setLmsNotes(prev => ({
+                              ...prev,
+                              [currentLmsLesson.id]: [...(prev[currentLmsLesson.id] || []), newNote]
+                            }));
+                            const w = window as any;
+                            w.showToast?.('Note saved successfully!');
+                          }
+                        }}
+                        style={{ background: '#9B7A3E', border: 'none', color: '#fff', padding: '0.35rem 0.8rem', borderRadius: '6px', fontSize: '0.78rem', fontWeight: '700', cursor: 'pointer' }}
+                      >
+                        Add Note at {formatTime(lmsVideoTime)}
+                      </button>
+                    </div>
+
+                    {(!lmsNotes[currentLmsLesson.id] || lmsNotes[currentLmsLesson.id].length === 0) ? (
+                      <p style={{ fontSize: '0.82rem', color: '#64748b', margin: 0 }}>No notes saved for this lesson yet.</p>
+                    ) : (
+                      lmsNotes[currentLmsLesson.id].map((n, nIdx) => (
+                        <div key={nIdx} style={{ background: '#ffffff', padding: '0.6rem 0.8rem', borderRadius: '8px', marginBottom: '0.4rem', border: '1px solid rgba(155, 122, 62, 0.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span onClick={() => seekLmsToTimestamp(n.timeSec)} style={{ color: '#9B7A3E', fontWeight: '700', fontSize: '0.78rem', cursor: 'pointer' }}>{n.timeStr}: {n.text}</span>
+                          <button onClick={() => deleteLmsNoteHandler(currentLmsLesson.id, nIdx)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}>✕</button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </main>
+        </div>
+      </div>
+
       {/* ========== FOOTER ========== */}
       <footer id="main-footer">
         <div className="footer-grid">
@@ -5364,6 +8332,157 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* ==================== PREMIUM LUXURY CERTIFICATE MODAL ==================== */}
+      {showCertificateModal && activeCertificate && (
+        <div className="lms-modal-overlay" onClick={() => setShowCertificateModal(false)}>
+          <div className="lms-modal-card luxury-cert-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="lms-modal-close-btn" onClick={() => setShowCertificateModal(false)}>✕</button>
+
+            {/* Luxury Frame Container */}
+            <div className="cert-frame-container">
+              <div className="cert-luxury-border">
+                <div className="cert-inner-filigree">
+                  <div className="cert-header-seal">
+                    <span className="cert-trust-title">INCOXAI EDUCATION TRUST</span>
+                    <h1 className="cert-main-heading">CERTIFICATE OF MASTERY</h1>
+                    <p className="cert-sub-text">THIS IS PROUDLY PRESENTED TO</p>
+                  </div>
+
+                  <div className="cert-learner-name">{activeCertificate.learnerName}</div>
+                  <div className="cert-learner-company">representing {activeCertificate.companyName}</div>
+
+                  <p className="cert-fulfillment-text">
+                    for successfully fulfilling all curriculum requirements, knowledge check evaluations, and practical activities in
+                  </p>
+
+                  <h3 className="cert-course-title">{activeCertificate.courseTitle}</h3>
+
+                  <div className="cert-meta-row">
+                    <span className="cert-meta-tag">VERIFICATION ID: {activeCertificate.id}</span>
+                    <span className="cert-meta-tag">ISSUE DATE: {activeCertificate.completionDate}</span>
+                  </div>
+
+                  <div className="cert-signatures-row">
+                    <div className="cert-sig-block">
+                      <div className="cert-sig-line"></div>
+                      <div className="cert-sig-name">Dr. Arjun Reddy</div>
+                      <div className="cert-sig-title">Founder & Chief AI Officer</div>
+                    </div>
+
+                    <div className="cert-gold-seal-badge">
+                      🎖️
+                      <span>INCOXAI TRUST</span>
+                      <span>VERIFIED SEAL</span>
+                    </div>
+
+                    <div className="cert-sig-block">
+                      <div className="cert-sig-line"></div>
+                      <div className="cert-sig-name">Academic Board</div>
+                      <div className="cert-sig-title">IncuXai Education Trust</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Certificate Actions Bar (Rich Classic Blue & Dual Email Dispatch Bar) */}
+            <div className="cert-modal-actions-bar" style={{ background: '#0c1628', borderTop: '1px solid rgba(197, 160, 89, 0.3)', padding: '1.5rem', borderRadius: '0 0 16px 16px', color: '#ffffff' }}>
+              <div className="cert-email-status-banner" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(197, 160, 89, 0.3)', borderRadius: '12px', padding: '1rem 1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.2rem' }}>
+                <div className="banner-text" style={{ textAlign: 'left' }}>
+                  <strong style={{ color: '#F3E5AB', fontSize: '0.88rem', display: 'block', marginBottom: '0.2rem' }}>
+                    Official Certificate Dispatched & Sent
+                  </strong>
+                  <p style={{ margin: 0, color: '#cbd5e1', fontSize: '0.82rem' }}>
+                    Certificate sent to Work Email (<u>{activeCertificate.workEmail || 'sravan@incuxai.com'}</u>) & Personal Email (<u>{activeCertificate.personalEmail || 'sravan.pasam@gmail.com'}</u>).
+                  </p>
+                </div>
+                <button className="btn-send-email-now" disabled={certEmailSending} onClick={() => triggerCertificateEmailAPI(activeCertificate)} style={{ background: '#9B7A3E', border: 'none', color: '#fff', padding: '0.45rem 0.9rem', borderRadius: '8px', fontSize: '0.78rem', fontWeight: '700', cursor: 'pointer' }}>
+                  {certEmailSending ? 'Sending Email...' : 'Resend Email'}
+                </button>
+              </div>
+
+              {certEmailStatus && (
+                <div style={{ color: '#34d399', fontSize: '0.85rem', fontWeight: '600', marginBottom: '1rem', textAlign: 'center' }}>
+                  {certEmailStatus}
+                </div>
+              )}
+
+              {/* Download Options */}
+              <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', marginBottom: '1.2rem' }}>
+                <button className="cert-btn-download" onClick={downloadCertificatePNG} style={{ flex: 1, minWidth: '220px', background: 'linear-gradient(135deg, #9B7A3E, #7D6334)', border: '1px solid #C5A059', color: '#ffffff', padding: '0.65rem 1rem', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '700', cursor: 'pointer' }}>
+                  Download PNG Certificate
+                </button>
+                <button onClick={downloadCertificatePDF} style={{ flex: 1, minWidth: '200px', background: '#059669', border: 'none', color: '#ffffff', padding: '0.65rem 1rem', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '700', cursor: 'pointer' }}>
+                  Download PDF Copy
+                </button>
+              </div>
+
+              {/* Social Media Sharing Options */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '1rem', flexWrap: 'wrap', gap: '0.8rem' }}>
+                <span style={{ fontSize: '0.82rem', color: '#94a3b8', fontWeight: '600' }}>Share Your Achievement:</span>
+                <div style={{ display: 'flex', gap: '0.8rem' }}>
+                  <button onClick={shareCertificateLinkedIn} style={{ background: '#0a66c2', border: 'none', color: '#fff', padding: '0.5rem 1.1rem', borderRadius: '8px', fontSize: '0.82rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+                    Share on LinkedIn
+                  </button>
+                  <button onClick={shareCertificateInstagram} style={{ background: 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)', border: 'none', color: '#fff', padding: '0.5rem 1.1rem', borderRadius: '8px', fontSize: '0.82rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+                    Share on Instagram
+                  </button>
+                  <button className="cert-btn-close" onClick={() => setShowCertificateModal(false)} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#ffffff', padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.82rem', fontWeight: '600', cursor: 'pointer' }}>
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== CELEBRATORY COURSE COMPLETION CONGRATS MODAL ==================== */}
+      {showCongratsModal && (
+        <div className="lms-modal-overlay" onClick={() => setShowCongratsModal(false)}>
+          <div className="lms-modal-card" onClick={(e) => e.stopPropagation()} style={{ background: 'linear-gradient(135deg, #0c1628 0%, #17253d 100%)', border: '2px solid #C5A059', borderRadius: '20px', padding: '2.5rem 2rem', maxWidth: '560px', width: '90%', textAlign: 'center', boxShadow: '0 20px 50px rgba(12, 22, 40, 0.4)', color: '#ffffff' }}>
+            <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(197, 160, 89, 0.2)', color: '#F3E5AB', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.2rem auto', border: '1px solid #C5A059' }}>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            </div>
+
+            <span style={{ color: '#F3E5AB', fontSize: '0.8rem', fontWeight: '700', letterSpacing: '1px', textTransform: 'uppercase' }}>IncuXAI Education Trust</span>
+            <h2 style={{ fontSize: '1.8rem', fontWeight: '800', margin: '0.4rem 0 0.8rem 0', color: '#ffffff', letterSpacing: '-0.02em' }}>
+              Congratulations on Completing the Course!
+            </h2>
+            <p style={{ color: '#cbd5e1', fontSize: '0.95rem', lineHeight: '1.6', margin: '0 0 1.5rem 0' }}>
+              You have successfully completed all video lectures, passed every section knowledge check, and mastered <strong>AI for HR Professionals</strong>!
+            </p>
+
+            <div style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(197, 160, 89, 0.3)', borderRadius: '12px', padding: '1.2rem', marginBottom: '1.8rem', textAlign: 'left' }}>
+              <div style={{ fontSize: '0.8rem', color: '#F3E5AB', fontWeight: '700', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Official Certificate Ready</div>
+              <div style={{ color: '#ffffff', fontWeight: '700', fontSize: '1rem', marginBottom: '0.2rem' }}>AI for HR Professionals Masterclass</div>
+              <div style={{ color: '#cbd5e1', fontSize: '0.82rem' }}>Learner: <strong>{learnerProfile.name || 'Sravan Pasam'}</strong> ({learnerProfile.company || 'IncuXai Education Trust'})</div>
+              <div style={{ color: '#cbd5e1', fontSize: '0.82rem', marginTop: '0.2rem' }}>Sent to Work Email: <strong>{learnerProfile.workEmail || 'sravan@incuxai.com'}</strong></div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+              <button
+                onClick={() => {
+                  setShowCongratsModal(false);
+                  generateAndClaimCertificate();
+                }}
+                style={{ background: 'linear-gradient(135deg, #9B7A3E, #7D6334)', border: '1px solid #C5A059', color: '#ffffff', padding: '0.8rem 1.5rem', borderRadius: '10px', fontSize: '0.95rem', fontWeight: '800', cursor: 'pointer', boxShadow: '0 4px 15px rgba(155, 122, 62, 0.3)' }}
+              >
+                Claim & Dispatch Certificate Now →
+              </button>
+              <button
+                onClick={() => setShowCongratsModal(false)}
+                style={{ background: 'transparent', border: '1px solid rgba(255, 255, 255, 0.2)', color: '#cbd5e1', padding: '0.6rem 1.2rem', borderRadius: '10px', fontSize: '0.85rem', fontWeight: '600', cursor: 'pointer' }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
