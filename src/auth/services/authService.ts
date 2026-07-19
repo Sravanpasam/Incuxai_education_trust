@@ -15,11 +15,27 @@ interface ApiErr {
 type ApiResponse = ApiOk | ApiErr;
 
 async function request(path: string, body: Record<string, string>): Promise<ApiResponse> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch (err: any) {
+    if (err?.name === 'TypeError' && err?.message?.includes('Failed to fetch')) {
+      return { success: false, message: 'Cannot reach the authentication server. Make sure the auth server is running on port 3002 (run: npm run dev:server).' };
+    }
+    return { success: false, message: 'Network error. Please check your connection and try again.' };
+  }
+  if (!res.ok) {
+    try {
+      const data: ApiResponse = await res.json();
+      return data;
+    } catch {
+      return { success: false, message: `Server returned error ${res.status}. Please try again.` };
+    }
+  }
   const data: ApiResponse = await res.json();
   return data;
 }

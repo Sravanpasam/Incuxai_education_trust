@@ -644,7 +644,7 @@ export default function App() {
       }
       document.querySelectorAll('nav > a, nav > .nav-item > a').forEach(a => a.classList.remove('active'));
       const navItems = document.querySelectorAll('nav > a, nav > .nav-item > a');
-      const navMap: Record<string, number> = { home: 0, about: 1, ai4all: 2, programs: 3, volunteer: 4, teachxai: 5, gallery: 6, contact: 7, donate: 8, 'corporate-course': 2 };
+      const navMap: Record<string, number> = { home: 0, about: 1, ai4all: 2, programs: 3, volunteer: 4, teachxai: 5, gallery: 6, contact: 7, donate: 8 };
       if (navMap[id] !== undefined && navItems[navMap[id]]) {
         navItems[navMap[id]].classList.add('active');
       }
@@ -2167,13 +2167,9 @@ export default function App() {
         w.showToast?.(`${cat.label} course is coming soon! Stay tuned.`);
         return;
       }
-      // HR course redirects to the corporate-course page
+      // HR course redirects to the LinkedIn-style LMS
       if (id === 'hr') {
-        w.showPage('corporate-course');
-        const isVerified = localStorage.getItem('corp_otp_verified') === 'true';
-        if (!isVerified) {
-          setCorpShowRegModal(true);
-        }
+        navigate('/course-dashboard');
         return;
       }
       // Default topic detail page for other courses (future use)
@@ -2762,9 +2758,6 @@ export default function App() {
           <button className="btn-donate" id="signup-btn" onClick={() => (window as any).showPage('donate')}>Donate</button>
           {isAuthenticated ? (
             <>
-              <button className="btn-login" onClick={() => { localStorage.setItem('corp_otp_verified', 'true'); navigate('/course-dashboard'); }} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', marginRight: '0.4rem' }}>
-                Dashboard
-              </button>
               <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.7)', fontWeight: '600', marginRight: '0.5rem' }}>
                 {authUser?.name || authUser?.email}
               </span>
@@ -2772,16 +2765,7 @@ export default function App() {
                 Sign Out
               </button>
             </>
-          ) : (
-            <>
-              <Link to="/sign-up" style={{ padding: '0.45rem 1rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.08)', color: '#fff', fontSize: '0.82rem', fontWeight: '600', textDecoration: 'none', marginRight: '0.4rem' }}>
-                Sign Up
-              </Link>
-              <Link to="/sign-in" className="btn-login" style={{ textDecoration: 'none' }}>
-                Sign In
-              </Link>
-            </>
-          )}
+          ) : null}
           <button className="mobile-menu-toggle" onClick={() => {
             const nav = document.getElementById('main-nav');
             const toggle = document.querySelector('.mobile-menu-toggle');
@@ -3212,293 +3196,7 @@ export default function App() {
         </section>
       </div>
 
-      {/* ========== AI FOR HR COURSE PAGE ========== */}
-      <div id="corporate-course" className="page corp-course-page">
-        {/* Mock Simulated Email Toast Notifications */}
-        {corpToastMessage && (
-          <div style={{
-            position: 'fixed', top: '90px', right: '2rem', zIndex: 99999,
-            background: '#1a1a2e', border: '1px solid #C5A059', borderRadius: '12px',
-            padding: '1.2rem 1.6rem', maxWidth: '450px', boxShadow: '0 12px 30px rgba(0,0,0,0.3)',
-            animation: 'fadeInUp 0.3s ease', color: '#fff', fontSize: '0.88rem', textAlign: 'left'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
-              <span style={{ fontWeight: '700', color: '#C5A059', textTransform: 'uppercase', letterSpacing: '0.5px', fontSize: '0.75rem' }}>📧 Simulated Corporate Email Delivery</span>
-              <button onClick={() => setCorpToastMessage(null)} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: '1rem' }}>✕</button>
-            </div>
-            <p style={{ margin: 0, color: 'rgba(255,255,255,0.9)', lineHeight: '1.4' }}>{corpToastMessage}</p>
-            <div style={{ marginTop: '0.6rem', fontSize: '0.75rem', color: '#C5A059' }}>
-              Tip: Copy the 6-digit code above and paste it into the verification modal.
-            </div>
-          </div>
-        )}
-
-        {!corpIsRegistered ? (
-          <>
-            {/* Locked Preview State */}
-            <div className="corp-course-hero">
-              <div className="corp-course-hero-inner">
-                <span className="section-tag" style={{ color: 'var(--secondary)' }}>AI 4 ALL Program</span>
-                <h1 className="corp-course-title">AI for HR Professionals</h1>
-                <p className="section-sub" style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: 'clamp(1rem, 2vw, 1.2rem)', margin: '1rem 0 1.5rem', lineHeight: '1.5' }}>
-                  Transform your HR operations with AI-powered resume screening, employee sentiment analysis, predictive attrition models, and AI governance frameworks designed for human resource teams.
-                </p>
-                <div className="corp-course-meta">
-                  <div className="corp-course-meta-item">
-                    <span className="corp-course-meta-icon">⏳</span>
-                    <span>6 Video Lectures</span>
-                  </div>
-                  <div className="corp-course-meta-item">
-                    <span className="corp-course-meta-icon">📚</span>
-                    <span>3 Sections</span>
-                  </div>
-                  <div className="corp-course-meta-item">
-                    <span className="corp-course-meta-icon">🛡️</span>
-                    <span>Work Email Verified</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="corp-course-body">
-              {/* Left Column: Curriculum & Outcomes */}
-              <div style={{ textAlign: 'left' }}>
-                <h3 className="corp-section-title">✨ Key Learning Outcomes</h3>
-                <div className="outcomes-list">
-                  <div className="outcome-card">
-                    <div className="outcome-check">✓</div>
-                    <div className="outcome-text">Automate Resume Screening & Candidate Ranking with LLMs</div>
-                  </div>
-                  <div className="outcome-card">
-                    <div className="outcome-check">✓</div>
-                    <div className="outcome-text">Analyze Employee Sentiment from Annual Feedback Surveys</div>
-                  </div>
-                  <div className="outcome-card">
-                    <div className="outcome-check">✓</div>
-                    <div className="outcome-text">Build Predictive Attrition & Retention Models</div>
-                  </div>
-                  <div className="outcome-card">
-                    <div className="outcome-check">✓</div>
-                    <div className="outcome-text">Ensure AI Ethics, GDPR Compliance & Bias-Free Hiring</div>
-                  </div>
-                </div>
-
-                <h3 className="corp-section-title">📋 Course Curriculum</h3>
-                <div className="curriculum-list">
-                  {hrCurriculum.map((sec, sIdx) => (
-                    <div
-                      key={sIdx}
-                      className={`curriculum-module ${corpExpandedModule === sIdx ? 'expanded' : ''}`}
-                    >
-                      <div
-                        className="curriculum-module-header"
-                        onClick={() => setCorpExpandedModule(corpExpandedModule === sIdx ? null : sIdx)}
-                      >
-                        <div className="curriculum-module-title-group">
-                          <span className="curriculum-module-badge">Section {sIdx + 1}</span>
-                          <span className="curriculum-module-title">{sec.section.split(': ')[1] || sec.section}</span>
-                        </div>
-                        <span className="curriculum-module-icon">▼</span>
-                      </div>
-                      <div className="curriculum-module-body">
-                        <div className="curriculum-module-content">
-                          <ul className="curriculum-lessons-list">
-                            {sec.videos.map((vid, vIdx) => (
-                              <li key={vIdx} className="curriculum-lesson-item">
-                                <span className="curriculum-lesson-bullet"></span>
-                                <span>{vid.title} ({vid.duration})</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Right Column: Lock Panel / Call to Action */}
-              <div className="sidebar-panel">
-                <span className="panel-lock-icon">🔒</span>
-                <h4 className="panel-title">Work Email Verification Required</h4>
-                <p className="panel-desc">
-                  This course is exclusively for HR professionals. To gain access, register using your official company email address.
-                </p>
-                <button className="panel-btn-register" onClick={() => setCorpShowRegModal(true)}>
-                  <span>Register & Unlock Course</span>
-                  <span>→</span>
-                </button>
-                <div className="panel-requirements">
-                  <h5 className="panel-req-title">Validation Checklist</h5>
-                  <div className="panel-req-item">
-                    <span className="panel-req-bullet">•</span>
-                    <span>Requires official corporate domain email</span>
-                  </div>
-                  <div className="panel-req-item">
-                    <span className="panel-req-bullet">•</span>
-                    <span>No personal domains (gmail, yahoo, etc.) accepted</span>
-                  </div>
-                  <div className="panel-req-item">
-                    <span className="panel-req-bullet">•</span>
-                    <span>6-Digit secure OTP code verification</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </>
-        ) : (
-          <>
-            {/* Unlocked Learning Dashboard State — Udemy-style */}
-            <div style={{ padding: '3rem 5% 4rem' }}>
-              <div className="learning-dashboard-container">
-                <div className="dashboard-header">
-                  <div className="dashboard-title-group">
-                    <span className="dashboard-badge">Learning Dashboard</span>
-                    <h1 className="dashboard-title">AI for HR Professionals</h1>
-                    <div className="dashboard-user-info" style={{ marginTop: '0.4rem' }}>
-                      Enrolled: <strong>{corpRegForm.fullName || 'HR Professional'}</strong> ({corpRegForm.companyName || 'Verified Partner'})
-                    </div>
-                  </div>
-                  <button className="btn-donate" onClick={() => {
-                    localStorage.removeItem('corp_otp_verified');
-                    setCorpIsRegistered(false);
-                    const w = window as any;
-                    w.showToast?.("Enrolment reset. Course is locked.");
-                  }} style={{ background: '#dc2626', borderColor: '#dc2626' }}>
-                    Reset Enrollment
-                  </button>
-                </div>
-
-                <div className="dashboard-grid">
-                  {/* Left Column: Video Player & Resource Tabs */}
-                  <div>
-                    <div className="video-player-wrapper">
-                      <iframe
-                        src={hrCurriculum[corpActiveSectionIdx]?.videos[corpActiveVideoIdx]?.videoUrl || 'https://www.youtube.com/embed/a0_lo_GDcFw'}
-                        title="Course Video"
-                        style={{ width: '100%', height: '100%', border: 'none', borderRadius: '12px' }}
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                      ></iframe>
-                    </div>
-
-                    <div style={{ padding: '1.2rem 0.5rem', textAlign: 'left' }}>
-                      <h3 style={{ fontSize: '1.15rem', fontWeight: '700', color: 'var(--primary)', marginBottom: '0.4rem' }}>
-                        {hrCurriculum[corpActiveSectionIdx]?.videos[corpActiveVideoIdx]?.title || 'Select a lecture'}
-                      </h3>
-                      <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: '1.6' }}>
-                        {hrCurriculum[corpActiveSectionIdx]?.videos[corpActiveVideoIdx]?.description || ''}
-                      </p>
-                    </div>
-
-                    <div className="dashboard-tabs">
-                      <button className={`dashboard-tab-btn ${corpActiveTab === 'lessons' ? 'active' : ''}`} onClick={() => setCorpActiveTab('lessons')}>
-                        Overview
-                      </button>
-                      <button className={`dashboard-tab-btn ${corpActiveTab === 'resources' ? 'active' : ''}`} onClick={() => setCorpActiveTab('resources')}>
-                        Resources
-                      </button>
-                    </div>
-
-                    <div className="dashboard-tab-content">
-                      {corpActiveTab === 'lessons' ? (
-                        <div>
-                          <p style={{ color: 'var(--text-muted)', lineHeight: '1.6', fontSize: '0.92rem' }}>
-                            {hrCurriculum[corpActiveSectionIdx]?.videos[corpActiveVideoIdx]?.description}
-                          </p>
-                          <h4 style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--primary)', marginTop: '1.5rem', marginBottom: '0.8rem' }}>
-                            Section Lectures
-                          </h4>
-                          <ul style={{ paddingLeft: '1.2rem', color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.8' }}>
-                            {hrCurriculum[corpActiveSectionIdx]?.videos.map((vid, vIdx) => (
-                              <li key={vIdx} style={{ marginBottom: '0.4rem', fontWeight: corpActiveVideoIdx === vIdx ? '700' : '400', color: corpActiveVideoIdx === vIdx ? '#C5A059' : 'inherit' }}>
-                                {vid.title} — {vid.duration}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ) : (
-                        <div className="resources-list">
-                          <div className="resource-item">
-                            <span className="resource-title">📂 AI Resume Screening Prompt Templates (PDF)</span>
-                            <button className="resource-download-btn" onClick={() => { const w = window as any; w.showToast?.("Downloading Resume Screening Templates..."); }}>Download</button>
-                          </div>
-                          <div className="resource-item">
-                            <span className="resource-title">📊 Employee Sentiment Analysis Workbook (XLSX)</span>
-                            <button className="resource-download-btn" onClick={() => { const w = window as any; w.showToast?.("Downloading Sentiment Workbook..."); }}>Download</button>
-                          </div>
-                          <div className="resource-item">
-                            <span className="resource-title">⚙️ GDPR Compliance Checklist for HR AI (PDF)</span>
-                            <button className="resource-download-btn" onClick={() => { const w = window as any; w.showToast?.("Downloading GDPR Compliance Checklist..."); }}>Download</button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Right Column: Udemy-style Section Playlist */}
-                  <div className="dashboard-sidebar">
-                    <div className="progress-header">
-                      <span className="progress-title">Your Progress</span>
-                      <span className="progress-percentage">
-                        {(() => {
-                          const totalVids = hrCurriculum.reduce((sum, s) => sum + s.videos.length, 0);
-                          let watchedCount = 0;
-                          for (let si = 0; si < hrCurriculum.length; si++) {
-                            for (let vi = 0; vi < hrCurriculum[si].videos.length; vi++) {
-                              if (si < corpActiveSectionIdx || (si === corpActiveSectionIdx && vi <= corpActiveVideoIdx)) watchedCount++;
-                            }
-                          }
-                          return Math.round((watchedCount / totalVids) * 100);
-                        })()}%
-                      </span>
-                    </div>
-                    <div className="progress-bar-container">
-                      <div className="progress-bar-fill" style={{ width: `${(() => {
-                        const totalVids = hrCurriculum.reduce((sum, s) => sum + s.videos.length, 0);
-                        let watchedCount = 0;
-                        for (let si = 0; si < hrCurriculum.length; si++) {
-                          for (let vi = 0; vi < hrCurriculum[si].videos.length; vi++) {
-                            if (si < corpActiveSectionIdx || (si === corpActiveSectionIdx && vi <= corpActiveVideoIdx)) watchedCount++;
-                          }
-                        }
-                        return Math.round((watchedCount / totalVids) * 100);
-                      })()}%` }}></div>
-                    </div>
-
-                    <h4 style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--primary)', marginBottom: '1rem', textAlign: 'left' }}>
-                      Course Content
-                    </h4>
-                    <div className="playlist-list">
-                      {hrCurriculum.map((sec, sIdx) => (
-                        <div key={sIdx}>
-                          <div className="playlist-section-header">{sec.section}</div>
-                          {sec.videos.map((vid, vIdx) => (
-                            <div
-                              key={`${sIdx}-${vIdx}`}
-                              className={`playlist-item ${corpActiveSectionIdx === sIdx && corpActiveVideoIdx === vIdx ? 'active' : ''}`}
-                              onClick={() => { setCorpActiveSectionIdx(sIdx); setCorpActiveVideoIdx(vIdx); }}
-                            >
-                              <span className="playlist-item-num">{vIdx + 1}</span>
-                              <div className="playlist-item-title-group">
-                                <div className="playlist-item-title">{vid.title}</div>
-                                <div className="playlist-item-meta">{vid.duration}</div>
-                              </div>
-                              <span className="playlist-item-status">
-                                {sIdx < corpActiveSectionIdx || (sIdx === corpActiveSectionIdx && vIdx <= corpActiveVideoIdx) ? '✓' : '🔒'}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
+      {/* Old corporate-course page removed — all "AI for HR" links now navigate to /course-dashboard */}
 
       {/* ========== AI4ALL PAGE ========== */}
       <div id="ai4all" className="page" style={{ paddingTop: '75px' }}>

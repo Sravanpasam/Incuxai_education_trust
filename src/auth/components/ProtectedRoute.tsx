@@ -13,7 +13,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/verify-email" replace />;
+    return <Navigate to="/sign-in" replace />;
   }
 
   return <>{children}</>;

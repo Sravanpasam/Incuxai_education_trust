@@ -33,8 +33,12 @@ export default function SignInPage() {
       } else {
         showToast('error', res.message || 'Invalid work email or password.');
       }
-    } catch {
-      showToast('error', 'Network error. Please try again.');
+    } catch (err: any) {
+      if (err?.name === 'TypeError' && err?.message?.includes('Failed to fetch')) {
+        showToast('error', 'Cannot reach the authentication server. Make sure the server is running (npm run dev:server).');
+      } else {
+        showToast('error', 'Network error. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -42,6 +46,12 @@ export default function SignInPage() {
 
   return (
     <div style={s.page}>
+      <button onClick={() => navigate('/')} style={s.backBtn}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+        Back to Home
+      </button>
       <div style={s.card}>
         <div style={s.header}>
           <div style={s.iconWrap}>
@@ -107,10 +117,31 @@ const s: Record<string, React.CSSProperties> = {
   page: {
     minHeight: '100vh',
     display: 'flex',
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     background: 'linear-gradient(135deg, #0c1628 0%, #1e3a5f 100%)',
     padding: '1rem',
+  },
+  backBtn: {
+    position: 'fixed',
+    top: '1.5rem',
+    left: '1.5rem',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '8px 16px',
+    background: 'rgba(255,255,255,0.08)',
+    border: '1px solid rgba(255,255,255,0.15)',
+    borderRadius: '10px',
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: '0.85rem',
+    fontWeight: 600,
+    fontFamily: 'Inter, sans-serif',
+    cursor: 'pointer',
+    backdropFilter: 'blur(10px)',
+    transition: 'all 0.2s',
+    zIndex: 10,
   },
   card: {
     width: '100%',
