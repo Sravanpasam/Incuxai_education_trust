@@ -6,7 +6,9 @@ import ProtectedRoute from './auth/components/ProtectedRoute';
 import WorkEmailVerification from './auth/pages/WorkEmailVerification';
 import VerifyOTP from './auth/pages/VerifyOTP';
 import DashboardPage from './auth/pages/DashboardPage';
-import HRCourseVerification from './auth/pages/HRCourseVerification';
+import CourseDashboard from './auth/pages/CourseDashboard';
+import SignUpPage from './auth/pages/SignUpPage';
+import SignInPage from './auth/pages/SignInPage';
 import App from './App.tsx';
 import './index.css';
 
@@ -27,10 +29,12 @@ createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <AuthProvider>
         <Routes>
+          <Route path="/sign-up" element={<SignUpPage />} />
+          <Route path="/sign-in" element={<SignInPage />} />
           <Route path="/verify-email" element={<WorkEmailVerification />} />
           <Route path="/verify-otp" element={<VerifyOTP />} />
-          <Route path="/verify-work-email" element={<HRCourseVerification />} />
           <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+          <Route path="/course-dashboard" element={<ProtectedRoute><CourseDashboard /></ProtectedRoute>} />
           <Route path="*" element={<App />} />
         </Routes>
       </AuthProvider>

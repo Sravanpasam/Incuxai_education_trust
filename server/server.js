@@ -1,4 +1,5 @@
 import app from './app.js';
+import { ensureUsersTable } from './migration/ensureUsersTable.js';
 
 // ─── Environment Validation ───────────────────────────────────────────────────
 const required = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'RESEND_API_KEY', 'JWT_SECRET'];
@@ -13,9 +14,21 @@ if (missing.length > 0) {
 // ─── Start Server ─────────────────────────────────────────────────────────────
 const PORT = process.env.AUTH_PORT || 3002;
 
-app.listen(PORT, () => {
-  console.log(`[Auth Server] Running on http://localhost:${PORT}`);
-  console.log(`[Auth Server] Health check: http://localhost:${PORT}/api/health`);
-  console.log(`[Auth Server] Send OTP: POST http://localhost:${PORT}/api/auth/send-otp`);
-  console.log(`[Auth Server] Verify OTP: POST http://localhost:${PORT}/api/auth/verify-otp`);
-});
+async function start() {
+  // Ensure database tables exist before accepting requests
+  try {
+    await ensureUsersTable();
+  } catch (e) {
+    console.error('[Server] Migration check failed:', e.message);
+    console.error('[Server] The server will start anyway, but registration may fail.');
+  }
+
+  app.listen(PORT, () => {
+    console.log(`[Auth Server] Running on http://localhost:${PORT}`);
+    console.log(`[Auth Server] Health check: http://localhost:${PORT}/api/health`);
+    console.log(`[Auth Server] Send OTP: POST http://localhost:${PORT}/api/auth/send-otp`);
+    console.log(`[Auth Server] Verify OTP: POST http://localhost:${PORT}/api/auth/verify-otp`);
+  });
+}
+
+start();

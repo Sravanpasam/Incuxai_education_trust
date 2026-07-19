@@ -4,8 +4,9 @@
  */
 
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
+import { useAuth } from './auth/context/AuthContext';
 import logoImg from '../picss/iet logo.png';
 import whoWeAreImg from './assets/about_who_we_are.jpg';
 import iit1Img from '../picss/iit1.png';
@@ -173,6 +174,7 @@ const quizBank = [
 
 export default function App() {
   const navigate = useNavigate();
+  const { user: authUser, isAuthenticated, logout: authLogout } = useAuth();
   const [isIitPaymentFlow, setIsIitPaymentFlow] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
 
@@ -2688,10 +2690,11 @@ export default function App() {
               style={{ width: '100%' }}
               onClick={() => {
                 setShowHrPopup(false);
-                (window as any).showPage('corporate-course');
-                const isVerified = localStorage.getItem('corp_otp_verified') === 'true';
-                if (!isVerified) {
-                  setTimeout(() => setCorpShowRegModal(true), 300);
+                if (isAuthenticated) {
+                  localStorage.setItem('corp_otp_verified', 'true');
+                  navigate('/course-dashboard');
+                } else {
+                  navigate('/sign-up');
                 }
               }}
             >
@@ -2724,7 +2727,14 @@ export default function App() {
           <div className="nav-item">
             <a onClick={() => (window as any).showPage('ai4all')} className="nav-highlight-btn">AI 4 ALL</a>
             <div className="dropdown">
-              <a onClick={() => (window as any).showPage('corporate-course')}>AI for HR</a>
+              <a onClick={() => {
+                if (isAuthenticated) {
+                  localStorage.setItem('corp_otp_verified', 'true');
+                  navigate('/course-dashboard');
+                } else {
+                  navigate('/sign-in');
+                }
+              }}>AI for HR</a>
               <a onClick={() => { (window as any).showPage('ai4all'); const w = window as any; w.showToast?.('AI for Teachers course is coming soon!'); }}>AI for Teachers <span style={{ fontSize: '0.65rem', color: '#C5A059', fontWeight: '700' }}>SOON</span></a>
               <a onClick={() => { (window as any).showPage('ai4all'); const w = window as any; w.showToast?.('AI for Police course is coming soon!'); }}>AI for Police <span style={{ fontSize: '0.65rem', color: '#C5A059', fontWeight: '700' }}>SOON</span></a>
             </div>
@@ -2750,7 +2760,28 @@ export default function App() {
         <div className="header-right">
           <span id="logged-user" style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.8)', fontWeight: '600', display: 'none' }}></span>
           <button className="btn-donate" id="signup-btn" onClick={() => (window as any).showPage('donate')}>Donate</button>
-          <button className="btn-login" onClick={() => (window as any).handleLoginBtn()} id="login-btn">Login</button>
+          {isAuthenticated ? (
+            <>
+              <button className="btn-login" onClick={() => { localStorage.setItem('corp_otp_verified', 'true'); navigate('/course-dashboard'); }} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', marginRight: '0.4rem' }}>
+                Dashboard
+              </button>
+              <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.7)', fontWeight: '600', marginRight: '0.5rem' }}>
+                {authUser?.name || authUser?.email}
+              </span>
+              <button className="btn-login" onClick={() => { authLogout(); navigate('/'); }} style={{ background: 'rgba(220,38,38,0.8)', border: 'none' }}>
+                Sign Out
+              </button>
+            </>
+          ) : (
+            <>
+              <Link to="/sign-up" style={{ padding: '0.45rem 1rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.08)', color: '#fff', fontSize: '0.82rem', fontWeight: '600', textDecoration: 'none', marginRight: '0.4rem' }}>
+                Sign Up
+              </Link>
+              <Link to="/sign-in" className="btn-login" style={{ textDecoration: 'none' }}>
+                Sign In
+              </Link>
+            </>
+          )}
           <button className="mobile-menu-toggle" onClick={() => {
             const nav = document.getElementById('main-nav');
             const toggle = document.querySelector('.mobile-menu-toggle');
@@ -5093,7 +5124,14 @@ export default function App() {
           <div className="footer-col">
             <h4>AI 4 ALL</h4>
             <ul>
-              <li><a onClick={() => (window as any).showPage('corporate-course')}>AI for HR</a></li>
+              <li><a onClick={() => {
+                if (isAuthenticated) {
+                  localStorage.setItem('corp_otp_verified', 'true');
+                  navigate('/course-dashboard');
+                } else {
+                  navigate('/sign-in');
+                }
+              }}>AI for HR</a></li>
               <li><a onClick={() => (window as any).showPage('ai4all')}>AI for Teachers</a></li>
               <li><a onClick={() => (window as any).showPage('ai4all')}>AI for Police</a></li>
             </ul>

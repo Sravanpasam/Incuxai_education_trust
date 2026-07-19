@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { validateWorkEmail } from '../validation/emailValidation';
-import { sendOtp, verifyOtp } from '../services/authService';
+import { validateCompanyEmail } from '../validation/companyEmailValidation';
+import { sendOtp, verifyOtp, registerUser } from '../services/authService';
+import { useAuth } from '../context/AuthContext';
 
 const OTP_LENGTH = 6;
 const OTP_TIMER = 180;
@@ -10,6 +12,7 @@ type Step = 'email' | 'otp';
 
 export default function HRCourseVerification() {
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
@@ -27,9 +30,16 @@ export default function HRCourseVerification() {
     } catch { return ''; }
   })();
 
+  const storedCompany = (() => {
+    try {
+      const raw = localStorage.getItem('pending_corp_registration');
+      return raw ? JSON.parse(raw).companyName : '';
+    } catch { return ''; }
+  })();
+
   useEffect(() => {
     const raw = localStorage.getItem('pending_corp_registration');
-    if (!raw) navigate('/');
+    if (!raw) navigate('/sign-up');
   }, [navigate]);
 
   useEffect(() => {
@@ -56,12 +66,20 @@ export default function HRCourseVerification() {
       showToast('error', error!);
       return;
     }
+
+    if (storedCompany) {
+      const companyCheck = validateCompanyEmail(email, storedCompany);
+      if (!companyCheck.valid) {
+        showToast('error', companyCheck.error!);
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       const res = await sendOtp(email.trim().toLowerCase());
       if (res.success) {
         showToast('success', res.message || 'OTP sent successfully!');
-        localStorage.setItem('pending_auth_email', email.trim().toLowerCase());
         setStep('otp');
         setTimer(OTP_TIMER);
         setResendCd(60);
@@ -85,29 +103,63 @@ export default function HRCourseVerification() {
     }
     setLoading(true);
     try {
-      const res = await verifyOtp(email.trim().toLowerCase(), code);
-      if (res.success && res.token) {
-        const raw = localStorage.getItem('pending_corp_registration');
-        if (raw) {
-          const reg = JSON.parse(raw);
-          const record = {
-            ...reg,
-            workEmail: email.trim().toLowerCase(),
-            registrationDate: new Date().toISOString(),
-            verificationStatus: 'Verified',
-            otpVerifiedTime: new Date().toISOString(),
-          };
-          const existing = JSON.parse(localStorage.getItem('corporate_registrations') || '[]');
-          existing.push(record);
-          localStorage.setItem('corporate_registrations', JSON.stringify(existing));
-          localStorage.setItem('corp_otp_verified', 'true');
-          localStorage.removeItem('pending_corp_registration');
-          localStorage.removeItem('pending_auth_email');
-        }
-        showToast('success', 'Verification successful! Redirecting...');
+      // Step 1: Verify OTP
+      const otpRes = await verifyOtp(email.trim().toLowerCase(), code);
+      if (!otpRes.success) {
+        showToast('error', otpRes.message);
+        setLoading(false);
+        return;
+      }
+
+      // Step 2: Register user account
+      const raw = localStorage.getItem('pending_corp_registration');
+      if (!raw) {
+        showToast('error', 'Registration data not found. Please start over.');
+        setLoading(false);
+        return;
+      }
+      const reg = JSON.parse(raw);
+
+      const regRes = await registerUser({
+        fullName: reg.fullName,
+        personalEmail: reg.personalEmail,
+        phone: reg.phone,
+        workEmail: email.trim().toLowerCase(),
+        companyName: reg.companyName,
+        location: reg.location,
+        role: reg.role,
+        password: reg.password,
+      });
+
+      if (regRes.success && regRes.token && regRes.user) {
+        // Step 3: Auto-login
+        login(regRes.token, regRes.user.email, regRes.user.name, regRes.user.id);
+
+        // Save corporate registration record
+        const record = {
+          fullName: reg.fullName,
+          personalEmail: reg.personalEmail,
+          phone: reg.phone,
+          workEmail: email.trim().toLowerCase(),
+          companyName: reg.companyName,
+          location: reg.location,
+          role: reg.role,
+          registrationDate: new Date().toISOString(),
+          verificationStatus: 'Verified',
+          otpVerifiedTime: new Date().toISOString(),
+        };
+        const existing = JSON.parse(localStorage.getItem('corporate_registrations') || '[]');
+        existing.push(record);
+        localStorage.setItem('corporate_registrations', JSON.stringify(existing));
+
+        // Cleanup
+        localStorage.removeItem('pending_corp_registration');
+        localStorage.removeItem('pending_auth_email');
+
+        showToast('success', 'Account created! Redirecting to course...');
         setTimeout(() => navigate('/'), 1500);
       } else {
-        showToast('error', res.message);
+        showToast('error', regRes.message || 'Failed to create account. Please try again.');
       }
     } catch {
       showToast('error', 'Network error. Please try again.');
@@ -155,7 +207,6 @@ export default function HRCourseVerification() {
   return (
     <div style={s.page}>
       <div style={s.card}>
-        {/* Header */}
         <div style={s.header}>
           <div style={s.iconWrap}>
             <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
@@ -173,14 +224,13 @@ export default function HRCourseVerification() {
           <h1 style={s.title}>Verify Your Work Email</h1>
           <p style={s.subtitle}>
             {step === 'email'
-              ? `Hi${storedName ? ' ' + storedName : ''}, enter your official work email to continue`
-              : `Enter the 6-digit code sent to`
+              ? `Hi${storedName ? ' ' + storedName : ''}, enter your official work email`
+              : 'Enter the 6-digit code sent to'
             }
           </p>
           {step === 'otp' && <p style={s.email}>{email}</p>}
         </div>
 
-        {/* Step 1: Email Input */}
         {step === 'email' && (
           <form onSubmit={handleSendOtp} style={s.form}>
             <label style={s.label}>Work Email Address</label>
@@ -195,6 +245,9 @@ export default function HRCourseVerification() {
             />
             <p style={s.hint}>
               Only work/business emails are accepted. Personal emails (Gmail, Yahoo, Outlook, etc.) are not allowed.
+              {storedCompany && (
+                <><br/>Your work email must match your company: <strong style={{ color: '#1e293b' }}>{storedCompany}</strong></>
+              )}
             </p>
             <button type="submit" style={{ ...s.btn, opacity: loading ? 0.7 : 1 }} disabled={loading}>
               {loading ? (
@@ -206,7 +259,6 @@ export default function HRCourseVerification() {
           </form>
         )}
 
-        {/* Step 2: OTP Input */}
         {step === 'otp' && (
           <form onSubmit={handleVerifyOtp} style={s.form}>
             <div style={s.otpRow}>
@@ -239,7 +291,7 @@ export default function HRCourseVerification() {
                 <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                   <span style={s.spin} /> Verifying...
                 </span>
-              ) : 'Verify OTP'}
+              ) : 'Verify & Create Account'}
             </button>
 
             <div style={s.links}>
@@ -253,9 +305,12 @@ export default function HRCourseVerification() {
             </div>
           </form>
         )}
+
+        <div style={s.bottomLink}>
+          Already have an account? <Link to="/sign-in" style={{ color: '#9B7A3E', fontWeight: 600, textDecoration: 'underline' }}>Sign In</Link>
+        </div>
       </div>
 
-      {/* Toast */}
       {toast && (
         <div style={{ ...s.toast, background: toast.type === 'success' ? '#f0fdf4' : '#fef2f2', borderColor: toast.type === 'success' ? '#bbf7d0' : '#fecaca' }}>
           <span style={{ color: toast.type === 'success' ? '#16a34a' : '#dc2626', fontWeight: 600, fontSize: '0.85rem' }}>
@@ -321,48 +376,25 @@ const s: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
   },
   spin: {
-    width: '16px',
-    height: '16px',
-    border: '2px solid rgba(255,255,255,0.3)',
-    borderTopColor: '#fff',
-    borderRadius: '50%',
-    animation: 'spin 0.6s linear infinite',
+    width: '16px', height: '16px', border: '2px solid rgba(255,255,255,0.3)',
+    borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.6s linear infinite',
   },
   otpRow: { display: 'flex', gap: '8px', justifyContent: 'center', marginBottom: '1rem' },
   otpBox: {
-    width: '48px',
-    height: '56px',
-    textAlign: 'center',
-    fontSize: '1.5rem',
-    fontWeight: 700,
-    fontFamily: "'Courier New', monospace",
-    border: '2px solid #e2e8f0',
-    borderRadius: '10px',
-    outline: 'none',
-    background: '#f8fafc',
+    width: '48px', height: '56px', textAlign: 'center', fontSize: '1.5rem', fontWeight: 700,
+    fontFamily: "'Courier New', monospace", border: '2px solid #e2e8f0', borderRadius: '10px',
+    outline: 'none', background: '#f8fafc',
   },
   timerRow: { textAlign: 'center', fontSize: '0.85rem', color: '#64748b', marginBottom: '0.5rem' },
   links: { display: 'flex', justifyContent: 'center', gap: '1.5rem', marginTop: '1rem' },
   linkBtn: {
-    background: 'none',
-    border: 'none',
-    color: '#9B7A3E',
-    fontWeight: 600,
-    fontSize: '0.85rem',
-    fontFamily: 'Inter, sans-serif',
-    textDecoration: 'underline',
+    background: 'none', border: 'none', color: '#9B7A3E', fontWeight: 600,
+    fontSize: '0.85rem', fontFamily: 'Inter, sans-serif', textDecoration: 'underline',
   },
+  bottomLink: { textAlign: 'center', fontSize: '0.85rem', color: '#64748b', padding: '0 2rem 1.5rem' },
   toast: {
-    position: 'fixed',
-    bottom: '2rem',
-    left: '50%',
-    transform: 'translateX(-50%)',
-    padding: '12px 24px',
-    borderRadius: '10px',
-    border: '1px solid',
-    boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-    zIndex: 9999,
-    maxWidth: '90vw',
-    textAlign: 'center',
+    position: 'fixed', bottom: '2rem', left: '50%', transform: 'translateX(-50%)',
+    padding: '12px 24px', borderRadius: '10px', border: '1px solid',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 9999, maxWidth: '90vw', textAlign: 'center',
   },
 };
