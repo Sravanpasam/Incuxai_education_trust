@@ -4,6 +4,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import logoImg from '../picss/iet logo.png';
 import whoWeAreImg from './assets/about_who_we_are.jpg';
@@ -171,6 +172,7 @@ const quizBank = [
 ];
 
 export default function App() {
+  const navigate = useNavigate();
   const [isIitPaymentFlow, setIsIitPaymentFlow] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
 
@@ -215,47 +217,6 @@ export default function App() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Corp OTP Timers Effect
-  useEffect(() => {
-    let interval: any = null;
-    if (corpShowOtpModal && !corpVerificationLoading && !corpSuccessAnimation) {
-      interval = setInterval(() => {
-        setCorpOtpTimer(prev => {
-          if (prev <= 1) {
-            setCorpGeneratedOtp('');
-            return 0;
-          }
-          return prev - 1;
-        });
-        setCorpResendTimer(prev => (prev > 0 ? prev - 1 : 0));
-      }, 1000);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [corpShowOtpModal, corpVerificationLoading, corpSuccessAnimation]);
-
-  const handleOtpDigitChange = (index: number, val: string) => {
-    const updated = [...corpEnteredOtp];
-    updated[index] = val.slice(-1).replace(/[^0-9]/g, '');
-    setCorpEnteredOtp(updated);
-
-    if (updated[index] !== '' && index < 5) {
-      const nextInput = document.getElementById(`otp-digit-${index + 1}`);
-      nextInput?.focus();
-    }
-  };
-
-  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace') {
-      const updated = [...corpEnteredOtp];
-      if (updated[index] === '' && index > 0) {
-        const prevInput = document.getElementById(`otp-digit-${index - 1}`);
-        prevInput?.focus();
-      }
-    }
-  };
-
   const validateCorpForm = () => {
     const errors: Record<string, string> = {};
     if (!corpRegForm.fullName.trim()) errors.fullName = "Full Name is required.";
@@ -269,106 +230,30 @@ export default function App() {
     } else if (!/^\+?[0-9\s-]{10,15}$/.test(corpRegForm.phone)) {
       errors.phone = "Please enter a valid phone number.";
     }
-    if (!corpRegForm.workEmail.trim()) {
-      errors.workEmail = "Work Email is required.";
-    } else {
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(corpRegForm.workEmail)) {
-        errors.workEmail = "Invalid email format.";
-      } else {
-        const emailDomain = corpRegForm.workEmail.split('@')[1].toLowerCase();
-        const personalDomains = [
-          'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 
-          'icloud.com', 'aol.com', 'proton.me', 'rediffmail.com', 
-          'zoho.com'
-        ];
-        if (personalDomains.includes(emailDomain)) {
-          errors.workEmail = "Please enter your official company email.";
-        } else if (corpRegForm.companyName.trim()) {
-          const cleanCompanyName = corpRegForm.companyName.toLowerCase().replace(/[^a-z0-9]/g, '');
-          const cleanDomain = emailDomain.split('.')[0];
-          if (!cleanDomain.includes(cleanCompanyName) && !cleanCompanyName.includes(cleanDomain)) {
-            errors.workEmailWarning = `Official email domain (@${emailDomain}) does not seem to match company "${corpRegForm.companyName}".`;
-          }
-        }
-      }
-    }
     if (!corpRegForm.companyName.trim()) errors.companyName = "Company Name is required.";
     if (!corpRegForm.location.trim()) errors.location = "Location is required.";
     if (!corpRegForm.role) errors.role = "Please select a Role.";
     
     setCorpFormErrors(errors);
-    return !Object.keys(errors).some(k => k !== 'workEmailWarning');
+    return Object.keys(errors).length === 0;
   };
 
   const handleCorpFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validateCorpForm()) {
-      const generated = Math.floor(100000 + Math.random() * 900000).toString();
-      setCorpGeneratedOtp(generated);
-      setCorpOtpAttempts(0);
-      setCorpOtpTimer(600);
-      setCorpResendTimer(60);
-      setCorpEnteredOtp(['', '', '', '', '', '']);
+      // Save registration data temporarily (without work email — verified on next page)
+      const registrationData = {
+        fullName: corpRegForm.fullName,
+        personalEmail: corpRegForm.personalEmail,
+        phone: corpRegForm.phone,
+        companyName: corpRegForm.companyName,
+        location: corpRegForm.location,
+        role: corpRegForm.role,
+      };
+      localStorage.setItem('pending_corp_registration', JSON.stringify(registrationData));
       setCorpShowRegModal(false);
-      setCorpShowOtpModal(true);
-      setCorpToastMessage(`[SECURE SIMULATION] OTP sent to ${corpRegForm.workEmail}: Your verification code is ${generated}`);
-      setTimeout(() => {
-        setCorpToastMessage(null);
-      }, 15000);
+      navigate('/verify-work-email');
     }
-  };
-
-  const verifyCorpOtp = () => {
-    const enteredCode = corpEnteredOtp.join('');
-    if (enteredCode.length < 6) return;
-    setCorpVerificationLoading(true);
-    setTimeout(() => {
-      setCorpVerificationLoading(false);
-      if (corpOtpTimer === 0 || !corpGeneratedOtp) {
-        const w = window as any;
-        w.showToast?.("OTP has expired. Please resend code.");
-        return;
-      }
-      if (enteredCode === corpGeneratedOtp) {
-        setCorpSuccessAnimation(true);
-        setTimeout(() => {
-          setCorpSuccessAnimation(false);
-          setCorpShowOtpModal(false);
-          const record = {
-            fullName: corpRegForm.fullName,
-            personalEmail: corpRegForm.personalEmail,
-            phone: corpRegForm.phone,
-            workEmail: corpRegForm.workEmail,
-            companyName: corpRegForm.companyName,
-            location: corpRegForm.location,
-            role: corpRegForm.role,
-            registrationDate: new Date().toISOString(),
-            verificationStatus: "Verified",
-            otpVerifiedTime: new Date().toISOString()
-          };
-          const existingRecords = JSON.parse(localStorage.getItem('corporate_registrations') || '[]');
-          existingRecords.push(record);
-          localStorage.setItem('corporate_registrations', JSON.stringify(existingRecords));
-          localStorage.setItem('corp_otp_verified', 'true');
-          setCorpIsRegistered(true);
-          const w = window as any;
-          w.showToast?.("Registration Successful. Welcome to the course!");
-          setCorpActiveTab('lessons');
-          setCorpActiveSectionIdx(0);
-          setCorpActiveVideoIdx(0);
-        }, 2000);
-      } else {
-        const newAttempts = corpOtpAttempts + 1;
-        setCorpOtpAttempts(newAttempts);
-        const w = window as any;
-        if (newAttempts >= 5) {
-          w.showToast?.("Maximum attempts reached. Please register again.");
-          setCorpShowOtpModal(false);
-        } else {
-          w.showToast?.(`Invalid OTP. ${5 - newAttempts} attempts left.`);
-        }
-      }
-    }, 1500);
   };
 
   // --- INCUXAI IIT VISIT PAYMENT INJECTION ---
@@ -962,18 +847,7 @@ export default function App() {
         localStorage.setItem('eventRegistrations', JSON.stringify([]));
       }
 
-      // Fetch persistent database from Express backend
-      try {
-        const res = await fetch('/api/sync-data');
-        if (res.ok) {
-          const db = await res.json();
-          if (db.volunteers) localStorage.setItem('volunteers', JSON.stringify(db.volunteers));
-          if (db.volunteer_applications) localStorage.setItem('volunteer_applications', JSON.stringify(db.volunteer_applications));
-          if (db.volunteer_pass) localStorage.setItem('volunteer_pass', JSON.stringify(db.volunteer_pass));
-        }
-      } catch (err) {
-        console.warn('Database sync failed, falling back to local storage cache:', err);
-      }
+      // Volunteer data syncs from localStorage (no payment server dependency)
 
       if (!localStorage.getItem('volunteers')) {
         localStorage.setItem('volunteers', JSON.stringify([]));
@@ -5158,21 +5032,6 @@ export default function App() {
                   />
                   {corpFormErrors.companyName && <span className="input-helper-msg error">{corpFormErrors.companyName}</span>}
                 </div>
-                <div>
-                  <label className="form-label" style={{ fontWeight: '600', display: 'block', marginBottom: '0.4rem' }}>Work Email *</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={corpRegForm.workEmail}
-                    onChange={(e) => setCorpRegForm({ ...corpRegForm, workEmail: e.target.value })}
-                    placeholder="e.g. john@microsoft.com"
-                    style={{ width: '100%' }}
-                  />
-                  {corpFormErrors.workEmail && <span className="input-helper-msg error">{corpFormErrors.workEmail}</span>}
-                  {corpFormErrors.workEmailWarning && !corpFormErrors.workEmail && (
-                    <span className="input-helper-msg warning">{corpFormErrors.workEmailWarning}</span>
-                  )}
-                </div>
               </div>
 
               {/* Role Selection Container */}
@@ -5194,106 +5053,9 @@ export default function App() {
               </div>
 
               <button type="submit" className="panel-btn-register" style={{ width: '100%' }}>
-                Verify Work Email & Continue
+                Continue
               </button>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* ========== OTP VERIFICATION MODAL ========== */}
-      {corpShowOtpModal && (
-        <div className="modal-overlay active" onClick={() => setCorpShowOtpModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '440px', padding: '2.5rem 2rem' }}>
-            <button className="modal-close" onClick={() => setCorpShowOtpModal(false)}>✕</button>
-            <h3 className="modal-title" style={{ fontSize: '1.4rem' }}>Enter Verification Code</h3>
-            
-            {corpVerificationLoading ? (
-              <div className="verification-loading-container">
-                <div className="spinner"></div>
-                <div className="skeleton-text"></div>
-                <div className="skeleton-text skeleton-text-short"></div>
-              </div>
-            ) : corpSuccessAnimation ? (
-              <div style={{ padding: '2rem 0' }}>
-                <div className="success-checkmark-wrapper">
-                  <div className="success-checkmark">✓</div>
-                </div>
-                <h4 style={{ fontSize: '1.2rem', fontWeight: '800', color: '#16a34a', marginBottom: '0.4rem' }}>Registration Successful</h4>
-                <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>Welcome to the course. Unlocking dashboard...</p>
-              </div>
-            ) : (
-              <>
-                <p className="otp-instructions">
-                  We have sent a secure 6-digit OTP code to your work email: <br />
-                  <span className="otp-target-email">{corpRegForm.workEmail}</span>
-                </p>
-
-                <div className="otp-input-container">
-                  {corpEnteredOtp.map((digit, idx) => (
-                    <input
-                      key={idx}
-                      id={`otp-digit-${idx}`}
-                      type="text"
-                      className={`otp-digit-input ${digit ? 'filled' : ''}`}
-                      value={digit}
-                      onChange={(e) => handleOtpDigitChange(idx, e.target.value)}
-                      onKeyDown={(e) => handleOtpKeyDown(idx, e)}
-                      maxLength={1}
-                      autoComplete="off"
-                    />
-                  ))}
-                </div>
-
-                <div className="otp-timer-block">
-                  Code expires in: <span className="otp-timer-count">
-                    {Math.floor(corpOtpTimer / 60)}:{(corpOtpTimer % 60).toString().padStart(2, '0')}
-                  </span>
-                </div>
-
-                <button
-                  className="panel-btn-register"
-                  onClick={verifyCorpOtp}
-                  disabled={corpEnteredOtp.join('').length < 6}
-                  style={{
-                    width: '100%',
-                    opacity: corpEnteredOtp.join('').length < 6 ? 0.6 : 1,
-                    cursor: corpEnteredOtp.join('').length < 6 ? 'not-allowed' : 'pointer'
-                  }}
-                >
-                  Verify Code
-                </button>
-
-                <div className="otp-attempts-block">
-                  {corpOtpAttempts >= 5 ? (
-                    <span style={{ color: '#dc2626', fontWeight: 'bold' }}>Attempts exceeded. Please register again.</span>
-                  ) : (
-                    <span>Attempts: <strong>{corpOtpAttempts}/5</strong></span>
-                  )}
-                </div>
-
-                <div style={{ marginTop: '1.8rem', fontSize: '0.85rem', color: 'var(--text-muted)', borderTop: '1px solid rgba(10,18,31,0.08)', paddingTop: '1.2rem' }}>
-                  Didn't receive the email?{' '}
-                  {corpResendTimer > 0 ? (
-                    <span className="otp-resend-link disabled">Resend Code ({corpResendTimer}s)</span>
-                  ) : (
-                    <span className="otp-resend-link" onClick={() => {
-                      const generated = Math.floor(100000 + Math.random() * 900000).toString();
-                      setCorpGeneratedOtp(generated);
-                      setCorpOtpTimer(600);
-                      setCorpResendTimer(60);
-                      setCorpEnteredOtp(['', '', '', '', '', '']);
-                      setCorpToastMessage(`[SECURE SIMULATION] OTP resent to ${corpRegForm.workEmail}: Your verification code is ${generated}`);
-                      const w = window as any;
-                      w.showToast?.("A new OTP code has been sent!");
-                      setTimeout(() => {
-                        setCorpToastMessage(null);
-                      }, 15000);
-                    }}>Resend Code</span>
-                  )}
-                </div>
-              </>
-            )}
           </div>
         </div>
       )}
