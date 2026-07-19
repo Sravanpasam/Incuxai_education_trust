@@ -295,10 +295,7 @@ export default function CourseDashboard() {
             </div>
             <span className="lms-progress-text">{progressPercent}%</span>
           </div>
-          <span className="lms-user-name">{user?.name || user?.email}</span>
-          <button className="lms-signout-btn" onClick={() => { logout(); navigate('/'); }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-          </button>
+
         </div>
       </header>
 
@@ -828,9 +825,7 @@ const lmsStyles = `
 .lms-progress-bar{flex:1;height:6px;background:rgba(255,255,255,0.1);border-radius:100px;overflow:hidden}
 .lms-progress-fill{height:100%;background:linear-gradient(90deg,#C5A059,#d4af37);border-radius:100px;transition:width 0.4s ease;box-shadow:0 0 6px rgba(197,160,89,0.4)}
 .lms-progress-text{font-size:0.75rem;font-weight:700;color:rgba(255,255,255,0.85);white-space:nowrap;min-width:28px;text-align:right}
-.lms-user-name{font-size:0.8rem;color:rgba(255,255,255,0.75);font-weight:600;white-space:nowrap;padding:6px 12px;background:rgba(255,255,255,0.06);border-radius:8px;border:1px solid rgba(255,255,255,0.06)}
-.lms-signout-btn{background:none;border:1px solid rgba(255,255,255,0.12);cursor:pointer;padding:8px 10px;color:rgba(255,255,255,0.5);border-radius:8px;transition:all 0.2s;display:flex;align-items:center}
-.lms-signout-btn:hover{background:rgba(220,38,38,0.2);border-color:rgba(220,38,38,0.4);color:#fca5a5}
+
 .lms-hamburger{display:none;background:none;border:none;cursor:pointer;padding:6px;color:rgba(255,255,255,0.7);border-radius:8px;transition:background 0.15s}
 .lms-hamburger:hover{background:rgba(255,255,255,0.1)}
 .lms-sidebar-toggle{background:none;border:none;cursor:pointer;padding:7px;color:rgba(255,255,255,0.5);border-radius:8px;transition:all 0.15s}
@@ -1048,6 +1043,6 @@ const lmsStyles = `
 .lms-cert-cta{padding:14px 36px;border:none;border-radius:12px;background:linear-gradient(135deg,#0f3d91 0%,#0e7490 100%);color:#fff;font-size:0.95rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all 0.2s;box-shadow:0 4px 16px rgba(15,61,145,0.25);margin-top:8px}
 .lms-cert-cta:hover{opacity:0.92;box-shadow:0 6px 24px rgba(15,61,145,0.35);transform:translateY(-1px)}
 @media(max-width:1024px){.lms-header-nav{gap:1px}.lms-nav-tab span{display:none}.lms-nav-tab{padding:8px 14px}.lms-progress-wrap{width:110px}.lms-video-section{padding:24px 28px 0}.lms-tab-content{padding:24px 28px 36px}.lms-tabs{padding:0 28px}.lms-profile-stats{grid-template-columns:repeat(2,1fr)}.lms-video-title{font-size:1.4rem}}
-@media(max-width:768px){.lms-hamburger{display:flex}.lms-sidebar-toggle{display:none}.lms-sidebar{position:fixed;top:60px;left:0;bottom:0;z-index:95;width:300px;min-width:300px;transform:translateX(-100%);transition:transform 0.25s ease;box-shadow:none}.lms-sidebar.mobile-open{transform:translateX(0);box-shadow:4px 0 24px rgba(0,0,0,0.15)}.lms-sidebar.closed{width:300px;min-width:300px;opacity:0;transform:translateX(-100%)}.lms-mobile-overlay{display:block}.lms-video-section{padding:20px 20px 0}.lms-tab-content{padding:20px 20px 28px}.lms-tabs{padding:0 20px;overflow-x:auto}.lms-video-title{font-size:1.2rem}.lms-overview-grid{grid-template-columns:1fr}.lms-nav-btn{padding:12px 16px}.lms-nav-name{max-width:130px;font-size:0.78rem}.lms-page-content{padding:24px 20px}.lms-profile-stats{grid-template-columns:1fr 1fr}.lms-profile-header{flex-direction:column;text-align:center;padding:28px 24px}.lms-user-name{display:none}.lms-video-desc{padding:14px 16px;margin:14px 0}}
+@media(max-width:768px){.lms-hamburger{display:flex}.lms-sidebar-toggle{display:none}.lms-sidebar{position:fixed;top:60px;left:0;bottom:0;z-index:95;width:300px;min-width:300px;transform:translateX(-100%);transition:transform 0.25s ease;box-shadow:none}.lms-sidebar.mobile-open{transform:translateX(0);box-shadow:4px 0 24px rgba(0,0,0,0.15)}.lms-sidebar.closed{width:300px;min-width:300px;opacity:0;transform:translateX(-100%)}.lms-mobile-overlay{display:block}.lms-video-section{padding:20px 20px 0}.lms-tab-content{padding:20px 20px 28px}.lms-tabs{padding:0 20px;overflow-x:auto}.lms-video-title{font-size:1.2rem}.lms-overview-grid{grid-template-columns:1fr}.lms-nav-btn{padding:12px 16px}.lms-nav-name{max-width:130px;font-size:0.78rem}.lms-page-content{padding:24px 20px}.lms-profile-stats{grid-template-columns:1fr 1fr}.lms-profile-header{flex-direction:column;text-align:center;padding:28px 24px}.lms-video-desc{padding:14px 16px;margin:14px 0}}
 @media(max-width:480px){.lms-header{padding:0 14px;height:54px}.lms-brand-icon{width:32px;height:32px;font-size:0.95rem}.lms-brand-sub{display:none}.lms-video-section{padding:16px 14px 0}.lms-tab-content{padding:16px 14px 24px}.lms-tabs{padding:0 14px}.lms-video-title{font-size:1.1rem}.lms-quiz-container,.lms-overview-card,.lms-assignment-container{padding:18px}.lms-nav-row{flex-direction:column}.lms-nav-btn{max-width:100%}.lms-profile-stats{grid-template-columns:1fr}.lms-cert-inner{padding:32px 24px}.lms-cert-heading{font-size:1.2rem}.lms-cert-name{font-size:1.3rem}.lms-page-content{padding:20px 14px}.lms-overview-card{padding:18px}.lms-q-option{padding:12px 14px}}
 `;

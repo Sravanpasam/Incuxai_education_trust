@@ -181,32 +181,6 @@ export default function App() {
   // --- CORPORATE COURSE SYSTEM STATES ---
   const [showHrPopup, setShowHrPopup] = useState(false);
   const [corpExpandedModule, setCorpExpandedModule] = useState<number | null>(null);
-  const [corpIsRegistered, setCorpIsRegistered] = useState<boolean>(() => {
-    return localStorage.getItem('corp_otp_verified') === 'true';
-  });
-  const [corpShowRegModal, setCorpShowRegModal] = useState(false);
-  const [corpShowOtpModal, setCorpShowOtpModal] = useState(false);
-  const [corpRegForm, setCorpRegForm] = useState({
-    fullName: '',
-    personalEmail: '',
-    phone: '',
-    workEmail: '',
-    companyName: '',
-    location: '',
-    role: ''
-  });
-  const [corpFormErrors, setCorpFormErrors] = useState<Record<string, string>>({});
-  const [corpGeneratedOtp, setCorpGeneratedOtp] = useState<string>('');
-  const [corpEnteredOtp, setCorpEnteredOtp] = useState<string[]>(['', '', '', '', '', '']);
-  const [corpOtpAttempts, setCorpOtpAttempts] = useState(0);
-  const [corpOtpTimer, setCorpOtpTimer] = useState(600); // 10 minutes (600s)
-  const [corpResendTimer, setCorpResendTimer] = useState(60); // 60 seconds
-  const [corpVerificationLoading, setCorpVerificationLoading] = useState(false);
-  const [corpSuccessAnimation, setCorpSuccessAnimation] = useState(false);
-  const [corpActiveTab, setCorpActiveTab] = useState<'lessons' | 'resources'>('lessons');
-  const [corpActiveSectionIdx, setCorpActiveSectionIdx] = useState(0);
-  const [corpActiveVideoIdx, setCorpActiveVideoIdx] = useState(0);
-  const [corpToastMessage, setCorpToastMessage] = useState<string | null>(null);
 
   // Show AI for HR popup after 1.5 seconds when the website is opened
   useEffect(() => {
@@ -219,44 +193,6 @@ export default function App() {
     return () => clearTimeout(timer);
   }, []);
 
-  const validateCorpForm = () => {
-    const errors: Record<string, string> = {};
-    if (!corpRegForm.fullName.trim()) errors.fullName = "Full Name is required.";
-    if (!corpRegForm.personalEmail.trim()) {
-      errors.personalEmail = "Personal Email is required.";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(corpRegForm.personalEmail)) {
-      errors.personalEmail = "Invalid email format.";
-    }
-    if (!corpRegForm.phone.trim()) {
-      errors.phone = "Phone Number is required.";
-    } else if (!/^\+?[0-9\s-]{10,15}$/.test(corpRegForm.phone)) {
-      errors.phone = "Please enter a valid phone number.";
-    }
-    if (!corpRegForm.companyName.trim()) errors.companyName = "Company Name is required.";
-    if (!corpRegForm.location.trim()) errors.location = "Location is required.";
-    if (!corpRegForm.role) errors.role = "Please select a Role.";
-    
-    setCorpFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  const handleCorpFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (validateCorpForm()) {
-      // Save registration data temporarily (without work email — verified on next page)
-      const registrationData = {
-        fullName: corpRegForm.fullName,
-        personalEmail: corpRegForm.personalEmail,
-        phone: corpRegForm.phone,
-        companyName: corpRegForm.companyName,
-        location: corpRegForm.location,
-        role: corpRegForm.role,
-      };
-      localStorage.setItem('pending_corp_registration', JSON.stringify(registrationData));
-      setCorpShowRegModal(false);
-      navigate('/verify-work-email');
-    }
-  };
 
   // --- INCUXAI IIT VISIT PAYMENT INJECTION ---
   useEffect(() => {
@@ -644,7 +580,7 @@ export default function App() {
       }
       document.querySelectorAll('nav > a, nav > .nav-item > a').forEach(a => a.classList.remove('active'));
       const navItems = document.querySelectorAll('nav > a, nav > .nav-item > a');
-      const navMap: Record<string, number> = { home: 0, about: 1, ai4all: 2, programs: 3, volunteer: 4, teachxai: 5, gallery: 6, contact: 7, donate: 8 };
+      const navMap: Record<string, number> = { home: 0, about: 1, ai4all: 2, programs: 3, volunteer: 4, teachxai: 5, gallery: 6, contact: 7, donate: 8, 'corporate-course': 2 };
       if (navMap[id] !== undefined && navItems[navMap[id]]) {
         navItems[navMap[id]].classList.add('active');
       }
@@ -2167,9 +2103,9 @@ export default function App() {
         w.showToast?.(`${cat.label} course is coming soon! Stay tuned.`);
         return;
       }
-      // HR course redirects to the LinkedIn-style LMS
+      // HR course redirects to the corporate-course page
       if (id === 'hr') {
-        navigate('/course-dashboard');
+        w.showPage('corporate-course');
         return;
       }
       // Default topic detail page for other courses (future use)
@@ -2686,12 +2622,7 @@ export default function App() {
               style={{ width: '100%' }}
               onClick={() => {
                 setShowHrPopup(false);
-                if (isAuthenticated) {
-                  localStorage.setItem('corp_otp_verified', 'true');
-                  navigate('/course-dashboard');
-                } else {
-                  navigate('/sign-up');
-                }
+                (window as any).showPage('corporate-course');
               }}
             >
               <span>Explore AI for HR Course</span>
@@ -2713,23 +2644,10 @@ export default function App() {
         <nav id="main-nav">
           <a onClick={() => (window as any).showPage('home')} className="active">Home</a>
           <div className="nav-item">
-            <a onClick={() => (window as any).showPage('about')}>About</a>
-            <div className="dropdown">
-              <a onClick={() => { (window as any).showPage('about'); setTimeout(() => document.getElementById('about-section')?.scrollIntoView({ behavior: 'smooth' }), 100); }}>Our Story</a>
-              <a onClick={() => { (window as any).showPage('about'); setTimeout(() => document.querySelector('.about-extras')?.scrollIntoView({ behavior: 'smooth' }), 100); }}>Vision & Mission</a>
-              <a onClick={() => { (window as any).showPage('about'); setTimeout(() => document.getElementById('team-section')?.scrollIntoView({ behavior: 'smooth' }), 100); }}>Team</a>
-            </div>
-          </div>
-          <div className="nav-item">
             <a onClick={() => (window as any).showPage('ai4all')} className="nav-highlight-btn">AI 4 ALL</a>
             <div className="dropdown">
               <a onClick={() => {
-                if (isAuthenticated) {
-                  localStorage.setItem('corp_otp_verified', 'true');
-                  navigate('/course-dashboard');
-                } else {
-                  navigate('/sign-in');
-                }
+                (window as any).showPage('corporate-course');
               }}>AI for HR</a>
               <a onClick={() => { (window as any).showPage('ai4all'); const w = window as any; w.showToast?.('AI for Teachers course is coming soon!'); }}>AI for Teachers <span style={{ fontSize: '0.65rem', color: '#C5A059', fontWeight: '700' }}>SOON</span></a>
               <a onClick={() => { (window as any).showPage('ai4all'); const w = window as any; w.showToast?.('AI for Police course is coming soon!'); }}>AI for Police <span style={{ fontSize: '0.65rem', color: '#C5A059', fontWeight: '700' }}>SOON</span></a>
@@ -3196,7 +3114,89 @@ export default function App() {
         </section>
       </div>
 
-      {/* Old corporate-course page removed — all "AI for HR" links now navigate to /course-dashboard */}
+      {/* ========== CORPORATE COURSE PAGE (AI FOR HR) ========== */}
+      <div id="corporate-course" className="page corp-course-page">
+          <div className="corp-course-hero">
+              <div className="corp-course-hero-inner">
+                <span className="section-tag" style={{ color: 'var(--secondary)' }}>AI 4 ALL Program</span>
+                <h1 className="corp-course-title">AI for HR Professionals</h1>
+                <p className="section-sub" style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: 'clamp(1rem, 2vw, 1.2rem)', margin: '1rem 0 1.5rem', lineHeight: '1.5' }}>
+                  Transform your HR operations with AI-powered resume screening, employee sentiment analysis, predictive attrition models, and AI governance frameworks designed for human resource teams.
+                </p>
+                <div className="corp-course-meta">
+                  <div className="corp-course-meta-item">
+                    <span className="corp-course-meta-icon">⏳</span>
+                    <span>6 Video Lectures</span>
+                  </div>
+                  <div className="corp-course-meta-item">
+                    <span className="corp-course-meta-icon">📚</span>
+                    <span>3 Sections</span>
+                  </div>
+                  <div className="corp-course-meta-item">
+                    <span className="corp-course-meta-icon">🛡️</span>
+                    <span>Work Email Verified</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="corp-course-body">
+              <div style={{ textAlign: 'left' }}>
+                <h3 className="corp-section-title">✨ Key Learning Outcomes</h3>
+                <div className="outcomes-list">
+                  <div className="outcome-card"><div className="outcome-check">✓</div><div className="outcome-text">Automate Resume Screening & Candidate Ranking with LLMs</div></div>
+                  <div className="outcome-card"><div className="outcome-check">✓</div><div className="outcome-text">Analyze Employee Sentiment from Annual Feedback Surveys</div></div>
+                  <div className="outcome-card"><div className="outcome-check">✓</div><div className="outcome-text">Build Predictive Attrition & Retention Models</div></div>
+                  <div className="outcome-card"><div className="outcome-check">✓</div><div className="outcome-text">Ensure AI Ethics, GDPR Compliance & Bias-Free Hiring</div></div>
+                </div>
+
+                <h3 className="corp-section-title">📋 Course Curriculum</h3>
+                <div className="curriculum-list">
+                  {hrCurriculum.map((sec, sIdx) => (
+                    <div key={sIdx} className={`curriculum-module ${corpExpandedModule === sIdx ? 'expanded' : ''}`}>
+                      <div className="curriculum-module-header" onClick={() => setCorpExpandedModule(corpExpandedModule === sIdx ? null : sIdx)}>
+                        <div className="curriculum-module-title-group">
+                          <span className="curriculum-module-badge">Section {sIdx + 1}</span>
+                          <span className="curriculum-module-title">{sec.section.split(': ')[1] || sec.section}</span>
+                        </div>
+                        <span className="curriculum-module-icon">▼</span>
+                      </div>
+                      <div className="curriculum-module-body">
+                        <div className="curriculum-module-content">
+                          <ul className="curriculum-lessons-list">
+                            {sec.videos.map((vid, vIdx) => (
+                              <li key={vIdx} className="curriculum-lesson-item">
+                                <span className="curriculum-lesson-bullet"></span>
+                                <span>{vid.title} ({vid.duration})</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="sidebar-panel">
+                <span className="panel-lock-icon">🔒</span>
+                <h4 className="panel-title">Work Email Verification Required</h4>
+                <p className="panel-desc">
+                  This course is exclusively for HR professionals. To gain access, register using your official company email address.
+                </p>
+                <button className="panel-btn-register" onClick={() => navigate('/sign-in')}>
+                  <span>Register & Unlock Course</span>
+                  <span>→</span>
+                </button>
+                <div className="panel-requirements">
+                  <h5 className="panel-req-title">Validation Checklist</h5>
+                  <div className="panel-req-item"><span className="panel-req-bullet">•</span><span>Requires official corporate domain email</span></div>
+                  <div className="panel-req-item"><span className="panel-req-bullet">•</span><span>No personal domains (gmail, yahoo, etc.) accepted</span></div>
+                  <div className="panel-req-item"><span className="panel-req-bullet">•</span><span>6-Digit secure OTP code verification</span></div>
+                </div>
+              </div>
+            </div>
+      </div>
 
       {/* ========== AI4ALL PAGE ========== */}
       <div id="ai4all" className="page" style={{ paddingTop: '75px' }}>
@@ -4686,108 +4686,6 @@ export default function App() {
       </div>
 
       {/* ========== CORPORATE REGISTRATION MODAL ========== */}
-      {corpShowRegModal && (
-        <div className="modal-overlay active wide" onClick={() => setCorpShowRegModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ textAlign: 'left' }}>
-            <button className="modal-close" onClick={() => setCorpShowRegModal(false)}>✕</button>
-            <h3 className="modal-title">Corporate Registration</h3>
-            <p className="modal-header-desc">Gain instant access to the Generative AI masterclass by validating your professional credentials.</p>
-            
-            <form onSubmit={handleCorpFormSubmit}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem', marginBottom: '1.2rem' }}>
-                <div>
-                  <label className="form-label" style={{ fontWeight: '600', display: 'block', marginBottom: '0.4rem' }}>Full Name *</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={corpRegForm.fullName}
-                    onChange={(e) => setCorpRegForm({ ...corpRegForm, fullName: e.target.value })}
-                    placeholder="Enter your full name"
-                    style={{ width: '100%' }}
-                  />
-                  {corpFormErrors.fullName && <span className="input-helper-msg error">{corpFormErrors.fullName}</span>}
-                </div>
-                <div>
-                  <label className="form-label" style={{ fontWeight: '600', display: 'block', marginBottom: '0.4rem' }}>Personal Email *</label>
-                  <input
-                    type="email"
-                    className="form-input"
-                    value={corpRegForm.personalEmail}
-                    onChange={(e) => setCorpRegForm({ ...corpRegForm, personalEmail: e.target.value })}
-                    placeholder="e.g. name@gmail.com"
-                    style={{ width: '100%' }}
-                  />
-                  {corpFormErrors.personalEmail && <span className="input-helper-msg error">{corpFormErrors.personalEmail}</span>}
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem', marginBottom: '1.2rem' }}>
-                <div>
-                  <label className="form-label" style={{ fontWeight: '600', display: 'block', marginBottom: '0.4rem' }}>Phone Number *</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={corpRegForm.phone}
-                    onChange={(e) => setCorpRegForm({ ...corpRegForm, phone: e.target.value })}
-                    placeholder="e.g. +91 98765 43210"
-                    style={{ width: '100%' }}
-                  />
-                  {corpFormErrors.phone && <span className="input-helper-msg error">{corpFormErrors.phone}</span>}
-                </div>
-                <div>
-                  <label className="form-label" style={{ fontWeight: '600', display: 'block', marginBottom: '0.4rem' }}>Location *</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={corpRegForm.location}
-                    onChange={(e) => setCorpRegForm({ ...corpRegForm, location: e.target.value })}
-                    placeholder="City, State"
-                    style={{ width: '100%' }}
-                  />
-                  {corpFormErrors.location && <span className="input-helper-msg error">{corpFormErrors.location}</span>}
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem', marginBottom: '1.5rem' }}>
-                <div>
-                  <label className="form-label" style={{ fontWeight: '600', display: 'block', marginBottom: '0.4rem' }}>Company Name *</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={corpRegForm.companyName}
-                    onChange={(e) => setCorpRegForm({ ...corpRegForm, companyName: e.target.value })}
-                    placeholder="e.g. Microsoft"
-                    style={{ width: '100%' }}
-                  />
-                  {corpFormErrors.companyName && <span className="input-helper-msg error">{corpFormErrors.companyName}</span>}
-                </div>
-              </div>
-
-              {/* Role Selection Container */}
-              <div style={{ marginBottom: '2rem' }}>
-                <label className="form-label" style={{ fontWeight: '700', display: 'block', marginBottom: '0.4rem' }}>Role *</label>
-                <div className="role-radio-group">
-                  {['Executive', 'Manager', 'Developer', 'Consultant'].map((roleOpt) => (
-                    <div
-                      key={roleOpt}
-                      className={`role-radio-card ${corpRegForm.role === roleOpt ? 'active' : ''}`}
-                      onClick={() => setCorpRegForm({ ...corpRegForm, role: roleOpt })}
-                    >
-                      <div className="role-radio-dot"></div>
-                      <span className="role-radio-label">{roleOpt}</span>
-                    </div>
-                  ))}
-                </div>
-                {corpFormErrors.role && <span className="input-helper-msg error" style={{ display: 'block', marginTop: '0.5rem' }}>{corpFormErrors.role}</span>}
-              </div>
-
-              <button type="submit" className="panel-btn-register" style={{ width: '100%' }}>
-                Continue
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* ========== FLOATING WHATSAPP ICON ========== */}
       <a href="https://wa.me/919494808589" target="_blank" rel="noopener noreferrer" className="whatsapp-float" title="Chat on WhatsApp">
@@ -4823,12 +4721,7 @@ export default function App() {
             <h4>AI 4 ALL</h4>
             <ul>
               <li><a onClick={() => {
-                if (isAuthenticated) {
-                  localStorage.setItem('corp_otp_verified', 'true');
-                  navigate('/course-dashboard');
-                } else {
-                  navigate('/sign-in');
-                }
+                (window as any).showPage('corporate-course');
               }}>AI for HR</a></li>
               <li><a onClick={() => (window as any).showPage('ai4all')}>AI for Teachers</a></li>
               <li><a onClick={() => (window as any).showPage('ai4all')}>AI for Police</a></li>
