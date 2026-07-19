@@ -4,8 +4,10 @@
  */
 
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { fetchWithRetry, validateCorporateEmail, globalRateLimiter } from './utils';
 import { motion } from 'motion/react';
+import { useAuth } from './auth/context/AuthContext';
 import logoImg from '../picss/iet logo.png';
 import whoWeAreImg from './assets/about_who_we_are.jpg';
 import iit1Img from '../picss/iit1.png';
@@ -172,6 +174,8 @@ const quizBank = [
 ];
 
 export default function App() {
+  const navigate = useNavigate();
+  const { user: authUser, isAuthenticated, logout: authLogout } = useAuth();
   const [isIitPaymentFlow, setIsIitPaymentFlow] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
 
@@ -1241,47 +1245,6 @@ OFFICIAL VERIFICATION LINK: https://incuxaieducationtrust.org/verify/${cert.id}
     return () => clearTimeout(timer);
   }, []);
 
-  // Corp OTP Timers Effect
-  useEffect(() => {
-    let interval: any = null;
-    if (corpShowOtpModal && !corpVerificationLoading && !corpSuccessAnimation) {
-      interval = setInterval(() => {
-        setCorpOtpTimer(prev => {
-          if (prev <= 1) {
-            setCorpGeneratedOtp('');
-            return 0;
-          }
-          return prev - 1;
-        });
-        setCorpResendTimer(prev => (prev > 0 ? prev - 1 : 0));
-      }, 1000);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [corpShowOtpModal, corpVerificationLoading, corpSuccessAnimation]);
-
-  const handleOtpDigitChange = (index: number, val: string) => {
-    const updated = [...corpEnteredOtp];
-    updated[index] = val.slice(-1).replace(/[^0-9]/g, '');
-    setCorpEnteredOtp(updated);
-
-    if (updated[index] !== '' && index < 5) {
-      const nextInput = document.getElementById(`otp-digit-${index + 1}`);
-      nextInput?.focus();
-    }
-  };
-
-  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace') {
-      const updated = [...corpEnteredOtp];
-      if (updated[index] === '' && index > 0) {
-        const prevInput = document.getElementById(`otp-digit-${index - 1}`);
-        prevInput?.focus();
-      }
-    }
-  };
-
   const validateCorpForm = () => {
     const errors: Record<string, string> = {};
     if (!corpRegForm.fullName.trim()) errors.fullName = "Full Name is required.";
@@ -1295,106 +1258,30 @@ OFFICIAL VERIFICATION LINK: https://incuxaieducationtrust.org/verify/${cert.id}
     } else if (!/^\+?[0-9\s-]{10,15}$/.test(corpRegForm.phone)) {
       errors.phone = "Please enter a valid phone number.";
     }
-    if (!corpRegForm.workEmail.trim()) {
-      errors.workEmail = "Work Email is required.";
-    } else {
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(corpRegForm.workEmail)) {
-        errors.workEmail = "Invalid email format.";
-      } else {
-        const emailDomain = corpRegForm.workEmail.split('@')[1].toLowerCase();
-        const personalDomains = [
-          'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 
-          'icloud.com', 'aol.com', 'proton.me', 'rediffmail.com', 
-          'zoho.com'
-        ];
-        if (personalDomains.includes(emailDomain)) {
-          errors.workEmail = "Please enter your official company email.";
-        } else if (corpRegForm.companyName.trim()) {
-          const cleanCompanyName = corpRegForm.companyName.toLowerCase().replace(/[^a-z0-9]/g, '');
-          const cleanDomain = emailDomain.split('.')[0];
-          if (!cleanDomain.includes(cleanCompanyName) && !cleanCompanyName.includes(cleanDomain)) {
-            errors.workEmailWarning = `Official email domain (@${emailDomain}) does not seem to match company "${corpRegForm.companyName}".`;
-          }
-        }
-      }
-    }
     if (!corpRegForm.companyName.trim()) errors.companyName = "Company Name is required.";
     if (!corpRegForm.location.trim()) errors.location = "Location is required.";
     if (!corpRegForm.role) errors.role = "Please select a Role.";
     
     setCorpFormErrors(errors);
-    return !Object.keys(errors).some(k => k !== 'workEmailWarning');
+    return Object.keys(errors).length === 0;
   };
 
   const handleCorpFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validateCorpForm()) {
-      const generated = Math.floor(100000 + Math.random() * 900000).toString();
-      setCorpGeneratedOtp(generated);
-      setCorpOtpAttempts(0);
-      setCorpOtpTimer(600);
-      setCorpResendTimer(60);
-      setCorpEnteredOtp(['', '', '', '', '', '']);
+      // Save registration data temporarily (without work email — verified on next page)
+      const registrationData = {
+        fullName: corpRegForm.fullName,
+        personalEmail: corpRegForm.personalEmail,
+        phone: corpRegForm.phone,
+        companyName: corpRegForm.companyName,
+        location: corpRegForm.location,
+        role: corpRegForm.role,
+      };
+      localStorage.setItem('pending_corp_registration', JSON.stringify(registrationData));
       setCorpShowRegModal(false);
-      setCorpShowOtpModal(true);
-      setCorpToastMessage(`[SECURE SIMULATION] OTP sent to ${corpRegForm.workEmail}: Your verification code is ${generated}`);
-      setTimeout(() => {
-        setCorpToastMessage(null);
-      }, 15000);
+      navigate('/verify-work-email');
     }
-  };
-
-  const verifyCorpOtp = () => {
-    const enteredCode = corpEnteredOtp.join('');
-    if (enteredCode.length < 6) return;
-    setCorpVerificationLoading(true);
-    setTimeout(() => {
-      setCorpVerificationLoading(false);
-      if (corpOtpTimer === 0 || !corpGeneratedOtp) {
-        const w = window as any;
-        w.showToast?.("OTP has expired. Please resend code.");
-        return;
-      }
-      if (enteredCode === corpGeneratedOtp) {
-        setCorpSuccessAnimation(true);
-        setTimeout(() => {
-          setCorpSuccessAnimation(false);
-          setCorpShowOtpModal(false);
-          const record = {
-            fullName: corpRegForm.fullName,
-            personalEmail: corpRegForm.personalEmail,
-            phone: corpRegForm.phone,
-            workEmail: corpRegForm.workEmail,
-            companyName: corpRegForm.companyName,
-            location: corpRegForm.location,
-            role: corpRegForm.role,
-            registrationDate: new Date().toISOString(),
-            verificationStatus: "Verified",
-            otpVerifiedTime: new Date().toISOString()
-          };
-          const existingRecords = JSON.parse(localStorage.getItem('corporate_registrations') || '[]');
-          existingRecords.push(record);
-          localStorage.setItem('corporate_registrations', JSON.stringify(existingRecords));
-          localStorage.setItem('corp_otp_verified', 'true');
-          setCorpIsRegistered(true);
-          const w = window as any;
-          w.showToast?.("Registration Successful. Welcome to the course!");
-          setCorpActiveTab('lessons');
-          setCorpActiveSectionIdx(0);
-          setCorpActiveVideoIdx(0);
-        }, 2000);
-      } else {
-        const newAttempts = corpOtpAttempts + 1;
-        setCorpOtpAttempts(newAttempts);
-        const w = window as any;
-        if (newAttempts >= 5) {
-          w.showToast?.("Maximum attempts reached. Please register again.");
-          setCorpShowOtpModal(false);
-        } else {
-          w.showToast?.(`Invalid OTP. ${5 - newAttempts} attempts left.`);
-        }
-      }
-    }, 1500);
   };
 
   // --- INCUXAI IIT VISIT PAYMENT INJECTION ---
@@ -2246,18 +2133,7 @@ OFFICIAL VERIFICATION LINK: https://incuxaieducationtrust.org/verify/${cert.id}
         localStorage.setItem('eventRegistrations', JSON.stringify([]));
       }
 
-      // Fetch persistent database from Express backend
-      try {
-        const res = await fetch('/api/sync-data');
-        if (res.ok) {
-          const db = await res.json();
-          if (db.volunteers) localStorage.setItem('volunteers', JSON.stringify(db.volunteers));
-          if (db.volunteer_applications) localStorage.setItem('volunteer_applications', JSON.stringify(db.volunteer_applications));
-          if (db.volunteer_pass) localStorage.setItem('volunteer_pass', JSON.stringify(db.volunteer_pass));
-        }
-      } catch (err) {
-        console.warn('Database sync failed, falling back to local storage cache:', err);
-      }
+      // Volunteer data syncs from localStorage (no payment server dependency)
 
       if (!localStorage.getItem('volunteers')) {
         localStorage.setItem('volunteers', JSON.stringify([]));
@@ -4135,10 +4011,11 @@ OFFICIAL VERIFICATION LINK: https://incuxaieducationtrust.org/verify/${cert.id}
               style={{ width: '100%' }}
               onClick={() => {
                 setShowHrPopup(false);
-                (window as any).showPage('corporate-course');
-                const isVerified = localStorage.getItem('corp_otp_verified') === 'true';
-                if (!isVerified) {
-                  setTimeout(() => setCorpShowRegModal(true), 300);
+                if (isAuthenticated) {
+                  localStorage.setItem('corp_otp_verified', 'true');
+                  navigate('/course-dashboard');
+                } else {
+                  navigate('/sign-up');
                 }
               }}
             >
@@ -4164,7 +4041,14 @@ OFFICIAL VERIFICATION LINK: https://incuxaieducationtrust.org/verify/${cert.id}
             <a onClick={() => (window as any).showPage('ai4all')} className="nav-highlight-btn">AI 4 ALL</a>
             <div className="dropdown">
               <a onClick={() => (window as any).showPage('learner-profile')}>👤 Learner Profile Page</a>
-              <a onClick={() => (window as any).showPage('corporate-course')}>AI for HR</a>
+              <a onClick={() => {
+                if (isAuthenticated) {
+                  localStorage.setItem('corp_otp_verified', 'true');
+                  navigate('/course-dashboard');
+                } else {
+                  (window as any).showPage('corporate-course');
+                }
+              }}>AI for HR</a>
               <a onClick={() => { (window as any).showPage('ai4all'); const w = window as any; w.showToast?.('AI for Teachers course is coming soon!'); }}>AI for Teachers <span style={{ fontSize: '0.65rem', color: '#C5A059', fontWeight: '700' }}>SOON</span></a>
               <a onClick={() => { (window as any).showPage('ai4all'); const w = window as any; w.showToast?.('AI for Police course is coming soon!'); }}>AI for Police <span style={{ fontSize: '0.65rem', color: '#C5A059', fontWeight: '700' }}>SOON</span></a>
             </div>
@@ -4189,9 +4073,29 @@ OFFICIAL VERIFICATION LINK: https://incuxaieducationtrust.org/verify/${cert.id}
         </nav>
         <div className="header-right">
           <button className="btn-donate" id="signup-btn" onClick={() => (window as any).showPage('donate')}>Donate</button>
-
-          {/* Login Button for Unauthenticated Users */}
-          <button className="btn-login" onClick={() => (window as any).openModal()} id="login-btn">Login</button>
+          {isAuthenticated ? (
+            <>
+              <button className="btn-login" onClick={() => { localStorage.setItem('corp_otp_verified', 'true'); navigate('/course-dashboard'); }} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', marginRight: '0.4rem' }}>
+                Dashboard
+              </button>
+              <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.7)', fontWeight: '600', marginRight: '0.5rem' }}>
+                {authUser?.name || authUser?.email}
+              </span>
+              <button className="btn-login" onClick={() => { authLogout(); navigate('/'); }} style={{ background: 'rgba(220,38,38,0.8)', border: 'none' }}>
+                Sign Out
+              </button>
+            </>
+          ) : (
+            <>
+              <button className="btn-login" onClick={() => (window as any).openModal()} id="login-btn" style={{ marginRight: '0.4rem' }}>Login</button>
+              <Link to="/sign-up" style={{ padding: '0.45rem 1rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.08)', color: '#fff', fontSize: '0.82rem', fontWeight: '600', textDecoration: 'none', marginRight: '0.4rem' }}>
+                Sign Up
+              </Link>
+              <Link to="/sign-in" className="btn-login" style={{ textDecoration: 'none' }}>
+                Sign In
+              </Link>
+            </>
+          )}
 
           {/* Profile Dropdown for Authenticated Users */}
           <div id="user-menu-wrapper" className="user-menu-wrapper" style={{ display: 'none' }}>
@@ -7142,7 +7046,7 @@ OFFICIAL VERIFICATION LINK: https://incuxaieducationtrust.org/verify/${cert.id}
                 {corpFormErrors.role && <span className="input-helper-msg error" style={{ display: 'block', marginTop: '0.4rem' }}>{corpFormErrors.role}</span>}
               </div>
 
-              <button type="submit" className="pro-btn-submit" style={{ marginTop: '0.5rem' }}>
+              <button type="submit" className="pro-btn-submit panel-btn-register" style={{ width: '100%', marginTop: '0.5rem' }}>
                 <span>Verify Work Email & Continue</span>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
               </button>
@@ -7290,7 +7194,6 @@ OFFICIAL VERIFICATION LINK: https://incuxaieducationtrust.org/verify/${cert.id}
           </div>
         </div>
       )}
-
       {/* ========== FLOATING WHATSAPP ICON ========== */}
       <a href="https://wa.me/919494808589" target="_blank" rel="noopener noreferrer" className="whatsapp-float" title="Chat on WhatsApp">
         <svg viewBox="0 0 24 24" width="28" height="28" fill="white"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.725 1.45 5.489 0 9.952-4.43 9.955-9.885.002-2.643-1.022-5.127-2.885-7c-1.863-1.874-4.343-2.905-6.994-2.906-5.49 0-9.953 4.429-9.957 9.884-.002 1.714.453 3.39 1.32 4.887l-.994 3.634 3.73-.974zm12.002-6.852c-.274-.136-1.62-.801-1.871-.892-.252-.09-.435-.136-.617.136-.183.272-.708.89-.867 1.072-.16.182-.32.205-.594.069-.275-.136-1.16-.427-2.209-1.364-.817-.73-1.368-1.63-1.528-1.905-.16-.273-.017-.421.12-.557.123-.122.274-.32.41-.48.138-.16.183-.273.275-.455.092-.182.046-.341-.023-.477-.068-.136-.617-1.485-.845-2.03-.22-.533-.48-.46-.617-.466-.123-.006-.275-.007-.426-.007-.152 0-.401.057-.61.284-.21.227-.8.781-.8 1.904 0 1.124.816 2.207.93 2.36.114.152 1.606 2.451 3.89 3.435.543.233.967.373 1.3.479.546.173 1.042.149 1.433.09.437-.066 1.62-.662 1.849-1.3.23-.637.23-1.182.16-1.3-.069-.117-.251-.183-.526-.32z"/></svg>
@@ -8299,7 +8202,14 @@ OFFICIAL VERIFICATION LINK: https://incuxaieducationtrust.org/verify/${cert.id}
           <div className="footer-col">
             <h4>AI 4 ALL</h4>
             <ul>
-              <li><a onClick={() => (window as any).showPage('corporate-course')}>AI for HR</a></li>
+              <li><a onClick={() => {
+                if (isAuthenticated) {
+                  localStorage.setItem('corp_otp_verified', 'true');
+                  navigate('/course-dashboard');
+                } else {
+                  navigate('/sign-in');
+                }
+              }}>AI for HR</a></li>
               <li><a onClick={() => (window as any).showPage('ai4all')}>AI for Teachers</a></li>
               <li><a onClick={() => (window as any).showPage('ai4all')}>AI for Police</a></li>
             </ul>
