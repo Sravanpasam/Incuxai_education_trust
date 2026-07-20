@@ -272,41 +272,69 @@ header.portal-mode #signup-btn { display: none !important; }
 /* Nav dropdown */
 .nav-item {
   position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
 }
 
 .nav-item .dropdown {
   display: none;
   position: absolute;
-  top: 100%;
-  left: 0;
-  background: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.15);
-  min-width: 200px;
-  padding: 0.5rem;
-  z-index: 100;
+  top: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0c1628 !important;
+  border: 1px solid rgba(155, 122, 62, 0.35);
+  border-radius: 14px;
+  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.45);
+  min-width: 220px;
+  padding: 8px;
+  z-index: 10000;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
 
-.nav-item:hover .dropdown {
-  display: block;
+/* Invisible bridge so mouse hover is never lost when moving from link to dropdown */
+.nav-item .dropdown::before {
+  content: '';
+  position: absolute;
+  top: -12px;
+  left: 0;
+  right: 0;
+  height: 14px;
+  background: transparent;
+}
+
+header nav .nav-item:hover .dropdown,
+header nav .nav-item:focus-within .dropdown {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
   animation: fadeIn 0.2s ease;
 }
 
-.nav-item .dropdown a {
-  display: block;
-  color: var(--text);
-  padding: 0.6rem 1rem;
-  border-radius: 8px;
-  font-size: 0.85rem;
-  font-weight: 500;
-  border: none;
-  background: transparent;
-  white-space: nowrap;
+header nav .nav-item .dropdown a,
+header:not(.scrolled) nav .nav-item .dropdown a {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  color: #ffffff !important;
+  padding: 0.65rem 1rem !important;
+  border-radius: 10px !important;
+  font-size: 0.88rem !important;
+  font-weight: 600 !important;
+  border: none !important;
+  background: transparent !important;
+  white-space: nowrap !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
 }
 
-.nav-item .dropdown a:hover {
-  background: rgba(155, 122, 62, 0.08);
-  color: var(--secondary) !important;
+header nav .nav-item .dropdown a:hover,
+header:not(.scrolled) nav .nav-item .dropdown a:hover {
+  background: linear-gradient(135deg, rgba(155, 122, 62, 0.25), rgba(125, 99, 52, 0.25)) !important;
+  color: #C5A059 !important;
 }
 
 .header-right {

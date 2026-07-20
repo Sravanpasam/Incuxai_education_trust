@@ -23,15 +23,25 @@ interface CourseProgress {
   totalWatchTime: number;
 }
 
-function loadProgress(): CourseProgress {
+function getUserStorageKey(baseKey: string, userEmail?: string): string {
+  if (!userEmail) return baseKey;
+  const safeEmail = userEmail.replace(/[^a-zA-Z0-9]/g, '_');
+  return `${baseKey}_${safeEmail}`;
+}
+
+function loadProgress(userEmail?: string): CourseProgress {
   try {
-    const raw = localStorage.getItem(PROGRESS_KEY);
+    const key = getUserStorageKey(PROGRESS_KEY, userEmail);
+    const raw = localStorage.getItem(key) || localStorage.getItem(PROGRESS_KEY);
     if (raw) return JSON.parse(raw);
   } catch {}
   return { completedLessons: [], lessonProgress: {}, currentLessonId: HR_COURSE.chapters[0].lessons[0].id, lastAccessed: Date.now(), totalWatchTime: 0 };
 }
 
-function saveProgress(p: CourseProgress) { localStorage.setItem(PROGRESS_KEY, JSON.stringify({ ...p, lastAccessed: Date.now() })); }
+function saveProgress(p: CourseProgress, userEmail?: string) {
+  const key = getUserStorageKey(PROGRESS_KEY, userEmail);
+  localStorage.setItem(key, JSON.stringify({ ...p, lastAccessed: Date.now() }));
+}
 
 function getAllLessons(): { lesson: Lesson; chapter: Chapter; globalIndex: number }[] {
   const result: { lesson: Lesson; chapter: Chapter; globalIndex: number }[] = [];
@@ -58,7 +68,7 @@ const PROFILE_KEY = 'lms_user_profile';
 export default function CourseDashboard() {
   const navigate = useNavigate();
   const { user, logout } = useLmsAuth();
-  const [progress, setProgress] = useState<CourseProgress>(loadProgress);
+  const [progress, setProgress] = useState<CourseProgress>(() => loadProgress(user?.email));
   const [expandedChapters, setExpandedChapters] = useState<Record<string, boolean>>(() => { const m: Record<string, boolean> = {}; HR_COURSE.chapters.forEach((ch) => { m[ch.id] = true; }); return m; });
   const [activeLessonId, setActiveLessonId] = useState(progress.currentLessonId);
   const [activeTab, setActiveTab] = useState<'overview' | 'notes' | 'transcript' | 'resources'>('overview');
@@ -74,10 +84,12 @@ export default function CourseDashboard() {
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const [rightPanelTab, setRightPanelTab] = useState<'notes' | 'transcript' | 'resources'>('notes');
   const lessonRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const saveTimeoutRef = useRef<any>(null);
 
   const [userProfile, setUserProfile] = useState<UserProfile>(() => {
     try {
-      const raw = localStorage.getItem(PROFILE_KEY);
+      const key = getUserStorageKey(PROFILE_KEY, user?.email);
+      const raw = localStorage.getItem(key) || localStorage.getItem(PROFILE_KEY);
       if (raw) return JSON.parse(raw);
     } catch {}
     return {
@@ -96,7 +108,8 @@ export default function CourseDashboard() {
 
   const handleSaveProfile = (updated: UserProfile) => {
     setUserProfile(updated);
-    localStorage.setItem(PROFILE_KEY, JSON.stringify(updated));
+    const key = getUserStorageKey(PROFILE_KEY, user?.email);
+    localStorage.setItem(key, JSON.stringify(updated));
     setEditModalOpen(false);
     setToastMsg('Profile updated successfully!');
     setTimeout(() => setToastMsg(''), 3000);
@@ -134,8 +147,24 @@ export default function CourseDashboard() {
   const totalTimeRemaining = useMemo(() => { let total = 0; allLessons.forEach(({ lesson }) => { if (!progress.completedLessons.includes(lesson.id)) total += parseDuration(lesson.duration); }); return formatTimeLeft(total); }, [allLessons, progress.completedLessons]);
 
   const saveLessonProgress = useCallback((lessonId: string, updates: Partial<LessonProgress>) => {
-    setProgress((prev) => { const lp = prev.lessonProgress[lessonId] || { completed: false, watchPercent: 0, lastPosition: 0, timestamp: Date.now() }; const newLp = { ...lp, ...updates, timestamp: Date.now() }; const newLessonProgress = { ...prev.lessonProgress, [lessonId]: newLp }; let newCompleted = [...prev.completedLessons]; if (newLp.watchPercent >= WATCH_THRESHOLD && !newCompleted.includes(lessonId)) newCompleted.push(lessonId); const next = { ...prev, lessonProgress: newLessonProgress, completedLessons: newCompleted, currentLessonId: lessonId }; saveProgress(next); return next; });
-  }, []);
+    setProgress((prev) => {
+      const lp = prev.lessonProgress[lessonId] || { completed: false, watchPercent: 0, lastPosition: 0, timestamp: Date.now() };
+      const newLp = { ...lp, ...updates, timestamp: Date.now() };
+      const newLessonProgress = { ...prev.lessonProgress, [lessonId]: newLp };
+      let newCompleted = [...prev.completedLessons];
+      if (newLp.watchPercent >= WATCH_THRESHOLD && !newCompleted.includes(lessonId)) {
+        newCompleted.push(lessonId);
+      }
+      const next = { ...prev, lessonProgress: newLessonProgress, completedLessons: newCompleted, currentLessonId: lessonId };
+
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = setTimeout(() => {
+        saveProgress(next, user?.email);
+      }, 1000);
+
+      return next;
+    });
+  }, [user?.email]);
 
   const selectLesson = useCallback((lessonId: string) => {
     setActiveLessonId(lessonId); setQuizAnswers({}); setQuizSubmitted(false); setActiveTab('overview'); setIsEditingNote(false);
