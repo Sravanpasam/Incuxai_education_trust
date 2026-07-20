@@ -4,8 +4,10 @@
  */
 
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { fetchWithRetry, validateCorporateEmail, globalRateLimiter } from './utils';
 import { motion } from 'motion/react';
+import { useAuth } from './auth/context/AuthContext';
 import logoImg from '../picss/iet logo.png';
 import whoWeAreImg from './assets/about_who_we_are.jpg';
 import iit1Img from '../picss/iit1.png';
@@ -172,6 +174,8 @@ const quizBank = [
 ];
 
 export default function App() {
+  const navigate = useNavigate();
+  const { user: authUser, isAuthenticated, logout: authLogout } = useAuth();
   const [isIitPaymentFlow, setIsIitPaymentFlow] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
 
@@ -1241,161 +1245,6 @@ OFFICIAL VERIFICATION LINK: https://incuxaieducationtrust.org/verify/${cert.id}
     return () => clearTimeout(timer);
   }, []);
 
-  // Corp OTP Timers Effect
-  useEffect(() => {
-    let interval: any = null;
-    if (corpShowOtpModal && !corpVerificationLoading && !corpSuccessAnimation) {
-      interval = setInterval(() => {
-        setCorpOtpTimer(prev => {
-          if (prev <= 1) {
-            setCorpGeneratedOtp('');
-            return 0;
-          }
-          return prev - 1;
-        });
-        setCorpResendTimer(prev => (prev > 0 ? prev - 1 : 0));
-      }, 1000);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [corpShowOtpModal, corpVerificationLoading, corpSuccessAnimation]);
-
-  const handleOtpDigitChange = (index: number, val: string) => {
-    const updated = [...corpEnteredOtp];
-    updated[index] = val.slice(-1).replace(/[^0-9]/g, '');
-    setCorpEnteredOtp(updated);
-
-    if (updated[index] !== '' && index < 5) {
-      const nextInput = document.getElementById(`otp-digit-${index + 1}`);
-      nextInput?.focus();
-    }
-  };
-
-  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace') {
-      const updated = [...corpEnteredOtp];
-      if (updated[index] === '' && index > 0) {
-        const prevInput = document.getElementById(`otp-digit-${index - 1}`);
-        prevInput?.focus();
-      }
-    }
-  };
-
-  const validateCorpForm = () => {
-    const errors: Record<string, string> = {};
-    if (!corpRegForm.fullName.trim()) errors.fullName = "Full Name is required.";
-    if (!corpRegForm.personalEmail.trim()) {
-      errors.personalEmail = "Personal Email is required.";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(corpRegForm.personalEmail)) {
-      errors.personalEmail = "Invalid email format.";
-    }
-    if (!corpRegForm.phone.trim()) {
-      errors.phone = "Phone Number is required.";
-    } else if (!/^\+?[0-9\s-]{10,15}$/.test(corpRegForm.phone)) {
-      errors.phone = "Please enter a valid phone number.";
-    }
-    if (!corpRegForm.workEmail.trim()) {
-      errors.workEmail = "Work Email is required.";
-    } else {
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(corpRegForm.workEmail)) {
-        errors.workEmail = "Invalid email format.";
-      } else {
-        const emailDomain = corpRegForm.workEmail.split('@')[1].toLowerCase();
-        const personalDomains = [
-          'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 
-          'icloud.com', 'aol.com', 'proton.me', 'rediffmail.com', 
-          'zoho.com'
-        ];
-        if (personalDomains.includes(emailDomain)) {
-          errors.workEmail = "Please enter your official company email.";
-        } else if (corpRegForm.companyName.trim()) {
-          const cleanCompanyName = corpRegForm.companyName.toLowerCase().replace(/[^a-z0-9]/g, '');
-          const cleanDomain = emailDomain.split('.')[0];
-          if (!cleanDomain.includes(cleanCompanyName) && !cleanCompanyName.includes(cleanDomain)) {
-            errors.workEmailWarning = `Official email domain (@${emailDomain}) does not seem to match company "${corpRegForm.companyName}".`;
-          }
-        }
-      }
-    }
-    if (!corpRegForm.companyName.trim()) errors.companyName = "Company Name is required.";
-    if (!corpRegForm.location.trim()) errors.location = "Location is required.";
-    if (!corpRegForm.role) errors.role = "Please select a Role.";
-    
-    setCorpFormErrors(errors);
-    return !Object.keys(errors).some(k => k !== 'workEmailWarning');
-  };
-
-  const handleCorpFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (validateCorpForm()) {
-      const generated = Math.floor(100000 + Math.random() * 900000).toString();
-      setCorpGeneratedOtp(generated);
-      setCorpOtpAttempts(0);
-      setCorpOtpTimer(600);
-      setCorpResendTimer(60);
-      setCorpEnteredOtp(['', '', '', '', '', '']);
-      setCorpShowRegModal(false);
-      setCorpShowOtpModal(true);
-      setCorpToastMessage(`[SECURE SIMULATION] OTP sent to ${corpRegForm.workEmail}: Your verification code is ${generated}`);
-      setTimeout(() => {
-        setCorpToastMessage(null);
-      }, 15000);
-    }
-  };
-
-  const verifyCorpOtp = () => {
-    const enteredCode = corpEnteredOtp.join('');
-    if (enteredCode.length < 6) return;
-    setCorpVerificationLoading(true);
-    setTimeout(() => {
-      setCorpVerificationLoading(false);
-      if (corpOtpTimer === 0 || !corpGeneratedOtp) {
-        const w = window as any;
-        w.showToast?.("OTP has expired. Please resend code.");
-        return;
-      }
-      if (enteredCode === corpGeneratedOtp) {
-        setCorpSuccessAnimation(true);
-        setTimeout(() => {
-          setCorpSuccessAnimation(false);
-          setCorpShowOtpModal(false);
-          const record = {
-            fullName: corpRegForm.fullName,
-            personalEmail: corpRegForm.personalEmail,
-            phone: corpRegForm.phone,
-            workEmail: corpRegForm.workEmail,
-            companyName: corpRegForm.companyName,
-            location: corpRegForm.location,
-            role: corpRegForm.role,
-            registrationDate: new Date().toISOString(),
-            verificationStatus: "Verified",
-            otpVerifiedTime: new Date().toISOString()
-          };
-          const existingRecords = JSON.parse(localStorage.getItem('corporate_registrations') || '[]');
-          existingRecords.push(record);
-          localStorage.setItem('corporate_registrations', JSON.stringify(existingRecords));
-          localStorage.setItem('corp_otp_verified', 'true');
-          setCorpIsRegistered(true);
-          const w = window as any;
-          w.showToast?.("Registration Successful. Welcome to the course!");
-          setCorpActiveTab('lessons');
-          setCorpActiveSectionIdx(0);
-          setCorpActiveVideoIdx(0);
-        }, 2000);
-      } else {
-        const newAttempts = corpOtpAttempts + 1;
-        setCorpOtpAttempts(newAttempts);
-        const w = window as any;
-        if (newAttempts >= 5) {
-          w.showToast?.("Maximum attempts reached. Please register again.");
-          setCorpShowOtpModal(false);
-        } else {
-          w.showToast?.(`Invalid OTP. ${5 - newAttempts} attempts left.`);
-        }
-      }
-    }, 1500);
-  };
 
   // --- INCUXAI IIT VISIT PAYMENT INJECTION ---
   useEffect(() => {
@@ -2246,18 +2095,7 @@ OFFICIAL VERIFICATION LINK: https://incuxaieducationtrust.org/verify/${cert.id}
         localStorage.setItem('eventRegistrations', JSON.stringify([]));
       }
 
-      // Fetch persistent database from Express backend
-      try {
-        const res = await fetch('/api/sync-data');
-        if (res.ok) {
-          const db = await res.json();
-          if (db.volunteers) localStorage.setItem('volunteers', JSON.stringify(db.volunteers));
-          if (db.volunteer_applications) localStorage.setItem('volunteer_applications', JSON.stringify(db.volunteer_applications));
-          if (db.volunteer_pass) localStorage.setItem('volunteer_pass', JSON.stringify(db.volunteer_pass));
-        }
-      } catch (err) {
-        console.warn('Database sync failed, falling back to local storage cache:', err);
-      }
+      // Volunteer data syncs from localStorage (no payment server dependency)
 
       if (!localStorage.getItem('volunteers')) {
         localStorage.setItem('volunteers', JSON.stringify([]));
@@ -3605,7 +3443,6 @@ OFFICIAL VERIFICATION LINK: https://incuxaieducationtrust.org/verify/${cert.id}
         w.showToast?.(`${cat.label} course is coming soon! Stay tuned.`);
         return;
       }
-
       // Check Work Email verification
       const savedUserStr = localStorage.getItem('currentUser');
       let isWorkVerified = false;
@@ -4136,10 +3973,6 @@ OFFICIAL VERIFICATION LINK: https://incuxaieducationtrust.org/verify/${cert.id}
               onClick={() => {
                 setShowHrPopup(false);
                 (window as any).showPage('corporate-course');
-                const isVerified = localStorage.getItem('corp_otp_verified') === 'true';
-                if (!isVerified) {
-                  setTimeout(() => setCorpShowRegModal(true), 300);
-                }
               }}
             >
               <span>Explore AI for HR Course</span>
@@ -4189,60 +4022,72 @@ OFFICIAL VERIFICATION LINK: https://incuxaieducationtrust.org/verify/${cert.id}
         </nav>
         <div className="header-right">
           <button className="btn-donate" id="signup-btn" onClick={() => (window as any).showPage('donate')}>Donate</button>
+          {isAuthenticated ? (
+            <>
+              <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.7)', fontWeight: '600', marginRight: '0.5rem' }}>
+                {authUser?.name || authUser?.email}
+              </span>
+              <button className="btn-login" onClick={() => { authLogout(); navigate('/'); }} style={{ background: 'rgba(220,38,38,0.8)', border: 'none' }}>
+                Sign Out
+              </button>
+            </>
+          ) : (
+            <>
+              {/* Login Button for Unauthenticated Users */}
+              <button className="btn-login" onClick={() => (window as any).openModal()} id="login-btn">Login</button>
 
-          {/* Login Button for Unauthenticated Users */}
-          <button className="btn-login" onClick={() => (window as any).openModal()} id="login-btn">Login</button>
-
-          {/* Profile Dropdown for Authenticated Users */}
-          <div id="user-menu-wrapper" className="user-menu-wrapper" style={{ display: 'none' }}>
-            <div
-              id="header-profile-btn"
-              className="user-profile-avatar-btn"
-              onClick={(e) => (window as any).toggleUserDropdown(e)}
-              title="Account Options"
-            >
-              <div className="header-avatar-circle">
-                <span id="header-avatar-text">U</span>
-                <img id="header-avatar-img" style={{ display: 'none' }} alt="User Profile" />
-              </div>
-              <span id="header-user-name" className="header-user-name-text">User</span>
-              <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.7)', marginLeft: '2px' }}>▼</span>
-            </div>
-
-            {/* Dropdown Floating Menu */}
-            <div id="user-dropdown-menu" className="user-dropdown-menu">
-              <div className="dropdown-user-header">
-                <div className="dropdown-avatar-circle">
-                  <span id="dropdown-avatar-text">U</span>
-                  <img id="dropdown-avatar-img" style={{ display: 'none' }} alt="Avatar" />
+              {/* Profile Dropdown for Authenticated Users */}
+              <div id="user-menu-wrapper" className="user-menu-wrapper" style={{ display: 'none' }}>
+                <div
+                  id="header-profile-btn"
+                  className="user-profile-avatar-btn"
+                  onClick={(e) => (window as any).toggleUserDropdown(e)}
+                  title="Account Options"
+                >
+                  <div className="header-avatar-circle">
+                    <span id="header-avatar-text">U</span>
+                    <img id="header-avatar-img" style={{ display: 'none' }} alt="User Profile" />
+                  </div>
+                  <span id="header-user-name" className="header-user-name-text">User</span>
+                  <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.7)', marginLeft: '2px' }}>▼</span>
                 </div>
-                <div className="dropdown-user-details">
-                  <span id="dropdown-user-name" className="dropdown-user-name">User Name</span>
-                  <span id="dropdown-user-email" className="dropdown-user-email">user@incuxai.org</span>
-                  <span id="dropdown-role-badge" className="role-pill-badge student">STUDENT</span>
+
+                {/* Dropdown Floating Menu */}
+                <div id="user-dropdown-menu" className="user-dropdown-menu">
+                  <div className="dropdown-user-header">
+                    <div className="dropdown-avatar-circle">
+                      <span id="dropdown-avatar-text">U</span>
+                      <img id="dropdown-avatar-img" style={{ display: 'none' }} alt="Avatar" />
+                    </div>
+                    <div className="dropdown-user-details">
+                      <span id="dropdown-user-name" className="dropdown-user-name">User Name</span>
+                      <span id="dropdown-user-email" className="dropdown-user-email">user@incuxai.org</span>
+                      <span id="dropdown-role-badge" className="role-pill-badge student">STUDENT</span>
+                    </div>
+                  </div>
+
+                  <button className="dropdown-item" onClick={() => { (window as any).toggleUserDropdown(); (window as any).goToProfilePage(); }}>
+                    <span>👤</span> My Profile
+                  </button>
+                  <button className="dropdown-item" onClick={() => { (window as any).toggleUserDropdown(); (window as any).showPage('ai4all'); }}>
+                    <span>📚</span> My Courses
+                  </button>
+                  <button className="dropdown-item" onClick={() => { (window as any).toggleUserDropdown(); (window as any).showPage('learner-profile'); }}>
+                    <span>🏆</span> Certificates
+                  </button>
+                  <button className="dropdown-item" onClick={() => { (window as any).toggleUserDropdown(); (window as any).goToDashboard(); }}>
+                    <span>📊</span> Dashboard
+                  </button>
+                  <button className="dropdown-item" onClick={() => { (window as any).toggleUserDropdown(); (window as any).goToSettings(); }}>
+                    <span>⚙️</span> Settings
+                  </button>
+                  <button className="dropdown-item logout" onClick={() => { (window as any).toggleUserDropdown(); (window as any).handleLogout(); }}>
+                    <span>🚪</span> Logout
+                  </button>
                 </div>
               </div>
-
-              <button className="dropdown-item" onClick={() => { (window as any).toggleUserDropdown(); (window as any).goToProfilePage(); }}>
-                <span>👤</span> My Profile
-              </button>
-              <button className="dropdown-item" onClick={() => { (window as any).toggleUserDropdown(); (window as any).showPage('ai4all'); }}>
-                <span>📚</span> My Courses
-              </button>
-              <button className="dropdown-item" onClick={() => { (window as any).toggleUserDropdown(); (window as any).showPage('learner-profile'); }}>
-                <span>🏆</span> Certificates
-              </button>
-              <button className="dropdown-item" onClick={() => { (window as any).toggleUserDropdown(); (window as any).goToDashboard(); }}>
-                <span>📊</span> Dashboard
-              </button>
-              <button className="dropdown-item" onClick={() => { (window as any).toggleUserDropdown(); (window as any).goToSettings(); }}>
-                <span>⚙️</span> Settings
-              </button>
-              <button className="dropdown-item logout" onClick={() => { (window as any).toggleUserDropdown(); (window as any).handleLogout(); }}>
-                <span>🚪</span> Logout
-              </button>
-            </div>
-          </div>
+            </>
+          )}
           <button className="mobile-menu-toggle" onClick={() => {
             const nav = document.getElementById('main-nav');
             const toggle = document.querySelector('.mobile-menu-toggle');
@@ -4675,7 +4520,7 @@ OFFICIAL VERIFICATION LINK: https://incuxaieducationtrust.org/verify/${cert.id}
         </section>
       </div>
 
-      {/* ========== AI FOR HR COURSE PAGE ========== */}
+      {/* ========== CORPORATE COURSE PAGE (AI FOR HR) ========== */}
       <div id="corporate-course" className="page corp-course-page">
         {/* Mock Simulated Email Toast Notifications */}
         {corpToastMessage && (
@@ -4720,39 +4565,20 @@ OFFICIAL VERIFICATION LINK: https://incuxaieducationtrust.org/verify/${cert.id}
             </div>
 
             <div className="corp-course-body">
-              {/* Left Column: Curriculum & Outcomes */}
               <div style={{ textAlign: 'left' }}>
                 <h3 className="corp-section-title">Key Learning Outcomes</h3>
                 <div className="outcomes-list">
-                  <div className="outcome-card">
-                    <div className="outcome-check">✓</div>
-                    <div className="outcome-text">Automate Resume Screening & Candidate Ranking with LLMs</div>
-                  </div>
-                  <div className="outcome-card">
-                    <div className="outcome-check">✓</div>
-                    <div className="outcome-text">Analyze Employee Sentiment from Annual Feedback Surveys</div>
-                  </div>
-                  <div className="outcome-card">
-                    <div className="outcome-check">✓</div>
-                    <div className="outcome-text">Build Predictive Attrition & Retention Models</div>
-                  </div>
-                  <div className="outcome-card">
-                    <div className="outcome-check">✓</div>
-                    <div className="outcome-text">Ensure AI Ethics, GDPR Compliance & Bias-Free Hiring</div>
-                  </div>
+                  <div className="outcome-card"><div className="outcome-check">✓</div><div className="outcome-text">Automate Resume Screening & Candidate Ranking with LLMs</div></div>
+                  <div className="outcome-card"><div className="outcome-check">✓</div><div className="outcome-text">Analyze Employee Sentiment from Annual Feedback Surveys</div></div>
+                  <div className="outcome-card"><div className="outcome-check">✓</div><div className="outcome-text">Build Predictive Attrition & Retention Models</div></div>
+                  <div className="outcome-card"><div className="outcome-check">✓</div><div className="outcome-text">Ensure AI Ethics, GDPR Compliance & Bias-Free Hiring</div></div>
                 </div>
 
                 <h3 className="corp-section-title">Course Curriculum</h3>
                 <div className="curriculum-list">
                   {hrCurriculum.map((sec, sIdx) => (
-                    <div
-                      key={sIdx}
-                      className={`curriculum-module ${corpExpandedModule === sIdx ? 'expanded' : ''}`}
-                    >
-                      <div
-                        className="curriculum-module-header"
-                        onClick={() => setCorpExpandedModule(corpExpandedModule === sIdx ? null : sIdx)}
-                      >
+                    <div key={sIdx} className={`curriculum-module ${corpExpandedModule === sIdx ? 'expanded' : ''}`}>
+                      <div className="curriculum-module-header" onClick={() => setCorpExpandedModule(corpExpandedModule === sIdx ? null : sIdx)}>
                         <div className="curriculum-module-title-group">
                           <span className="curriculum-module-badge">Section {sIdx + 1}</span>
                           <span className="curriculum-module-title">{sec.section.split(': ')[1] || sec.section}</span>
@@ -8299,7 +8125,9 @@ OFFICIAL VERIFICATION LINK: https://incuxaieducationtrust.org/verify/${cert.id}
           <div className="footer-col">
             <h4>AI 4 ALL</h4>
             <ul>
-              <li><a onClick={() => (window as any).showPage('corporate-course')}>AI for HR</a></li>
+              <li><a onClick={() => {
+                (window as any).showPage('corporate-course');
+              }}>AI for HR</a></li>
               <li><a onClick={() => (window as any).showPage('ai4all')}>AI for Teachers</a></li>
               <li><a onClick={() => (window as any).showPage('ai4all')}>AI for Police</a></li>
             </ul>
