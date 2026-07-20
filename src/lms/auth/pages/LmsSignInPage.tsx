@@ -1,11 +1,11 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { loginUser } from '../services/authService';
-import { useAuth } from '../context/AuthContext';
+import { loginUser } from '../../../auth/services/authService';
+import { useLmsAuth } from '../context/LmsAuthContext';
 
-export default function SignInPage() {
+export default function LmsSignInPage() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login } = useLmsAuth();
   const [workEmail, setWorkEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -26,9 +26,9 @@ export default function SignInPage() {
     try {
       const res = await loginUser(workEmail.trim().toLowerCase(), password);
       if (res.success && res.token && res.user) {
-        showToast('success', 'Login successful!');
+        showToast('success', 'Signed in to Learning Hub!');
         login(res.token, res.user.email, res.user.name, res.user.id);
-        setTimeout(() => navigate('/'), 800);
+        setTimeout(() => navigate('/course-dashboard'), 800);
       } else {
         showToast('error', res.message || 'Invalid work email or password.');
       }
@@ -45,6 +45,9 @@ export default function SignInPage() {
 
   return (
     <div style={s.page}>
+      <style>{`
+        @keyframes lmsSpin{to{transform:rotate(360deg)}}
+      `}</style>
       <button onClick={() => navigate('/')} style={s.backBtn}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="15 18 9 12 15 6"/>
@@ -53,15 +56,9 @@ export default function SignInPage() {
       </button>
       <div style={s.card}>
         <div style={s.header}>
-          <div style={s.iconWrap}>
-            <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
-              <rect width="36" height="36" rx="8" fill="#e94560"/>
-              <rect x="10" y="10" width="16" height="12" rx="2" fill="#fff"/>
-              <path d="M14 26h8" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
-          </div>
-          <h1 style={s.title}>Welcome Back</h1>
-          <p style={s.subtitle}>Sign in to your account</p>
+          <div style={s.brandIcon}>I</div>
+          <h1 style={s.title}>IncuXAI Learning Hub</h1>
+          <p style={s.subtitle}>Sign in to continue your course</p>
         </div>
 
         <form onSubmit={handleSubmit} style={s.form}>
@@ -96,14 +93,14 @@ export default function SignInPage() {
 
           <p style={s.footer}>
             Don't have an account?{' '}
-            <Link to="/sign-up" style={s.link}>Sign Up</Link>
+            <Link to="/lms/sign-up" style={s.link}>Sign Up</Link>
           </p>
         </form>
       </div>
 
       {toast && (
-        <div style={{ ...s.toast, background: toast.type === 'success' ? '#f0fdf4' : '#fef2f2', borderColor: toast.type === 'success' ? '#bbf7d0' : '#fecaca' }}>
-          <span style={{ color: toast.type === 'success' ? '#16a34a' : '#dc2626', fontWeight: 600, fontSize: '0.85rem' }}>
+        <div style={{ ...s.toast, background: toast.type === 'success' ? 'rgba(22,163,74,0.12)' : 'rgba(220,38,38,0.12)', borderColor: toast.type === 'success' ? 'rgba(22,163,74,0.3)' : 'rgba(220,38,38,0.3)' }}>
+          <span style={{ color: toast.type === 'success' ? '#4ade80' : '#f87171', fontWeight: 600, fontSize: '0.85rem' }}>
             {toast.type === 'success' ? '\u2713' : '\u2715'} {toast.msg}
           </span>
         </div>
@@ -119,8 +116,9 @@ const s: Record<string, React.CSSProperties> = {
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    background: 'linear-gradient(135deg, #0c1628 0%, #1e3a5f 100%)',
+    background: '#f8f7f3',
     padding: '1rem',
+    fontFamily: 'Inter, system-ui, sans-serif',
   },
   backBtn: {
     position: 'fixed',
@@ -129,69 +127,88 @@ const s: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     gap: '6px',
-    padding: '8px 16px',
-    background: 'rgba(255,255,255,0.08)',
-    border: '1px solid rgba(255,255,255,0.15)',
-    borderRadius: '10px',
-    color: 'rgba(255,255,255,0.8)',
+    padding: '8px 18px',
+    background: '#ffffff',
+    border: '1px solid rgba(12, 22, 40, 0.12)',
+    borderRadius: '99px',
+    color: '#0c1628',
     fontSize: '0.85rem',
     fontWeight: 600,
     fontFamily: 'Inter, sans-serif',
     cursor: 'pointer',
-    backdropFilter: 'blur(10px)',
     transition: 'all 0.2s',
+    boxShadow: '0 2px 10px rgba(12,22,40,0.05)',
     zIndex: 10,
   },
   card: {
     width: '100%',
-    maxWidth: '440px',
-    background: '#fff',
+    maxWidth: '420px',
+    background: '#ffffff',
     borderRadius: '16px',
-    boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
+    border: '1px solid rgba(12, 22, 40, 0.08)',
+    boxShadow: '0 12px 40px rgba(12, 22, 40, 0.08)',
     overflow: 'hidden',
   },
   header: {
-    background: 'linear-gradient(135deg, #0c1628 0%, #16213e 100%)',
+    background: 'linear-gradient(135deg, #0c1628 0%, #1e3a5f 100%)',
     padding: '2.5rem 2rem 2rem',
     textAlign: 'center',
+    borderBottom: '1px solid rgba(255,255,255,0.1)',
   },
-  iconWrap: { marginBottom: '12px' },
-  title: { margin: 0, color: '#fff', fontSize: '1.4rem', fontWeight: 800 },
-  subtitle: { margin: '8px 0 0', color: '#a8a8b3', fontSize: '0.85rem' },
-  form: { padding: '2rem' },
-  label: { display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.85rem', color: '#1e293b' },
+  brandIcon: {
+    width: '48px',
+    height: '48px',
+    borderRadius: '12px',
+    background: 'linear-gradient(135deg, #9B7A3E, #7D6334)',
+    color: '#ffffff',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontFamily: 'Plus Jakarta Sans, sans-serif',
+    fontWeight: 800,
+    fontSize: '1.3rem',
+    margin: '0 auto 14px',
+    boxShadow: '0 4px 14px rgba(155, 122, 62, 0.35)',
+  },
+  title: { margin: 0, color: '#ffffff', fontSize: '1.35rem', fontWeight: 700, fontFamily: 'Plus Jakarta Sans, sans-serif' },
+  subtitle: { margin: '8px 0 0', color: 'rgba(255,255,255,0.75)', fontSize: '0.85rem' },
+  form: { padding: '1.8rem 2rem 2rem' },
+  label: { display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.82rem', color: '#1e293b' },
   input: {
     width: '100%',
     padding: '12px 16px',
-    border: '2px solid #e2e8f0',
+    border: '1.5px solid rgba(12, 22, 40, 0.12)',
     borderRadius: '10px',
-    fontSize: '1rem',
+    fontSize: '0.92rem',
     fontFamily: 'Inter, sans-serif',
     outline: 'none',
     boxSizing: 'border-box',
+    background: '#f8f7f3',
+    color: '#0c1628',
   },
   btn: {
     width: '100%',
     marginTop: '1.5rem',
-    padding: '14px',
-    background: 'linear-gradient(135deg, #9B7A3E 0%, #7D6334 100%)',
-    color: '#fff',
+    padding: '13px',
+    background: 'linear-gradient(135deg, #9B7A3E, #7D6334)',
+    color: '#ffffff',
     border: 'none',
-    borderRadius: '10px',
-    fontSize: '1rem',
+    borderRadius: '99px',
+    fontSize: '0.95rem',
     fontWeight: 700,
     fontFamily: 'Inter, sans-serif',
     cursor: 'pointer',
+    boxShadow: '0 6px 20px -4px rgba(155, 122, 62, 0.35)',
   },
   spin: {
     width: '16px', height: '16px', border: '2px solid rgba(255,255,255,0.3)',
-    borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.6s linear infinite',
+    borderTopColor: '#ffffff', borderRadius: '50%', animation: 'lmsSpin 0.6s linear infinite',
   },
   footer: { textAlign: 'center', fontSize: '0.85rem', color: '#64748b', marginTop: '1.2rem' },
-  link: { color: '#9B7A3E', fontWeight: 600, textDecoration: 'underline' },
+  link: { color: '#9B7A3E', fontWeight: 600, textDecoration: 'none' },
   toast: {
     position: 'fixed', bottom: '2rem', left: '50%', transform: 'translateX(-50%)',
     padding: '12px 24px', borderRadius: '10px', border: '1px solid',
-    boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 9999, maxWidth: '90vw', textAlign: 'center',
+    backdropFilter: 'blur(12px)', zIndex: 9999, maxWidth: '90vw', textAlign: 'center',
   },
 };

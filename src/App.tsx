@@ -597,6 +597,85 @@ export default function App() {
     };
 
     // Logins
+    w.unifiedPortalLogin = (e?: React.FormEvent) => {
+      if (e) e.preventDefault();
+      const email = (document.getElementById('portal-login-email') as HTMLInputElement)?.value?.trim();
+      const pass = (document.getElementById('portal-login-pass') as HTMLInputElement)?.value?.trim();
+
+      if (!email || !pass) {
+        w.showToast?.('Please enter your email and password.');
+        return;
+      }
+
+      // 1. Admin Login
+      if ((email === 'sravanpasam74@gmail.com' || email === 'admin@incuxai.org') && pass === 'admin123') {
+        const role = 'admin';
+        const name = 'Admin';
+        currentUser = { role, name };
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        localStorage.setItem('currentUserEmail', email);
+
+        w.renderEvents?.();
+        w.renderTasks?.();
+        w.renderVolunteersAndLeaderboard?.();
+        w.loadEventRegistrations?.();
+        w.showToast?.('Welcome Admin! Opening Admin Portal...');
+        setTimeout(() => w.showPage('admin-portal'), 500);
+        return;
+      }
+
+      // 2. Teacher Login
+      const teacherCreds = getSafeArray('teachxai_teachers_pass');
+      const foundTeacher = teacherCreds.find((t: any) => t && t.email === email && t.password === pass);
+      if (foundTeacher) {
+        const role = 'teacher';
+        const name = foundTeacher.name || email.split('@')[0];
+        currentUser = { role, name };
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        localStorage.setItem('currentUserEmail', email);
+
+        const tpName = document.getElementById('tportal-name');
+        const tpFullName = document.getElementById('tportal-fullname');
+        const tpAvatar = document.getElementById('tportal-avatar');
+        if (tpName) tpName.textContent = name;
+        if (tpFullName) tpFullName.textContent = name;
+        if (tpAvatar) tpAvatar.textContent = name[0].toUpperCase();
+
+        w.renderTeacherPortal?.();
+        w.showToast?.(`Welcome ${name}! Opening Teacher Portal...`);
+        setTimeout(() => w.showPage('teacher-portal'), 500);
+        return;
+      }
+
+      // 3. Volunteer Login
+      const volCreds = getSafeArray('volunteer_pass');
+      const foundVol = volCreds.find((v: any) => v && v.email === email && v.password === pass);
+      if (foundVol) {
+        const role = 'volunteer';
+        const name = foundVol.name || email.split('@')[0];
+        currentUser = { role, name };
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        localStorage.setItem('currentUserEmail', email);
+
+        const pName = document.getElementById('portal-name');
+        const pFullName = document.getElementById('portal-fullname');
+        const pAvatar = document.getElementById('portal-avatar');
+        if (pName) pName.textContent = name;
+        if (pFullName) pFullName.textContent = name;
+        if (pAvatar) pAvatar.textContent = name[0].toUpperCase();
+
+        w.renderEvents?.();
+        w.renderTasks?.();
+        w.renderVolunteersAndLeaderboard?.();
+        w.populateVolunteerProfile?.();
+        w.showToast?.(`Welcome ${name}! Opening Volunteer Portal...`);
+        setTimeout(() => w.showPage('vol-portal'), 500);
+        return;
+      }
+
+      w.showToast?.('Invalid email or password. Please check your credentials.');
+    };
+
     w.handleLoginBtn = () => {
       if (currentUser) {
         currentUser = null;
@@ -609,7 +688,7 @@ export default function App() {
         if (loggedUserEl) loggedUserEl.style.display = 'none';
         w.showPage('home');
       } else {
-        w.openModal();
+        w.showPage('portal-login');
       }
     };
 
@@ -2674,6 +2753,7 @@ export default function App() {
         <div className="header-right">
           <span id="logged-user" style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.8)', fontWeight: '600', display: 'none' }}></span>
           <button className="btn-donate" id="signup-btn" onClick={() => (window as any).showPage('donate')}>Donate</button>
+          <button className="btn-login" id="login-btn" onClick={() => (window as any).handleLoginBtn()}>Login</button>
           {isAuthenticated ? (
             <>
               <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.7)', fontWeight: '600', marginRight: '0.5rem' }}>
@@ -2755,8 +2835,6 @@ export default function App() {
               </div>
             </div>
           </div>
-
-
 
           {/* Minimal Slider dots */}
           <div className="slider-dots" id="slider-dots">
@@ -3181,7 +3259,7 @@ export default function App() {
                 <p className="panel-desc">
                   This course is exclusively for HR professionals. To gain access, register using your official company email address.
                 </p>
-                <button className="panel-btn-register" onClick={() => navigate('/sign-in')}>
+                <button className="panel-btn-register" onClick={() => navigate('/lms/sign-in')}>
                   <span>Register & Unlock Course</span>
                   <span>→</span>
                 </button>
@@ -4438,7 +4516,47 @@ export default function App() {
         </section>
       </div>
 
+      {/* ========== UNIFIED PORTAL LOGIN PAGE ========== */}
+      <div id="portal-login" className="page" style={{ paddingTop: '100px', minHeight: '100vh', background: 'var(--darker)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '100px 1rem 4rem' }}>
+        <div style={{ width: '100%', maxWidth: '440px', background: 'var(--glass)', borderRadius: '20px', border: '1px solid var(--glass-border)', boxShadow: '0 20px 60px rgba(12,22,40,0.1)', overflow: 'hidden' }}>
+          
+          <div style={{ background: 'linear-gradient(135deg, #0c1628 0%, #1e3a5f 100%)', padding: '2.5rem 2rem 2rem', textAlign: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+            <div style={{ width: '52px', height: '52px', borderRadius: '14px', background: 'linear-gradient(135deg, #9B7A3E, #7D6334)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.4rem', margin: '0 auto 14px', boxShadow: '0 6px 20px rgba(155,122,62,0.35)' }}>
+              I
+            </div>
+            <h2 style={{ margin: 0, color: '#ffffff', fontSize: '1.4rem', fontWeight: 700, fontFamily: 'var(--font-display)' }}>Portal Sign In</h2>
+            <p style={{ margin: '8px 0 0', color: 'rgba(255,255,255,0.75)', fontSize: '0.88rem' }}>Access Teacher, Volunteer, or Admin Portal</p>
+          </div>
 
+          <form onSubmit={(e) => (window as any).unifiedPortalLogin(e)} style={{ padding: '2rem' }}>
+            <div style={{ marginBottom: '1.2rem' }}>
+              <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text)' }}>Email Address</label>
+              <input type="email" id="portal-login-email" required placeholder="Enter your login email" style={{ width: '100%', padding: '12px 16px', border: '1.5px solid var(--glass-border)', borderRadius: '10px', fontSize: '0.92rem', outline: 'none', background: '#f8f7f3', color: '#0c1628', boxSizing: 'border-box' }} />
+            </div>
+
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text)' }}>Password</label>
+              <input type="password" id="portal-login-pass" required placeholder="Enter your password" style={{ width: '100%', padding: '12px 16px', border: '1.5px solid var(--glass-border)', borderRadius: '10px', fontSize: '0.92rem', outline: 'none', background: '#f8f7f3', color: '#0c1628', boxSizing: 'border-box' }} />
+            </div>
+
+            <button type="submit" style={{ width: '100%', padding: '13px', background: 'linear-gradient(135deg, #9B7A3E, #7D6334)', color: '#ffffff', border: 'none', borderRadius: '99px', fontSize: '0.95rem', fontWeight: 700, cursor: 'pointer', boxShadow: '0 6px 20px -4px rgba(155, 122, 62, 0.35)', transition: 'all 0.2s' }}>
+              Sign In to Portal
+            </button>
+
+            <div style={{ marginTop: '1.5rem', padding: '12px 14px', background: '#f8f7f3', borderRadius: '10px', border: '1px solid rgba(12,22,40,0.06)', fontSize: '0.78rem', color: '#64748b', lineHeight: '1.5', textAlign: 'center' }}>
+              ℹ️ Automatic Portal Routing based on your email.<br />
+              <strong>Admin Demo:</strong> <code>sravanpasam74@gmail.com</code> / <code>admin123</code>
+            </div>
+
+            <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
+              <button type="button" onClick={() => (window as any).showPage('home')} style={{ background: 'none', border: 'none', color: '#9B7A3E', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', textDecoration: 'underline' }}>
+                ← Back to Home Page
+              </button>
+            </div>
+          </form>
+
+        </div>
+      </div>
 
       {/* ========== DONATE PAGE ========== */}
       <div id="donate" className="page" style={{ paddingTop: '85px', background: 'var(--darker)', minHeight: '100vh' }}>
