@@ -234,16 +234,19 @@ nav a.nav-highlight-btn:hover {
   box-shadow: 0 4px 12px rgba(155, 122, 62, 0.3) !important;
 }
 
-/* Transparent top state links adjustments (excluding highlighted button) */
-header:not(.scrolled) nav a:not(.nav-highlight-btn) {
+/* Transparent top state links adjustments (excluding highlighted button & dropdown links) */
+header:not(.scrolled) nav > a:not(.nav-highlight-btn),
+header:not(.scrolled) nav > .nav-item > a:not(.nav-highlight-btn) {
   color: rgba(255, 255, 255, 0.85);
   background: transparent;
   border: none;
   box-shadow: none;
 }
 
-header:not(.scrolled) nav a:not(.nav-highlight-btn):hover, 
-header:not(.scrolled) nav a:not(.nav-highlight-btn).active {
+header:not(.scrolled) nav > a:not(.nav-highlight-btn):hover, 
+header:not(.scrolled) nav > a:not(.nav-highlight-btn).active,
+header:not(.scrolled) nav > .nav-item > a:not(.nav-highlight-btn):hover, 
+header:not(.scrolled) nav > .nav-item > a:not(.nav-highlight-btn).active {
   color: #ffffff !important;
   background: transparent;
 }
@@ -279,12 +282,26 @@ header.portal-mode #signup-btn { display: none !important; }
   position: absolute;
   top: 100%;
   left: 0;
-  background: #ffffff;
+  background: #0c1628 !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
   border-radius: 12px;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.15);
-  min-width: 200px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.4) !important;
+  min-width: 210px;
   padding: 0.5rem;
-  z-index: 100;
+  z-index: 1000;
+  margin-top: 4px;
+}
+
+/* Invisible hover bridge to prevent hover loss when moving mouse */
+.nav-item .dropdown::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 0;
+  right: 0;
+  height: 8px;
 }
 
 .nav-item:hover .dropdown {
@@ -292,21 +309,28 @@ header.portal-mode #signup-btn { display: none !important; }
   animation: fadeIn 0.2s ease;
 }
 
-.nav-item .dropdown a {
-  display: block;
-  color: var(--text);
-  padding: 0.6rem 1rem;
-  border-radius: 8px;
-  font-size: 0.85rem;
-  font-weight: 500;
-  border: none;
-  background: transparent;
-  white-space: nowrap;
+header nav .nav-item .dropdown a,
+header:not(.scrolled) nav .nav-item .dropdown a,
+header.scrolled nav .nav-item .dropdown a {
+  display: block !important;
+  color: rgba(255, 255, 255, 0.95) !important;
+  padding: 0.65rem 1rem !important;
+  border-radius: 8px !important;
+  font-size: 0.88rem !important;
+  font-weight: 600 !important;
+  border: none !important;
+  background: transparent !important;
+  white-space: nowrap !important;
+  transition: all 0.2s ease !important;
+  text-align: left !important;
 }
 
-.nav-item .dropdown a:hover {
-  background: rgba(155, 122, 62, 0.08);
-  color: var(--secondary) !important;
+header nav .nav-item .dropdown a:hover,
+header:not(.scrolled) nav .nav-item .dropdown a:hover,
+header.scrolled nav .nav-item .dropdown a:hover {
+  background: rgba(155, 122, 62, 0.25) !important;
+  color: #E5C158 !important;
+  transform: translateX(4px) !important;
 }
 
 .header-right {

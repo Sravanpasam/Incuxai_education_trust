@@ -2756,10 +2756,7 @@ export default function App() {
             </div>
           </div>
 
-          {/* Chat toggle button — below robot area */}
-          <button className="chat-bubble" onClick={() => (window as any).toggleChat()} title="AI Assistant">
-            <span className="chat-bubble-icon">💬</span>
-          </button>
+
 
           {/* Minimal Slider dots */}
           <div className="slider-dots" id="slider-dots">
@@ -4441,30 +4438,7 @@ export default function App() {
         </section>
       </div>
 
-      {/* ========== AI CHAT MODAL ========== */}
-      <div id="chat-modal" className="chat-modal">
-        <div className="chat-modal-content">
-          <div className="chat-header">
-            <div className="chat-header-info">
-              <span className="chat-header-icon">🤖</span>
-              <div>
-                <div className="chat-header-title">AI Assistant</div>
-                <div className="chat-header-status">Online</div>
-              </div>
-            </div>
-            <button className="chat-close" onClick={() => (window as any).toggleChat()}>✕</button>
-          </div>
-          <div className="chat-messages" id="chat-messages">
-            <div className="chat-msg bot">
-              <div className="chat-msg-content">Hi! I'm the AI assistant. How can I help you today? You can ask me about our programs, volunteering, login help, or anything about IncuXai Education Trust.</div>
-            </div>
-          </div>
-          <div className="chat-input-area">
-            <input type="text" id="chat-input" className="chat-input" placeholder="Type your message..." onKeyDown={(e) => { if (e.key === 'Enter') (window as any).sendChatMessage(); }} />
-            <button className="chat-send" onClick={() => (window as any).sendChatMessage()}>➤</button>
-          </div>
-        </div>
-      </div>
+
 
       {/* ========== DONATE PAGE ========== */}
       <div id="donate" className="page" style={{ paddingTop: '85px', background: 'var(--darker)', minHeight: '100vh' }}>
