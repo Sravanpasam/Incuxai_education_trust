@@ -2,13 +2,17 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './auth/context/AuthContext';
+import { LmsAuthProvider } from './lms/auth/context/LmsAuthContext';
 import ProtectedRoute from './auth/components/ProtectedRoute';
+import LmsProtectedRoute from './lms/auth/components/LmsProtectedRoute';
 import WorkEmailVerification from './auth/pages/WorkEmailVerification';
 import VerifyOTP from './auth/pages/VerifyOTP';
 import DashboardPage from './auth/pages/DashboardPage';
 import CourseDashboard from './auth/pages/CourseDashboard';
 import SignUpPage from './auth/pages/SignUpPage';
 import SignInPage from './auth/pages/SignInPage';
+import LmsSignInPage from './lms/auth/pages/LmsSignInPage';
+import LmsSignUpPage from './lms/auth/pages/LmsSignUpPage';
 import App from './App.tsx';
 import './index.css';
 
@@ -28,15 +32,24 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <Routes>
-          <Route path="/sign-up" element={<SignUpPage />} />
-          <Route path="/sign-in" element={<SignInPage />} />
-          <Route path="/verify-email" element={<WorkEmailVerification />} />
-          <Route path="/verify-otp" element={<VerifyOTP />} />
-          <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-          <Route path="/course-dashboard" element={<ProtectedRoute><CourseDashboard /></ProtectedRoute>} />
-          <Route path="*" element={<App />} />
-        </Routes>
+        <LmsAuthProvider>
+          <Routes>
+            {/* Main site auth routes */}
+            <Route path="/sign-up" element={<SignUpPage />} />
+            <Route path="/sign-in" element={<SignInPage />} />
+            <Route path="/verify-email" element={<WorkEmailVerification />} />
+            <Route path="/verify-otp" element={<VerifyOTP />} />
+            <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+
+            {/* LMS portal auth routes - completely separate */}
+            <Route path="/lms/sign-in" element={<LmsSignInPage />} />
+            <Route path="/lms/sign-up" element={<LmsSignUpPage />} />
+            <Route path="/course-dashboard" element={<LmsProtectedRoute><CourseDashboard /></LmsProtectedRoute>} />
+
+            {/* Main site (no auth required) */}
+            <Route path="*" element={<App />} />
+          </Routes>
+        </LmsAuthProvider>
       </AuthProvider>
     </BrowserRouter>
   </StrictMode>,
