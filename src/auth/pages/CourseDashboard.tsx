@@ -87,19 +87,18 @@ export default function CourseDashboard() {
   const lessonRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const saveTimeoutRef = useRef<any>(null);
 
+  const profileKey = user?.email ? getUserStorageKey(PROFILE_KEY, user.email) : null;
+
   const [userProfile, setUserProfile] = useState<UserProfile>(() => {
-    const email = user?.email;
     const name = user?.name;
+    const email = user?.email;
     try {
-      if (email) {
-        const key = getUserStorageKey(PROFILE_KEY, email);
-        const raw = localStorage.getItem(key);
+      if (profileKey) {
+        const raw = localStorage.getItem(profileKey);
         if (raw) {
           const parsed = JSON.parse(raw);
-          if (name && parsed.name !== name && !parsed._userEdited) {
-            parsed.name = name;
-            if (parsed.workEmail === 'student@incuxai.org' || !parsed.workEmail) parsed.workEmail = email;
-          }
+          if (name && parsed.name !== name) parsed.name = name;
+          if (email && (!parsed.workEmail || parsed.workEmail === 'student@incuxai.org')) parsed.workEmail = email;
           return parsed;
         }
       }
@@ -118,10 +117,22 @@ export default function CourseDashboard() {
   const [editForm, setEditForm] = useState<UserProfile>(userProfile);
   const [toastMsg, setToastMsg] = useState('');
 
+  useEffect(() => {
+    localStorage.removeItem(PROFILE_KEY);
+    if (user?.name && user?.email) {
+      setUserProfile((prev) => {
+        const updated = { ...prev, name: user.name, workEmail: user.email };
+        if (profileKey) localStorage.setItem(profileKey, JSON.stringify(updated));
+        return updated;
+      });
+    }
+  }, [user?.email, user?.name]);
+
   const handleSaveProfile = (updated: UserProfile) => {
     setUserProfile(updated);
-    const key = getUserStorageKey(PROFILE_KEY, user?.email);
-    localStorage.setItem(key, JSON.stringify(updated));
+    if (profileKey) {
+      localStorage.setItem(profileKey, JSON.stringify(updated));
+    }
     setEditModalOpen(false);
     setToastMsg('Profile updated successfully!');
     setTimeout(() => setToastMsg(''), 3000);

@@ -13,6 +13,7 @@ import SignUpPage from './auth/pages/SignUpPage';
 import SignInPage from './auth/pages/SignInPage';
 import LmsSignInPage from './lms/auth/pages/LmsSignInPage';
 import LmsSignUpPage from './lms/auth/pages/LmsSignUpPage';
+import LmsForgotPasswordPage from './lms/auth/pages/LmsForgotPasswordPage';
 import App from './App.tsx';
 import './index.css';
 
@@ -44,6 +45,7 @@ createRoot(document.getElementById('root')!).render(
             {/* LMS portal auth routes - completely separate */}
             <Route path="/lms/sign-in" element={<LmsSignInPage />} />
             <Route path="/lms/sign-up" element={<LmsSignUpPage />} />
+            <Route path="/lms/forgot-password" element={<LmsForgotPasswordPage />} />
             <Route path="/course-dashboard" element={<LmsProtectedRoute><CourseDashboard /></LmsProtectedRoute>} />
 
             {/* Main site (no auth required) */}

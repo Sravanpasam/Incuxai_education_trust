@@ -83,6 +83,11 @@ export default function LmsSignInPage() {
             style={s.input}
             disabled={loading}
           />
+          <div style={{ textAlign: 'right', marginTop: '6px' }}>
+            <Link to="/lms/forgot-password" style={{ color: '#9B7A3E', fontWeight: 600, fontSize: '0.8rem', textDecoration: 'none' }}>
+              Forgot Password?
+            </Link>
+          </div>
 
           <button type="submit" style={{ ...s.btn, opacity: loading ? 0.7 : 1 }} disabled={loading}>
             {loading ? (

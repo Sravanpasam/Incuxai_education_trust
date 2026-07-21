@@ -58,3 +58,16 @@ export async function findUserByEmail(workEmail) {
 export async function verifyPassword(plain, hash) {
   return bcrypt.compare(plain, hash);
 }
+
+/**
+ * Update a user's password by work email.
+ */
+export async function updatePassword(workEmail, newPassword) {
+  const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+  const { error } = await supabase
+    .from('users')
+    .update({ password_hash: passwordHash, updated_at: new Date().toISOString() })
+    .eq('work_email', workEmail.toLowerCase());
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}

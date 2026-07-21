@@ -177,6 +177,33 @@ export async function loginUser(workEmail: string, password: string): Promise<Ap
   };
 }
 
+export async function resetPassword(email: string, newPassword: string): Promise<ApiResponse> {
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, newPassword }),
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+    const errData = await res.json().catch(() => null);
+    if (errData && errData.message && res.status < 500) {
+      return errData;
+    }
+  } catch {}
+
+  // Fallback: update password in local storage
+  const users = getLocalUsers();
+  const idx = users.findIndex((u) => u.workEmail?.toLowerCase() === email.toLowerCase());
+  if (idx >= 0) {
+    users[idx].password = newPassword;
+    localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(users));
+    return { success: true, message: 'Password reset successfully.' };
+  }
+  return { success: false, message: 'No account found with this email. Please register first.' };
+}
+
 export async function getMe(): Promise<any> {
   try {
     const token = localStorage.getItem('incuxai_auth_token');
