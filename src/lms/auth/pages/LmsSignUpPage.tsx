@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import ietLogo from '../../../../picss/iet logo.png';
 import { validateWorkEmail } from '../../../auth/validation/emailValidation';
 import { validateCompanyEmail } from '../../../auth/validation/companyEmailValidation';
 import { sendOtp, verifyOtp, registerUser } from '../../../auth/services/authService';
@@ -263,7 +264,7 @@ export default function LmsSignUpPage() {
       </button>
       <div style={s.card}>
         <div style={s.header}>
-          <div style={s.brandIcon}>I</div>
+          <img src={ietLogo} alt="IncuXAI Education Trust" style={{ height: '52px', width: 'auto', borderRadius: '10px', objectFit: 'contain', margin: '0 auto 12px', display: 'block' }} />
           <h1 style={s.title}>Join Learning Hub</h1>
           <p style={s.subtitle}>
             {step === 'info'

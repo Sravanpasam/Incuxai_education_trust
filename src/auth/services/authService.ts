@@ -165,8 +165,8 @@ export async function loginUser(workEmail: string, password: string): Promise<Ap
   // Fallback: allow new work email sign in in client standalone mode
   const fallbackUser = {
     id: `usr_${Date.now()}`,
-    fullName: cleanEmail.split('@')[0],
-    workEmail: cleanEmail,
+    name: cleanEmail.split('@')[0],
+    email: cleanEmail,
   };
 
   return {

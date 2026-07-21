@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HR_COURSE, type Lesson, type Chapter, type QuizQuestion } from '../../data/hrCourseData';
 import { useLmsAuth } from '../../lms/auth/context/LmsAuthContext';
+import ietLogo from '../../../picss/iet logo.png';
 
 const PROGRESS_KEY = 'lms_hr_progress';
 const WATCH_THRESHOLD = 0.8;
@@ -87,19 +88,30 @@ export default function CourseDashboard() {
   const saveTimeoutRef = useRef<any>(null);
 
   const [userProfile, setUserProfile] = useState<UserProfile>(() => {
+    const email = user?.email;
+    const name = user?.name;
     try {
-      const key = getUserStorageKey(PROFILE_KEY, user?.email);
-      const raw = localStorage.getItem(key) || localStorage.getItem(PROFILE_KEY);
-      if (raw) return JSON.parse(raw);
+      if (email) {
+        const key = getUserStorageKey(PROFILE_KEY, email);
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (name && parsed.name !== name && !parsed._userEdited) {
+            parsed.name = name;
+            if (parsed.workEmail === 'student@incuxai.org' || !parsed.workEmail) parsed.workEmail = email;
+          }
+          return parsed;
+        }
+      }
     } catch {}
     return {
-      name: user?.name || 'Student',
-      workEmail: user?.email || 'student@incuxai.org',
+      name: name || 'Student',
+      workEmail: email || 'student@incuxai.org',
       companyName: 'IncuXAI Education Trust',
       companyPosition: 'Senior HR Specialist',
-      linkedinUrl: 'https://linkedin.com/in/student',
+      linkedinUrl: '',
       avatarDataUrl: '',
-      bio: 'Passionate about leveraging AI and modern HR strategies to empower organizations.',
+      bio: '',
     };
   });
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -224,7 +236,7 @@ export default function CourseDashboard() {
             </button>
           )}
           <div className="lms-brand-group" onClick={() => setCurrentPage('dashboard')}>
-            <div className="lms-brand-icon">I</div>
+            <img src={ietLogo} alt="IncuXAI Education Trust" style={{ height: '38px', width: 'auto', borderRadius: '6px', objectFit: 'contain' }} />
             <div className="lms-brand-text">
               <span className="lms-brand">IncuXAI</span>
               <span className="lms-brand-sub">Learning Hub</span>
