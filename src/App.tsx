@@ -4,10 +4,11 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
+import { useAuth } from './auth/context/AuthContext';
 import logoImg from '../picss/iet logo.png';
 import whoWeAreImg from './assets/about_who_we_are.jpg';
-import editedPicImg from '../picss/edited_pic.jpeg';
 import iit1Img from '../picss/iit1.png';
 import iit2Img from '../picss/iit2.jpeg';
 import iit3Img from '../picss/iit3.jpeg';
@@ -29,6 +30,7 @@ import ourMissionImg from '../picss/ourmission.jpeg';
 import ourVisionImg from '../picss/ourvision.jpeg';
 import ourValuesImg from '../picss/ourvalues.jpeg';
 import ourJourneyImg from '../picss/iit4.jpeg';
+import indianHrCoverImg from '../picss/indian_hr_cover.png';
 
 // Incux Logo
 import incuxLogoImg from '../picss/iet logo.png';
@@ -43,10 +45,10 @@ import jobreciepeLogo from './assets/jobreciepe.jpeg';
 
 // Slides details (Futuristic city, AI students, robotics, technology, smart agritech)
 const slideImages = [
-  editedPicImg,
+  ourJourneyImg,
   iit2Img,
   iit1Img,
-  editedPicImg,
+  ourJourneyImg,
   iit2Img,
   iit1Img
 ];
@@ -59,40 +61,21 @@ const taglines = [
 ];
 
 // AI Course Categories Metadata
-const aiCategories = [
+const aiCategories: any[] = [
   {
-    id: 'free',
-    icon: '🆓',
-    label: 'Free AI Course',
-    color: 'ai-free',
-    image: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?q=80&w=600&auto=format&fit=crop',
-    brief: 'Start from zero, no coding required. Learn AI tools for everyday tasks.',
-    desc: 'Complete beginner-friendly AI course. Start from zero, no coding required. Learn to use AI tools for everyday tasks, productivity, and creativity.',
-    tips: ['Use ChatGPT for writing emails, messages, summaries', 'Use Google Gemini for research and Q&A', 'Use Canva AI for designing posters and graphics', 'Use Bing Image Creator for AI-generated images'],
-    quiz: { q: 'Which of these is an AI chatbot?', opts: ['Microsoft Excel', 'ChatGPT', 'Google Maps', 'WhatsApp'], ans: 1 },
-    ytId: 'qYNweeDHiyU',
-    progress: 40,
-    topics: [
-      { title: 'ChatGPT — Your AI Assistant', desc: 'ChatGPT is an AI chatbot created by OpenAI that can understand and generate human-like text. You can ask it questions, get it to write emails, draft messages, summarize articles, brainstorm ideas, and even explain complex topics in simple language. It works in multiple languages including Hindi, Telugu, Tamil, and more. The best part is ChatGPT is completely free to use and available 24/7 on your phone or computer. Think of it as having a very smart friend who is always ready to help you with any writing or information task.', ytId: 'a0_lo_GDcFw', quiz: [{ q: 'Which of these is an AI chatbot?', opts: ['Microsoft Excel', 'ChatGPT', 'Google Maps', 'WhatsApp'], ans: 1 }, { q: 'Who created ChatGPT?', opts: ['Google', 'Microsoft', 'OpenAI', 'Apple'], ans: 2 }] },
-      { title: 'AI for Creativity', desc: 'You do not need to be a designer or artist to create beautiful visuals. Canva AI lets you design posters, social media graphics, presentations, and banners just by describing what you want. Bing Image Creator (powered by DALL-E) can generate completely original images from your text descriptions. For example, you can type "a futuristic farm with robots" and it will create a unique image for you. These tools are revolutionizing creativity and making design accessible to everyone, regardless of skill level.', ytId: '0yCJMt9Mx9c', quiz: [{ q: 'Which tool can generate images from text descriptions?', opts: ['Excel', 'Bing Image Creator', 'Calculator', 'Notepad'], ans: 1 }, { q: 'What does DALL-E create?', opts: ['Spreadsheets', 'Images from text', 'Music', 'Videos'], ans: 1 }] }
-    ]
-  },
-  {
-    id: 'farmers',
-    icon: '🌾',
-    label: 'AI for Farmers',
-    color: 'ai-farmers',
-    image: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=600&auto=format&fit=crop',
-    brief: 'Detect crop diseases, predict weather, check soil health with your smartphone.',
-    desc: 'Use AI to detect crop diseases, predict weather, check soil health, get market prices, and increase yield using just your smartphone.',
-    tips: ['Plantix app: click a photo of your crop to detect disease instantly', 'Google Lens: identify pests and get solutions in Telugu/Hindi', 'Farmer.chat: ask AI questions about farming in your local language', 'Weather apps with AI forecasting for better crop planning'],
-    quiz: { q: 'Which app uses AI to detect crop diseases from photos?', opts: ['Facebook', 'Plantix', 'WhatsApp', 'YouTube'], ans: 1 },
+    id: 'hr',
+    icon: '👤',
+    label: 'AI for HR',
+    color: 'ai-hr',
+    image: indianHrCoverImg,
+    brief: 'Automate recruitment, analyze employee sentiment, write JD with AI.',
+    desc: 'Exclusively for HR professionals. Verify official credentials to access.',
+    tips: [],
+    quiz: { q: 'Which tool can assist in screening candidate resumes?', opts: ['ChatGPT', 'Microsoft Paint', 'Google Maps', 'Spotify'], ans: 0 },
     ytId: 'a0_lo_GDcFw',
-    progress: 60,
-    topics: [
-      { title: 'Crop Disease Detection', desc: 'Imagine being able to diagnose your crop disease just by taking a photo with your phone. The Plantix app uses AI to instantly identify diseases, pests, and nutrient deficiencies from any photo of your crop. Google Lens can also identify pests and provides treatment solutions in Telugu, Hindi, Tamil, and many other Indian languages. These AI tools work offline in many cases and have helped millions of farmers save their crops. Early detection using AI can prevent up to 40% of crop loss, directly improving your income.', ytId: 'a0_lo_GDcFw', quiz: [{ q: 'Which app uses AI to detect crop diseases from photos?', opts: ['Facebook', 'Plantix', 'WhatsApp', 'YouTube'], ans: 1 }, { q: 'How can AI help farmers save crops?', opts: ['Early disease detection', 'Playing music', 'Watching movies', 'Chatting with friends'], ans: 0 }] },
-      { title: 'Smart Farming with AI', desc: 'AI is transforming how farmers plan their entire farming cycle. Farmer.chat is an AI chatbot that answers farming questions in local languages — ask about soil preparation, fertilizer amounts, or pest control and get expert-level advice instantly. AI-powered weather apps give you hyper-local forecasts so you know exactly when to sow, irrigate, or harvest. Some apps even predict market prices for your crops, helping you decide when and where to sell for the best profit. All of this runs on a regular smartphone.', ytId: '0yCJMt9Mx9c', quiz: [{ q: 'How can AI weather apps help farmers?', opts: ['Play music', 'Forecast weather for crop planning', 'Order food', 'Take photos'], ans: 1 }, { q: 'What does Farmer.chat help with?', opts: ['Watching videos', 'Farming advice in local language', 'Playing games', 'Shopping online'], ans: 1 }] }
-    ]
+    progress: 0,
+    topics: [],
+    comingSoon: false
   },
   {
     id: 'teachers',
@@ -101,133 +84,81 @@ const aiCategories = [
     color: 'ai-teachers',
     image: 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=600&auto=format&fit=crop',
     brief: 'Automate grading, create lesson plans, generate quizzes with AI.',
-    desc: 'Automate grading, create personalized lesson plans, generate quizzes, and use AI to identify struggling students before they fall behind.',
-    tips: ['ChatGPT: generate lesson plans, worksheets, and explanations instantly', 'Quizgecko: auto-generate quizzes from your textbook content', 'Gradescope: AI-assisted grading saves hours every week', 'Canva AI: create beautiful educational posters and presentations'],
-    quiz: { q: 'Which AI tool can automatically create quizzes from text?', opts: ['Spotify', 'Quizgecko', 'Netflix', 'Zoom'], ans: 1 },
-    ytId: 'qYNweeDHiyU',
-    progress: 30,
-    topics: [
-      { title: 'Lesson Planning with AI', desc: 'Teachers spend hours creating lesson plans and worksheets. ChatGPT can generate complete lesson plans on any topic within seconds — just tell it the subject, grade level, and what you want to cover. It can also create worksheets, discussion questions, and even model answers. Canva AI helps you design beautiful educational posters, presentations, and visual aids for your classroom, making learning more engaging for students. These tools free up hours every week so you can focus on what matters most — teaching.', ytId: 'qYNweeDHiyU', quiz: [{ q: 'Which AI tool can automatically create quizzes from text?', opts: ['Spotify', 'Quizgecko', 'Netflix', 'Zoom'], ans: 1 }, { q: 'How can ChatGPT help teachers?', opts: ['Grade automatically', 'Generate lesson plans', 'Take attendance', 'Call parents'], ans: 1 }] },
-      { title: 'AI-Powered Assessments', desc: 'Grading assignments takes up a huge portion of a teacher\'s time. Gradescope uses AI to grade assignments, tests, and even handwritten answer sheets, saving dozens of hours every week. Quizgecko can take any textbook chapter or article and instantly generate multiple quiz questions to test student understanding. These tools also provide analytics showing which students are struggling and which concepts need more attention, allowing you to personalize your teaching for better outcomes.', ytId: '0yCJMt9Mx9c', quiz: [{ q: 'What does Gradescope use AI for?', opts: ['Playing music', 'Grading assignments', 'Watching videos', 'Chatting'], ans: 1 }, { q: 'Which tool generates quizzes from textbook content?', opts: ['Spotify', 'Quizgecko', 'Netflix', 'Zoom'], ans: 1 }] }
+    desc: 'Coming Soon — Automate grading, create personalized lesson plans, and generate quizzes.',
+    tips: [],
+    quiz: { q: '', opts: [], ans: 0 },
+    ytId: '',
+    progress: 0,
+    topics: [],
+    comingSoon: true
+  },
+  {
+    id: 'police',
+    icon: '👮',
+    label: 'AI for Police',
+    color: 'ai-police',
+    image: 'https://images.unsplash.com/photo-1589578228447-e1a4e481c6c8?q=80&w=600&auto=format&fit=crop',
+    brief: 'AI-powered FIR analysis, crime pattern detection, evidence management.',
+    desc: 'Coming Soon — AI tools for law enforcement, crime analytics, and evidence processing.',
+    tips: [],
+    quiz: { q: '', opts: [], ans: 0 },
+    ytId: '',
+    progress: 0,
+    topics: [],
+    comingSoon: true
+  }
+];
+
+const hrCurriculum = [
+  {
+    section: "Section 1: AI in Talent Acquisition & Recruitment",
+    videos: [
+      {
+        title: "1.1 Automated Resume Screening with GPT-4",
+        duration: "12m",
+        description: "Learn how to parse resumes, rank applicants, and extract candidate skills using structured prompt patterns.",
+        videoUrl: "https://www.youtube.com/embed/a0_lo_GDcFw"
+      },
+      {
+        title: "1.2 Designing Interactive Screening Chatbots",
+        duration: "15m",
+        description: "Build custom chatbots that conduct initial behavioral screenings and answer applicant questions automatically.",
+        videoUrl: "https://www.youtube.com/embed/0yCJMt9Mx9c"
+      }
     ]
   },
   {
-    id: 'drivers',
-    icon: '🚛',
-    label: 'AI for Drivers',
-    color: 'ai-drivers',
-    image: 'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?q=80&w=600&auto=format&fit=crop',
-    brief: 'Navigate smarter, earn more, stay safe with AI tools on your phone.',
-    desc: 'Use AI for navigation, traffic prediction, route optimization, vehicle maintenance alerts, and earning more through smart app usage.',
-    tips: ['Google Maps AI predicts traffic and saves 30% fuel and time', 'Ola/Uber AI routes maximize your earnings per shift', 'Google Translate: communicate with passengers in any language', 'AI dashcam apps detect drowsiness and alert you in real-time'],
-    quiz: { q: 'How does Google Maps AI help drivers?', opts: ['Play music', 'Predict traffic & optimize routes', 'Order food', 'Take selfies'], ans: 1 },
-    ytId: 'a0_lo_GDcFw',
-    progress: 25,
-    topics: [
-      { title: 'Navigation & Route Optimization', desc: 'Google Maps uses AI to analyze real-time traffic data from millions of phones and predict the fastest route to your destination. It can save up to 30% on fuel costs by avoiding traffic jams and suggesting optimal routes. For Ola and Uber drivers, the AI system suggests where to position yourself for the next ride based on historical demand patterns, helping you maximize your daily earnings. The AI also learns your usual driving times and routes to give personalized recommendations.', ytId: 'a0_lo_GDcFw', quiz: [{ q: 'How does Google Maps AI help drivers?', opts: ['Play music', 'Predict traffic & optimize routes', 'Order food', 'Take selfies'], ans: 1 }, { q: 'How much fuel can Google Maps AI save?', opts: ['10%', 'Up to 30%', '50%', '80%'], ans: 1 }] },
-      { title: 'Safety & Communication', desc: 'Safety is the number one priority for every driver. AI-powered dashcam apps can detect when you are feeling drowsy based on your eye movements and steering patterns, and alert you before an accident happens. Google Translate uses AI to translate conversations with passengers in real-time across 100+ languages, helping cab and auto drivers communicate with tourists and earn more. These AI safety tools are proven to reduce accident risk and open up new earning opportunities.', ytId: '0yCJMt9Mx9c', quiz: [{ q: 'Which AI feature helps detect driver drowsiness?', opts: ['Google Maps', 'AI dashcam apps', 'WhatsApp', 'Instagram'], ans: 1 }, { q: 'Which AI tool helps drivers talk to passengers in other languages?', opts: ['Google Translate', 'Google Maps', 'YouTube', 'Facebook'], ans: 0 }] }
+    section: "Section 2: Employee Retention & Sentiment Analytics",
+    videos: [
+      {
+        title: "2.1 Sentiment Analysis of Annual Surveys",
+        duration: "18m",
+        description: "Leverage natural language processing to gauge team satisfaction, identify burnout hotspots, and summarize feedback.",
+        videoUrl: "https://www.youtube.com/embed/qYNweeDHiyU"
+      },
+      {
+        title: "2.2 Predictive Attrition Models with LLMs",
+        duration: "20m",
+        description: "Use case studies to analyze risk factors and preemptively flag high-performing employee turnover trends.",
+        videoUrl: "https://www.youtube.com/embed/a0_lo_GDcFw"
+      }
     ]
   },
   {
-    id: 'cleaners',
-    icon: '🧹',
-    label: 'AI for Cleaning Workers',
-    color: 'ai-cleaners',
-    image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=600&auto=format&fit=crop',
-    brief: 'Manage schedules, learn languages, access welfare schemes with AI.',
-    desc: 'AI tools can help manage work schedules, communicate better, report issues through apps, and access government welfare schemes.',
-    tips: ['Google Assistant: set voice reminders for work schedules', 'AI-powered apps for reporting broken infrastructure', 'Duolingo AI: learn basic English or other languages free', 'Government scheme AI chatbots: check your benefits easily'],
-    quiz: { q: 'Which AI voice assistant is free to use on Android?', opts: ['Siri', 'Google Assistant', 'Alexa', 'Cortana'], ans: 1 },
-    ytId: 'a0_lo_GDcFw',
-    progress: 20,
-    topics: [
-      { title: 'Voice Assistants & Scheduling', desc: 'Google Assistant is a free AI voice assistant available on every Android phone. You can use it to set voice reminders for work schedules, create shopping lists, set alarms, and even make calls without touching your phone. AI-powered civic apps let you report broken streetlights, garbage dump issues, or water problems just by taking a photo and describing the problem. These apps automatically route your complaint to the right government department and track it until it is resolved.', ytId: 'a0_lo_GDcFw', quiz: [{ q: 'Which AI voice assistant is free on Android?', opts: ['Siri', 'Google Assistant', 'Alexa', 'Cortana'], ans: 1 }, { q: 'How can AI apps help report infrastructure issues?', opts: ['By taking a photo and auto-routing the complaint', 'By calling the police directly', 'By sending letters', 'By posting on social media'], ans: 0 }] },
-      { title: 'Learning & Government Benefits', desc: 'Duolingo is a free AI-powered app that teaches you English, Hindi, or other languages through fun, game-like lessons. The AI adapts to your learning pace and focuses on areas where you need improvement. Many state and central government schemes now have AI chatbots on WhatsApp and websites that let you check your eligibility, apply for benefits, and track application status in your local language just by typing a question. No need to visit government offices or stand in long lines.', ytId: '0yCJMt9Mx9c', quiz: [{ q: 'Which free app uses AI to teach languages?', opts: ['Duolingo', 'Instagram', 'WhatsApp', 'YouTube'], ans: 0 }, { q: 'How can AI chatbots help with government schemes?', opts: ['By filling application forms automatically', 'By giving money directly', 'By visiting your home', 'By calling you'], ans: 0 }] }
-    ]
-  },
-  {
-    id: 'students',
-    icon: '🎓',
-    label: 'AI for Students',
-    color: 'ai-students',
-    image: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=600&auto=format&fit=crop',
-    brief: 'AI tutors, instant doubt-clearing, notes, quizzes, career guidance.',
-    desc: 'Excel in your studies with AI tutors, get instant doubt-clearing, generate notes, practice with AI quizzes, and get career guidance.',
-    tips: ['Khan Academy Khanmigo: AI tutor explains concepts step-by-step', 'ChatGPT: ask any doubt at 2am — patient, always available', 'Photomath/Mathway: click photo of math problem, get solution', 'Grammarly AI: improve your English writing instantly'],
-    quiz: { q: 'Which AI tool helps solve math problems from photos?', opts: ['Spotify', 'Photomath', 'Twitter', 'Excel'], ans: 1 },
-    ytId: 'qYNweeDHiyU',
-    progress: 70,
-    topics: [
-      { title: 'AI Tutoring & Homework Help', desc: 'Khan Academy Khanmigo is an AI tutor that explains concepts step-by-step, just like a real teacher. It never gets tired and can explain the same thing multiple times in different ways until you understand. Photomath lets you take a photo of any math problem and gives you the solution with detailed step-by-step explanations. ChatGPT is available 24/7 to clear any doubt on any subject — from science and history to coding and literature. These tools ensure you never get stuck on a problem again.', ytId: 'qYNweeDHiyU', quiz: [{ q: 'Which AI tool solves math problems from photos?', opts: ['Spotify', 'Photomath', 'Twitter', 'Excel'], ans: 1 }, { q: 'What does Khanmigo do?', opts: ['Play music', 'Tutor students step-by-step', 'Edit photos', 'Create websites'], ans: 1 }] },
-      { title: 'Writing & Research with AI', desc: 'Grammarly is an AI writing assistant that checks your English grammar, spelling, punctuation, and style in real-time. It works everywhere — in emails, documents, social media, and even WhatsApp. ChatGPT helps with research by summarizing articles, generating notes, and explaining complex topics in simple language. You can ask it to create study notes from a textbook chapter, generate practice questions, or explain a concept like photosynthesis or the French Revolution in terms a 10-year-old would understand.', ytId: '0yCJMt9Mx9c', quiz: [{ q: 'Which AI tool helps improve English writing?', opts: ['Grammarly', 'Spotify', 'Instagram', 'Twitter'], ans: 0 }, { q: 'How can ChatGPT help with research?', opts: ['By doing experiments', 'By summarizing articles and explaining concepts', 'By drawing diagrams', 'By conducting surveys'], ans: 1 }] }
-    ]
-  },
-  {
-    id: 'household',
-    icon: '🏠',
-    label: 'AI for Households',
-    color: 'ai-household',
-    image: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?q=80&w=600&auto=format&fit=crop',
-    brief: 'Budgeting, health tracking, cooking, child education with AI.',
-    desc: 'Make home life easier with AI for budgeting, health tracking, cooking, child education, energy saving, and household management.',
-    tips: ['Google Assistant/Alexa: set timers, reminders, shopping lists', 'Yummly AI: get meal ideas based on ingredients you have', 'Mint/Money Manager: AI tracks your expenses automatically', 'AI health apps: track nutrition, sleep, and wellness daily'],
-    quiz: { q: 'Which AI app helps you track household expenses?', opts: ['Instagram', 'Mint', 'TikTok', 'Snapchat'], ans: 1 },
-    ytId: 'a0_lo_GDcFw',
-    progress: 35,
-    topics: [
-      { title: 'Smart Home Management', desc: 'Google Assistant and Alexa are AI voice assistants that can control your home with simple voice commands. Set timers while cooking, add items to your shopping list, set reminders for medicine or bills, control lights and fans, and even play music — all hands-free. Yummly AI helps solve the daily "what to cook" problem by suggesting recipes based on ingredients you already have at home. Just tell it what is in your kitchen and it will find the perfect meal ideas, saving time and reducing food waste.', ytId: 'a0_lo_GDcFw', quiz: [{ q: 'Which AI app suggests meals based on ingredients you have?', opts: ['YouTube', 'Yummly', 'Netflix', 'Instagram'], ans: 1 }, { q: 'How can voice assistants help at home?', opts: ['By cleaning the house', 'By setting timers and reminders', 'By driving the car', 'By doing laundry'], ans: 1 }] },
-      { title: 'Finance & Health Tracking', desc: 'Mint and Money Manager apps use AI to automatically track your income and expenses. They connect to your bank account, categorize every transaction (groceries, rent, utilities, entertainment), and show you where your money goes each month. This helps you save more and spend wisely. AI health apps like HealthifyMe track your nutrition, sleep patterns, step count, and daily wellness. They give personalized recommendations to improve your health and can even remind you to drink water, take walks, or do breathing exercises.', ytId: '0yCJMt9Mx9c', quiz: [{ q: 'Which AI app tracks household expenses?', opts: ['Instagram', 'Mint', 'TikTok', 'Snapchat'], ans: 1 }, { q: 'What does AI health apps track?', opts: ['Only steps', 'Nutrition, sleep, and wellness', 'Only weight', 'Only heart rate'], ans: 1 }] }
-    ]
-  },
-  {
-    id: 'msme',
-    icon: '🏪',
-    label: 'AI for MSMEs',
-    color: 'ai-msme',
-    image: 'https://images.unsplash.com/photo-1559136555-9303baea8ebd?q=80&w=600&auto=format&fit=crop',
-    brief: 'Inventory, customer chatbots, marketing, accounting with AI.',
-    desc: 'Grow your small business with AI for inventory management, customer service chatbots, digital marketing, accounting, and finding new markets.',
-    tips: ['ChatGPT: write product descriptions, ads, and emails in minutes', 'Meta AI: run targeted Facebook/Instagram ads with AI', 'Tally with AI: automate GST calculations and invoicing', 'WhatsApp Business AI: auto-reply to customer queries 24/7'],
-    quiz: { q: 'Which platform uses AI to help run targeted ads?', opts: ['Meta (Facebook/Instagram)', 'WhatsApp only', 'SMS', 'Radio'], ans: 0 },
-    ytId: 'qYNweeDHiyU',
-    progress: 45,
-    topics: [
-      { title: 'Marketing & Content with AI', desc: 'Small business owners often struggle with writing product descriptions, ads, and marketing emails. ChatGPT can write all of these for you in seconds — just describe your product and target audience. Meta AI (Facebook and Instagram) lets you run targeted ads that automatically show your products to people most likely to buy them. The AI analyzes user behavior, interests, and location to find your ideal customers. You can start with as little as Rs. 100 per day and reach thousands of potential customers in your area.', ytId: 'qYNweeDHiyU', quiz: [{ q: 'Which platform runs targeted AI ads?', opts: ['Meta (Facebook/Instagram)', 'WhatsApp only', 'SMS', 'Radio'], ans: 0 }, { q: 'How can ChatGPT help small businesses?', opts: ['By writing product descriptions and ads', 'By delivering products', 'By managing employees', 'By renting space'], ans: 0 }] },
-      { title: 'Business Operations with AI', desc: 'Tally with AI automation handles GST calculations, invoicing, and inventory tracking automatically — saving hours of manual work and reducing errors. WhatsApp Business AI allows you to set up auto-reply messages for common customer queries like "What is your price?", "Are you open today?", or "Do you deliver?" The AI responds instantly, 24/7, so you never miss a customer even when you are asleep or busy. These tools are affordable and designed specifically for small businesses with limited budgets.', ytId: '0yCJMt9Mx9c', quiz: [{ q: 'How can AI help small business operations?', opts: ['Auto-reply to customers and automate accounting', 'Only for big companies', 'Too expensive', 'Only for tech companies'], ans: 0 }, { q: 'What does Tally with AI automate?', opts: ['Music playlists', 'GST calculations and invoicing', 'Video editing', 'Game development'], ans: 1 }] }
-    ]
-  },
-  {
-    id: 'startups',
-    icon: '🚀',
-    label: 'AI for Startups',
-    color: 'ai-startups',
-    image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=600&auto=format&fit=crop',
-    brief: 'Build faster, market research, pitch decks, analytics with AI.',
-    desc: 'Build faster, smarter products with AI. Use AI for market research, MVP development, customer analytics, pitching, and fundraising.',
-    tips: ['GPT-4 API: add AI features to your product in hours not months', 'Notion AI: plan your startup strategy and product roadmap', 'Beautiful.ai: create investor pitch decks with AI design', 'Stripe + AI: automate payment analytics and churn prediction'],
-    quiz: { q: 'What does MVP stand for in startup context?', opts: ['Most Valuable Player', 'Minimum Viable Product', 'Maximum Value Proposition', 'Main Venture Plan'], ans: 1 },
-    ytId: 'qYNweeDHiyU',
-    progress: 50,
-    topics: [
-      { title: 'Building AI-Powered Products', desc: 'You do not need a team of AI experts to add AI features to your product. The GPT-4 API from OpenAI lets you add chat, text generation, summarization, and language understanding features to your app with just a few lines of code. Stripe with AI integration automates payment processing, detects fraudulent transactions, and predicts which customers are likely to stop using your product (churn prediction) so you can take action early. These tools let startups build enterprise-grade AI features in hours, not months.', ytId: 'qYNweeDHiyU', quiz: [{ q: 'What does MVP stand for?', opts: ['Most Valuable Player', 'Minimum Viable Product', 'Maximum Value Proposition', 'Main Venture Plan'], ans: 1 }, { q: 'What does Stripe AI help with?', opts: ['Payment analytics and churn prediction', 'Social media marketing', 'Employee hiring', 'Office management'], ans: 0 }] },
-      { title: 'Strategy & Fundraising', desc: 'Notion AI is an all-in-one workspace that helps you plan your startup strategy, create product roadmaps, write business plans, and collaborate with your team. It can even summarize meetings and generate action items automatically. When it is time to raise money from investors, Beautiful.ai creates stunning investor pitch decks with AI-powered design. You just add your content and the AI arranges it beautifully. First impressions matter and a professional pitch deck can make the difference between getting funded or not.', ytId: '0yCJMt9Mx9c', quiz: [{ q: 'Which AI tool helps create investor pitch decks?', opts: ['Excel', 'Beautiful.ai', 'Paint', 'Calculator'], ans: 1 }, { q: 'How does Notion AI help startups?', opts: ['By coding the product', 'By planning strategy and roadmaps', 'By hiring employees', 'By managing finances'], ans: 1 }] }
-    ]
-  },
-  {
-    id: 'kids',
-    icon: '👶',
-    label: 'AI for Kids',
-    color: 'ai-kids',
-    image: 'https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?q=80&w=600&auto=format&fit=crop',
-    brief: 'Fun coding, AI training games, creative projects for children 6-16.',
-    desc: 'Fun, safe, and creative AI tools for children. Learn coding, create art, tell stories, do science projects, and play educational games powered by AI.',
-    tips: ['Scratch + AI: build your own AI-powered games visually', 'Google Teachable Machine: train your own AI with photos', 'ChatGPT: write stories, poems, and creative adventures', 'Canva for Education: design AI-powered visual projects'],
-    quiz: { q: 'Which tool lets kids create AI-powered games visually?', opts: ['Fortnite', 'Scratch', 'PUBG', 'Call of Duty'], ans: 1 },
-    ytId: 'a0_lo_GDcFw',
-    progress: 15,
-    topics: [
-      { title: 'Creative Coding & Games', desc: 'Scratch is a visual programming language where kids can create their own games, animations, and interactive stories by snapping blocks together like puzzle pieces. With AI extensions, kids can add voice recognition, image detection, and translation features to their creations. Google Teachable Machine is a web-based tool where kids can train their own AI models using just photos from their webcam. For example, they can train it to recognize their face, their pet, or different hand gestures. It makes the concept of AI tangible and fun.', ytId: 'a0_lo_GDcFw', quiz: [{ q: 'Which tool lets kids create AI-powered games visually?', opts: ['Fortnite', 'Scratch', 'PUBG', 'Call of Duty'], ans: 1 }, { q: 'What can kids do with Google Teachable Machine?', opts: ['Train their own AI with photos', 'Play online games', 'Chat with friends', 'Watch videos'], ans: 0 }] },
-      { title: 'AI for Stories & Art', desc: 'ChatGPT can be a creative companion for children. They can ask it to write stories about their favorite characters, create poems about animals, or invent new adventures. Parents can supervise and guide the interaction to ensure it is educational and safe. Canva for Education provides a safe platform where kids can design posters, book covers, science project presentations, and art projects using AI-powered design tools. These tools help children express their creativity while learning about the capabilities and limitations of AI in a guided environment.', ytId: '0yCJMt9Mx9c', quiz: [{ q: 'Which AI tool can help kids write stories?', opts: ['ChatGPT', 'Calculator', 'Alarm clock', 'TV remote'], ans: 0 }, { q: 'What is Canva for Education?', opts: ['A messaging app', 'A design platform for students', 'A video game', 'A music app'], ans: 1 }] }
+    section: "Section 3: AI Policies, Ethics & Governance",
+    videos: [
+      {
+        title: "3.1 Data Privacy & GDPR in HR Tech",
+        duration: "14m",
+        description: "Understand legal guidelines when processing candidate and employee data using public and private LLM APIs.",
+        videoUrl: "https://www.youtube.com/embed/0yCJMt9Mx9c"
+      },
+      {
+        title: "3.2 Eliminating Bias in AI Hiring Algorithms",
+        duration: "22m",
+        description: "Implement fairness constraints and verify model outputs to prevent bias against gender, race, or age.",
+        videoUrl: "https://www.youtube.com/embed/qYNweeDHiyU"
+      }
     ]
   }
 ];
@@ -242,8 +173,26 @@ const quizBank = [
 ];
 
 export default function App() {
+  const navigate = useNavigate();
+  const { user: authUser, isAuthenticated, logout: authLogout } = useAuth();
   const [isIitPaymentFlow, setIsIitPaymentFlow] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+
+  // --- CORPORATE COURSE SYSTEM STATES ---
+  const [showHrPopup, setShowHrPopup] = useState(false);
+  const [corpExpandedModule, setCorpExpandedModule] = useState<number | null>(null);
+
+  // Show AI for HR popup after 1.5 seconds when the website is opened
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const isVerified = localStorage.getItem('corp_otp_verified') === 'true';
+      if (!isVerified) {
+        setShowHrPopup(true);
+      }
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
+
 
   // --- INCUXAI IIT VISIT PAYMENT INJECTION ---
   useEffect(() => {
@@ -631,7 +580,7 @@ export default function App() {
       }
       document.querySelectorAll('nav > a, nav > .nav-item > a').forEach(a => a.classList.remove('active'));
       const navItems = document.querySelectorAll('nav > a, nav > .nav-item > a');
-      const navMap: Record<string, number> = { home: 0, about: 1, ai4all: 2, programs: 3, volunteer: 4, teachxai: 5, gallery: 6, contact: 7, donate: 8 };
+      const navMap: Record<string, number> = { home: 0, about: 1, ai4all: 2, programs: 3, volunteer: 4, teachxai: 5, gallery: 6, contact: 7, donate: 8, 'corporate-course': 2 };
       if (navMap[id] !== undefined && navItems[navMap[id]]) {
         navItems[navMap[id]].classList.add('active');
       }
@@ -648,6 +597,85 @@ export default function App() {
     };
 
     // Logins
+    w.unifiedPortalLogin = (e?: React.FormEvent) => {
+      if (e) e.preventDefault();
+      const email = (document.getElementById('portal-login-email') as HTMLInputElement)?.value?.trim();
+      const pass = (document.getElementById('portal-login-pass') as HTMLInputElement)?.value?.trim();
+
+      if (!email || !pass) {
+        w.showToast?.('Please enter your email and password.');
+        return;
+      }
+
+      // 1. Admin Login
+      if ((email === 'sravanpasam74@gmail.com' || email === 'admin@incuxai.org') && pass === 'admin123') {
+        const role = 'admin';
+        const name = 'Admin';
+        currentUser = { role, name };
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        localStorage.setItem('currentUserEmail', email);
+
+        w.renderEvents?.();
+        w.renderTasks?.();
+        w.renderVolunteersAndLeaderboard?.();
+        w.loadEventRegistrations?.();
+        w.showToast?.('Welcome Admin! Opening Admin Portal...');
+        setTimeout(() => w.showPage('admin-portal'), 500);
+        return;
+      }
+
+        // 2. Teacher Login
+      const teacherCreds = getSafeArray('teachxai_teachers_pass');
+      const foundTeacher = teacherCreds.find((t: any) => t && t.email === email && t.password === pass);
+      if ((email === 'teacher@incuxai.org' && pass === 'teacher123') || foundTeacher) {
+        const role = 'teacher';
+        const name = foundTeacher?.name || (email === 'teacher@incuxai.org' ? 'Teacher Portal' : email.split('@')[0]);
+        currentUser = { role, name };
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        localStorage.setItem('currentUserEmail', email);
+
+        const tpName = document.getElementById('tportal-name');
+        const tpFullName = document.getElementById('tportal-fullname');
+        const tpAvatar = document.getElementById('tportal-avatar');
+        if (tpName) tpName.textContent = name;
+        if (tpFullName) tpFullName.textContent = name;
+        if (tpAvatar) tpAvatar.textContent = name[0].toUpperCase();
+
+        w.renderTeacherPortal?.();
+        w.showToast?.(`Welcome ${name}! Opening Teacher Portal...`);
+        setTimeout(() => w.showPage('teacher-portal'), 500);
+        return;
+      }
+
+      // 3. Volunteer Login
+      const volCreds = getSafeArray('volunteer_pass');
+      const foundVol = volCreds.find((v: any) => v && v.email === email && v.password === pass);
+      if ((email === 'volunteer@incuxai.org' && pass === 'volunteer123') || foundVol) {
+        const role = 'volunteer';
+        const name = foundVol?.name || (email === 'volunteer@incuxai.org' ? 'Volunteer Portal' : email.split('@')[0]);
+        currentUser = { role, name };
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        localStorage.setItem('currentUserEmail', email);
+
+        const pName = document.getElementById('portal-name');
+        const pFullName = document.getElementById('portal-fullname');
+        const pAvatar = document.getElementById('portal-avatar');
+        if (pName) pName.textContent = name;
+        if (pFullName) pFullName.textContent = name;
+        if (pAvatar) pAvatar.textContent = name[0].toUpperCase();
+
+        w.renderEvents?.();
+        w.renderTasks?.();
+        w.renderVolunteersAndLeaderboard?.();
+        w.populateVolunteerProfile?.();
+        w.showToast?.(`Welcome ${name}! Opening Volunteer Portal...`);
+        setTimeout(() => w.showPage('vol-portal'), 500);
+        return;
+      }
+
+      w.showToast?.('Invalid email or password. Please check your credentials.');
+    };
+
     w.handleLoginBtn = () => {
       if (currentUser) {
         currentUser = null;
@@ -660,7 +688,7 @@ export default function App() {
         if (loggedUserEl) loggedUserEl.style.display = 'none';
         w.showPage('home');
       } else {
-        w.openModal();
+        w.showPage('portal-login');
       }
     };
 
@@ -836,18 +864,7 @@ export default function App() {
         localStorage.setItem('eventRegistrations', JSON.stringify([]));
       }
 
-      // Fetch persistent database from Express backend
-      try {
-        const res = await fetch('/api/sync-data');
-        if (res.ok) {
-          const db = await res.json();
-          if (db.volunteers) localStorage.setItem('volunteers', JSON.stringify(db.volunteers));
-          if (db.volunteer_applications) localStorage.setItem('volunteer_applications', JSON.stringify(db.volunteer_applications));
-          if (db.volunteer_pass) localStorage.setItem('volunteer_pass', JSON.stringify(db.volunteer_pass));
-        }
-      } catch (err) {
-        console.warn('Database sync failed, falling back to local storage cache:', err);
-      }
+      // Volunteer data syncs from localStorage (no payment server dependency)
 
       if (!localStorage.getItem('volunteers')) {
         localStorage.setItem('volunteers', JSON.stringify([]));
@@ -2134,8 +2151,19 @@ export default function App() {
       aiCategories.forEach(cat => {
         const card = document.createElement('div');
         card.className = 'ai-card ai-card-link';
+        card.style.position = 'relative';
+        card.style.overflow = 'hidden';
         card.onclick = () => w.showAITopicPage(cat.id);
+        const comingSoonOverlay = cat.comingSoon
+          ? `<div style="position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(10,18,31,0.7);display:flex;align-items:center;justify-content:center;z-index:5;backdrop-filter:blur(2px)">
+               <div style="text-align:center">
+                 <div style="font-size:2rem;margin-bottom:0.5rem">🔒</div>
+                 <div style="background:linear-gradient(135deg,#C5A059,#D4AF37);color:#0A121F;font-weight:800;font-size:0.85rem;padding:0.5rem 1.5rem;border-radius:99px;letter-spacing:0.5px">COMING SOON</div>
+               </div>
+             </div>`
+          : `<div style="position:absolute;top:12px;right:12px;background:linear-gradient(135deg,#C5A059,#D4AF37);color:#0A121F;font-weight:700;font-size:0.7rem;padding:0.3rem 0.8rem;border-radius:99px;z-index:5;letter-spacing:0.5px">ENROLL NOW</div>`;
         card.innerHTML = `
+          ${comingSoonOverlay}
           <div class="ai-card-img" style="background-image:url('${cat.image}')"></div>
           <div class="ai-card-body">
             <div class="ai-card-title">${cat.label}</div>
@@ -2147,8 +2175,19 @@ export default function App() {
 
     // Topic detail page navigation
     w.showAITopicPage = (id: string) => {
-      const cat = aiCategories.find(c => c.id === id);
+      const cat = aiCategories.find((c: any) => c.id === id);
       if (!cat) return;
+      // Coming Soon courses show toast and don't navigate
+      if (cat.comingSoon) {
+        w.showToast?.(`${cat.label} course is coming soon! Stay tuned.`);
+        return;
+      }
+      // HR course redirects to the corporate-course page
+      if (id === 'hr') {
+        w.showPage('corporate-course');
+        return;
+      }
+      // Default topic detail page for other courses (future use)
       const titleEl = document.getElementById('topic-category-name');
       if (titleEl) titleEl.textContent = cat.label;
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -2647,6 +2686,31 @@ export default function App() {
 
   return (
     <>
+      {/* ========== AI FOR HR POPUP ========== */}
+      {showHrPopup && (
+        <div className="hr-alert-popup-overlay" onClick={() => setShowHrPopup(false)}>
+          <div className="hr-alert-popup" onClick={(e) => e.stopPropagation()}>
+            <button className="hr-alert-close" onClick={() => setShowHrPopup(false)}>✕</button>
+            <div className="hr-alert-badge">🚀 New Course Available</div>
+            <h2 className="hr-alert-title">AI for HR Professionals</h2>
+            <p className="hr-alert-desc">
+              Transform your HR operations with AI-powered resume screening, employee sentiment analysis, and predictive retention models. Exclusively for verified HR professionals.
+            </p>
+            <button
+              className="panel-btn-register"
+              style={{ width: '100%' }}
+              onClick={() => {
+                setShowHrPopup(false);
+                (window as any).showPage('corporate-course');
+              }}
+            >
+              <span>Explore AI for HR Course</span>
+              <span>→</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ========== HEADER ========== */}
       <header>
         <div className="logo" onClick={() => (window as any).showPage('home')} style={{ padding: '0', background: 'transparent', borderRadius: '12px', overflow: 'hidden', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -2659,22 +2723,13 @@ export default function App() {
         <nav id="main-nav">
           <a onClick={() => (window as any).showPage('home')} className="active">Home</a>
           <div className="nav-item">
-            <a onClick={() => (window as any).showPage('about')}>About</a>
-            <div className="dropdown">
-              <a onClick={() => { (window as any).showPage('about'); setTimeout(() => document.getElementById('about-section')?.scrollIntoView({ behavior: 'smooth' }), 100); }}>Our Story</a>
-              <a onClick={() => { (window as any).showPage('about'); setTimeout(() => document.querySelector('.about-extras')?.scrollIntoView({ behavior: 'smooth' }), 100); }}>Vision & Mission</a>
-              <a onClick={() => { (window as any).showPage('about'); setTimeout(() => document.getElementById('team-section')?.scrollIntoView({ behavior: 'smooth' }), 100); }}>Team</a>
-            </div>
-          </div>
-          <div className="nav-item">
             <a onClick={() => (window as any).showPage('ai4all')} className="nav-highlight-btn">AI 4 ALL</a>
             <div className="dropdown">
-              <a onClick={() => { (window as any).showPage('ai4all'); setTimeout(() => document.getElementById('ai4all-top')?.scrollIntoView({ behavior: 'smooth' }), 100); }}>Free AI Course</a>
-              <a onClick={() => { (window as any).showPage('ai4all'); setTimeout(() => { const el = document.querySelector('.cat-card[data-cat="farmers"]'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }, 100); }}>AI for Farmers</a>
-              <a onClick={() => { (window as any).showPage('ai4all'); setTimeout(() => { const el = document.querySelector('.cat-card[data-cat="teachers"]'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }, 100); }}>AI for Teachers</a>
-              <a onClick={() => { (window as any).showPage('ai4all'); setTimeout(() => { const el = document.querySelector('.cat-card[data-cat="students"]'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }, 100); }}>AI for Students</a>
-              <a onClick={() => { (window as any).showPage('ai4all'); setTimeout(() => { const el = document.querySelector('.cat-card[data-cat="msme"]'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }, 100); }}>AI for MSMEs</a>
-              <a onClick={() => { (window as any).showPage('ai4all'); setTimeout(() => { const el = document.querySelector('.cat-card[data-cat="kids"]'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }, 100); }}>AI for Kids</a>
+              <a onClick={() => {
+                (window as any).showPage('corporate-course');
+              }}>AI for HR</a>
+              <a onClick={() => { (window as any).showPage('ai4all'); const w = window as any; w.showToast?.('AI for Teachers course is coming soon!'); }}>AI for Teachers <span style={{ fontSize: '0.65rem', color: '#C5A059', fontWeight: '700' }}>SOON</span></a>
+              <a onClick={() => { (window as any).showPage('ai4all'); const w = window as any; w.showToast?.('AI for Police course is coming soon!'); }}>AI for Police <span style={{ fontSize: '0.65rem', color: '#C5A059', fontWeight: '700' }}>SOON</span></a>
             </div>
           </div>
           <a onClick={() => (window as any).showPage('programs')}>Programs</a>
@@ -2698,7 +2753,17 @@ export default function App() {
         <div className="header-right">
           <span id="logged-user" style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.8)', fontWeight: '600', display: 'none' }}></span>
           <button className="btn-donate" id="signup-btn" onClick={() => (window as any).showPage('donate')}>Donate</button>
-          <button className="btn-login" onClick={() => (window as any).handleLoginBtn()} id="login-btn">Login</button>
+          <button className="btn-login" id="login-btn" onClick={() => (window as any).handleLoginBtn()}>Login</button>
+          {isAuthenticated ? (
+            <>
+              <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.7)', fontWeight: '600', marginRight: '0.5rem' }}>
+                {authUser?.name || authUser?.email}
+              </span>
+              <button className="btn-login" onClick={() => { authLogout(); navigate('/'); }} style={{ background: 'rgba(220,38,38,0.8)', border: 'none' }}>
+                Sign Out
+              </button>
+            </>
+          ) : null}
           <button className="mobile-menu-toggle" onClick={() => {
             const nav = document.getElementById('main-nav');
             const toggle = document.querySelector('.mobile-menu-toggle');
@@ -2732,10 +2797,10 @@ export default function App() {
           {/* Hero Content */}
           <div className="hero-content">
             <div className="hero-text">
-              <h1 className="hero-title" style={{ color: '#fff', fontSize: 'clamp(2.5rem, 6vw, 4.5rem)', fontWeight: '800', fontFamily: 'var(--font-display)', textShadow: '0 2px 20px rgba(0,0,0,0.4)', letterSpacing: '-0.02em', lineHeight: '1.1', textAlign: 'center' }}>
+              <h1 className="hero-title" style={{ color: '#fff', fontSize: 'clamp(2.5rem, 6vw, 4.5rem)', fontWeight: '800', fontFamily: "'Space Grotesk', sans-serif", textShadow: '0 2px 20px rgba(0,0,0,0.4)', letterSpacing: '-0.02em', lineHeight: '1.1', textAlign: 'left', whiteSpace: 'nowrap', marginBottom: '2rem' }}>
                 AI FOR ALL
               </h1>
-              <div className="hero-tagline" id="hero-tagline" style={{ textAlign: 'center' }}>
+              <div className="hero-tagline" id="hero-tagline" style={{ textAlign: 'left', marginBottom: '2.5rem' }}>
                 <span id="tagline-text" style={{ color: 'rgba(255,255,255,0.85)', fontSize: 'clamp(0.9rem, 2vw, 1.15rem)', fontWeight: '400', letterSpacing: '0.02em' }}></span>
               </div>
               <div className="hero-btns">
@@ -2758,7 +2823,7 @@ export default function App() {
                     </svg>
                   </span>
                 </button>
-                <button className="btn-modern-primary" onClick={() => (window as any).showPage('teachxai')}>
+                <button className="btn-modern-secondary" onClick={() => (window as any).showPage('teachxai')}>
                   <span className="btn-text">TeachXai</span>
                   <span className="btn-icon">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -2766,16 +2831,10 @@ export default function App() {
                       <polyline points="12 5 19 12 12 19"></polyline>
                     </svg>
                   </span>
-                  <span className="btn-glow-wrapper"></span>
                 </button>
               </div>
             </div>
           </div>
-
-          {/* Chat toggle button — below robot area */}
-          <button className="chat-bubble" onClick={() => (window as any).toggleChat()} title="AI Assistant">
-            <span className="chat-bubble-icon">💬</span>
-          </button>
 
           {/* Minimal Slider dots */}
           <div className="slider-dots" id="slider-dots">
@@ -3130,6 +3189,90 @@ export default function App() {
         </section>
       </div>
 
+      {/* ========== CORPORATE COURSE PAGE (AI FOR HR) ========== */}
+      <div id="corporate-course" className="page corp-course-page">
+          <div className="corp-course-hero">
+              <div className="corp-course-hero-inner">
+                <span className="section-tag" style={{ color: 'var(--secondary)' }}>AI 4 ALL Program</span>
+                <h1 className="corp-course-title">AI for HR Professionals</h1>
+                <p className="section-sub" style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: 'clamp(1rem, 2vw, 1.2rem)', margin: '1rem 0 1.5rem', lineHeight: '1.5' }}>
+                  Transform your HR operations with AI-powered resume screening, employee sentiment analysis, predictive attrition models, and AI governance frameworks designed for human resource teams.
+                </p>
+                <div className="corp-course-meta">
+                  <div className="corp-course-meta-item">
+                    <span className="corp-course-meta-icon">⏳</span>
+                    <span>6 Video Lectures</span>
+                  </div>
+                  <div className="corp-course-meta-item">
+                    <span className="corp-course-meta-icon">📚</span>
+                    <span>3 Sections</span>
+                  </div>
+                  <div className="corp-course-meta-item">
+                    <span className="corp-course-meta-icon">🛡️</span>
+                    <span>Work Email Verified</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="corp-course-body">
+              <div style={{ textAlign: 'left' }}>
+                <h3 className="corp-section-title">✨ Key Learning Outcomes</h3>
+                <div className="outcomes-list">
+                  <div className="outcome-card"><div className="outcome-check">✓</div><div className="outcome-text">Automate Resume Screening & Candidate Ranking with LLMs</div></div>
+                  <div className="outcome-card"><div className="outcome-check">✓</div><div className="outcome-text">Analyze Employee Sentiment from Annual Feedback Surveys</div></div>
+                  <div className="outcome-card"><div className="outcome-check">✓</div><div className="outcome-text">Build Predictive Attrition & Retention Models</div></div>
+                  <div className="outcome-card"><div className="outcome-check">✓</div><div className="outcome-text">Ensure AI Ethics, GDPR Compliance & Bias-Free Hiring</div></div>
+                </div>
+
+                <h3 className="corp-section-title">📋 Course Curriculum</h3>
+                <div className="curriculum-list">
+                  {hrCurriculum.map((sec, sIdx) => (
+                    <div key={sIdx} className={`curriculum-module ${corpExpandedModule === sIdx ? 'expanded' : ''}`}>
+                      <div className="curriculum-module-header" onClick={() => setCorpExpandedModule(corpExpandedModule === sIdx ? null : sIdx)}>
+                        <div className="curriculum-module-title-group">
+                          <span className="curriculum-module-badge">Section {sIdx + 1}</span>
+                          <span className="curriculum-module-title">{sec.section.split(': ')[1] || sec.section}</span>
+                        </div>
+                        <span className="curriculum-module-icon">▼</span>
+                      </div>
+                      <div className="curriculum-module-body">
+                        <div className="curriculum-module-content">
+                          <ul className="curriculum-lessons-list">
+                            {sec.videos.map((vid, vIdx) => (
+                              <li key={vIdx} className="curriculum-lesson-item">
+                                <span className="curriculum-lesson-bullet"></span>
+                                <span>{vid.title} ({vid.duration})</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="sidebar-panel">
+                <span className="panel-lock-icon">🔒</span>
+                <h4 className="panel-title">Work Email Verification Required</h4>
+                <p className="panel-desc">
+                  This course is exclusively for HR professionals. To gain access, register using your official company email address.
+                </p>
+                <button className="panel-btn-register" onClick={() => navigate('/lms/sign-in')}>
+                  <span>Register & Unlock Course</span>
+                  <span>→</span>
+                </button>
+                <div className="panel-requirements">
+                  <h5 className="panel-req-title">Validation Checklist</h5>
+                  <div className="panel-req-item"><span className="panel-req-bullet">•</span><span>Requires official corporate domain email</span></div>
+                  <div className="panel-req-item"><span className="panel-req-bullet">•</span><span>No personal domains (gmail, yahoo, etc.) accepted</span></div>
+                  <div className="panel-req-item"><span className="panel-req-bullet">•</span><span>6-Digit secure OTP code verification</span></div>
+                </div>
+              </div>
+            </div>
+      </div>
+
       {/* ========== AI4ALL PAGE ========== */}
       <div id="ai4all" className="page" style={{ paddingTop: '75px' }}>
         <div className="ai4all-hero" style={{ padding: '4rem 5% 2rem' }}>
@@ -3183,7 +3326,7 @@ export default function App() {
             <div id="gfol-volunteer" className="gallery-folder-grid" style={{ display: 'none' }}>
               <div className="gallery-item" style={{ backgroundImage: `url(${iit2Img})`, backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="gallery-overlay">Volunteer Summit 2024</div></div>
               <div className="gallery-item" style={{ backgroundImage: `url(${iit1Img})`, backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="gallery-overlay">Driver AI Literacy – Chennai</div></div>
-              <div className="gallery-item" style={{ backgroundImage: `url(${editedPicImg})`, backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="gallery-overlay">MSME AI Workshop – Pune</div></div>
+              <div className="gallery-item" style={{ backgroundImage: `url(${iit3Img})`, backgroundSize: 'cover', backgroundPosition: 'center' }}><div className="gallery-overlay">MSME AI Workshop – Pune</div></div>
             </div>
           </div>
           <div className="gallery-folder-card" style={{ backgroundImage: `url(${incuxLogoImg})` }} onClick={() => (window as any).showGalleryFolder('gfol-celebrations', 'Celebrations & Events')}>
@@ -3261,7 +3404,7 @@ export default function App() {
           <div className="volunteer-hero-inner">
             <motion.div
               className="volunteer-circle"
-              style={{ width: 300, height: 300, top: '1%', right: '2%', backgroundImage: `url(${editedPicImg})` }}
+              style={{ width: 300, height: 300, top: '1%', right: '2%', backgroundImage: `url(${ourJourneyImg})` }}
               animate={{ y: [0, -16] }}
               transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut', repeatType: 'reverse' }}
               whileHover={{ scale: 1.08 }}
@@ -4373,28 +4516,38 @@ export default function App() {
         </section>
       </div>
 
-      {/* ========== AI CHAT MODAL ========== */}
-      <div id="chat-modal" className="chat-modal">
-        <div className="chat-modal-content">
-          <div className="chat-header">
-            <div className="chat-header-info">
-              <span className="chat-header-icon">🤖</span>
-              <div>
-                <div className="chat-header-title">AI Assistant</div>
-                <div className="chat-header-status">Online</div>
-              </div>
+      {/* ========== UNIFIED PORTAL LOGIN PAGE ========== */}
+      <div id="portal-login" className="page" style={{ paddingTop: '100px', minHeight: '100vh', background: 'var(--darker)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '100px 1rem 4rem' }}>
+        <div style={{ width: '100%', maxWidth: '440px', background: 'var(--glass)', borderRadius: '20px', border: '1px solid var(--glass-border)', boxShadow: '0 20px 60px rgba(12,22,40,0.1)', overflow: 'hidden' }}>
+          
+          <div style={{ background: 'linear-gradient(135deg, #0c1628 0%, #1e3a5f 100%)', padding: '2.5rem 2rem 2rem', textAlign: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+            <img src={logoImg} alt="IncuXAI Education Trust" style={{ height: '54px', width: 'auto', borderRadius: '10px', objectFit: 'contain', margin: '0 auto 14px', display: 'block' }} />
+            <h2 style={{ margin: 0, color: '#ffffff', fontSize: '1.4rem', fontWeight: 700, fontFamily: 'var(--font-display)' }}>Portal Sign In</h2>
+            <p style={{ margin: '8px 0 0', color: 'rgba(255,255,255,0.75)', fontSize: '0.88rem' }}>Access Teacher, Volunteer, or Admin Portal</p>
+          </div>
+
+          <form onSubmit={(e) => (window as any).unifiedPortalLogin(e)} style={{ padding: '2rem' }}>
+            <div style={{ marginBottom: '1.2rem' }}>
+              <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text)' }}>Email Address</label>
+              <input type="email" id="portal-login-email" required placeholder="Enter your login email" style={{ width: '100%', padding: '12px 16px', border: '1.5px solid var(--glass-border)', borderRadius: '10px', fontSize: '0.92rem', outline: 'none', background: '#f8f7f3', color: '#0c1628', boxSizing: 'border-box' }} />
             </div>
-            <button className="chat-close" onClick={() => (window as any).toggleChat()}>✕</button>
-          </div>
-          <div className="chat-messages" id="chat-messages">
-            <div className="chat-msg bot">
-              <div className="chat-msg-content">Hi! I'm the AI assistant. How can I help you today? You can ask me about our programs, volunteering, login help, or anything about IncuXai Education Trust.</div>
+
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text)' }}>Password</label>
+              <input type="password" id="portal-login-pass" required placeholder="Enter your password" style={{ width: '100%', padding: '12px 16px', border: '1.5px solid var(--glass-border)', borderRadius: '10px', fontSize: '0.92rem', outline: 'none', background: '#f8f7f3', color: '#0c1628', boxSizing: 'border-box' }} />
             </div>
-          </div>
-          <div className="chat-input-area">
-            <input type="text" id="chat-input" className="chat-input" placeholder="Type your message..." onKeyDown={(e) => { if (e.key === 'Enter') (window as any).sendChatMessage(); }} />
-            <button className="chat-send" onClick={() => (window as any).sendChatMessage()}>➤</button>
-          </div>
+
+            <button type="submit" style={{ width: '100%', padding: '13px', background: 'linear-gradient(135deg, #9B7A3E, #7D6334)', color: '#ffffff', border: 'none', borderRadius: '99px', fontSize: '0.95rem', fontWeight: 700, cursor: 'pointer', boxShadow: '0 6px 20px -4px rgba(155, 122, 62, 0.35)', transition: 'all 0.2s' }}>
+              Sign In to Portal
+            </button>
+
+            <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
+              <button type="button" onClick={() => (window as any).showPage('home')} style={{ background: 'none', border: 'none', color: '#9B7A3E', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', textDecoration: 'underline' }}>
+                ← Back to Home Page
+              </button>
+            </div>
+          </form>
+
         </div>
       </div>
 
@@ -4617,6 +4770,8 @@ export default function App() {
         </div>
       </div>
 
+      {/* ========== CORPORATE REGISTRATION MODAL ========== */}
+
       {/* ========== FLOATING WHATSAPP ICON ========== */}
       <a href="https://wa.me/919494808589" target="_blank" rel="noopener noreferrer" className="whatsapp-float" title="Chat on WhatsApp">
         <svg viewBox="0 0 24 24" width="28" height="28" fill="white"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.725 1.45 5.489 0 9.952-4.43 9.955-9.885.002-2.643-1.022-5.127-2.885-7c-1.863-1.874-4.343-2.905-6.994-2.906-5.49 0-9.953 4.429-9.957 9.884-.002 1.714.453 3.39 1.32 4.887l-.994 3.634 3.73-.974zm12.002-6.852c-.274-.136-1.62-.801-1.871-.892-.252-.09-.435-.136-.617.136-.183.272-.708.89-.867 1.072-.16.182-.32.205-.594.069-.275-.136-1.16-.427-2.209-1.364-.817-.73-1.368-1.63-1.528-1.905-.16-.273-.017-.421.12-.557.123-.122.274-.32.41-.48.138-.16.183-.273.275-.455.092-.182.046-.341-.023-.477-.068-.136-.617-1.485-.845-2.03-.22-.533-.48-.46-.617-.466-.123-.006-.275-.007-.426-.007-.152 0-.401.057-.61.284-.21.227-.8.781-.8 1.904 0 1.124.816 2.207.93 2.36.114.152 1.606 2.451 3.89 3.435.543.233.967.373 1.3.479.546.173 1.042.149 1.433.09.437-.066 1.62-.662 1.849-1.3.23-.637.23-1.182.16-1.3-.069-.117-.251-.183-.526-.32z"/></svg>
@@ -4650,12 +4805,11 @@ export default function App() {
           <div className="footer-col">
             <h4>AI 4 ALL</h4>
             <ul>
-              <li><a onClick={() => (window as any).showPage('ai4all')}>AI for Farmers</a></li>
+              <li><a onClick={() => {
+                (window as any).showPage('corporate-course');
+              }}>AI for HR</a></li>
               <li><a onClick={() => (window as any).showPage('ai4all')}>AI for Teachers</a></li>
-              <li><a onClick={() => (window as any).showPage('ai4all')}>AI for Students</a></li>
-              <li><a onClick={() => (window as any).showPage('ai4all')}>AI for MSMEs</a></li>
-              <li><a onClick={() => (window as any).showPage('ai4all')}>AI for Kids</a></li>
-              <li><a onClick={() => (window as any).showPage('ai4all')}>Free Courses</a></li>
+              <li><a onClick={() => (window as any).showPage('ai4all')}>AI for Police</a></li>
             </ul>
           </div>
           <div className="footer-col">
