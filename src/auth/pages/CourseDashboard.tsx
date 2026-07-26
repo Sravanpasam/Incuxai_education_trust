@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HR_COURSE, type Lesson, type Chapter, type QuizQuestion } from '../../data/hrCourseData';
-import { TrendingUp, Flame, Clock, Award, Play, RotateCcw, SkipForward, Download, Target, BarChart3, Trophy, Star, Zap, Crown, Sparkles, Flag, CalendarDays, User, BookOpen, ChevronRight, CheckCircle2, Timer, Brain, Medal } from 'lucide-react';
+import { TrendingUp, Flame, Clock, Award, Play, RotateCcw, SkipForward, Download, Target, BarChart3, Trophy, Star, Zap, Crown, Sparkles, Flag, CalendarDays, User, BookOpen, ChevronRight, CheckCircle2, Timer, Brain, Medal, Bookmark } from 'lucide-react';
 import { useLmsAuth } from '../../lms/auth/context/LmsAuthContext';
 import { useAuth } from '../context/AuthContext';
 import ietLogo from '../../../picss/iet logo.png';
@@ -68,6 +68,37 @@ interface UserProfile {
 }
 
 const PROFILE_KEY = 'lms_user_profile';
+const BOOKMARKS_KEY = 'lms_bookmarks';
+
+interface Bookmark {
+  userId: string;
+  courseId: string;
+  moduleId: string;
+  lessonId: string;
+  lessonTitle: string;
+  courseName: string;
+  moduleName: string;
+  lessonType: string;
+  duration?: string;
+  bookmarkedAt: number;
+}
+
+function loadBookmarks(userEmail?: string): Bookmark[] {
+  try {
+    const key = getUserStorageKey(BOOKMARKS_KEY, userEmail);
+    const raw = localStorage.getItem(key) || localStorage.getItem(BOOKMARKS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {}
+  return [];
+}
+
+function saveBookmarks(bookmarks: Bookmark[], userEmail?: string) {
+  const key = getUserStorageKey(BOOKMARKS_KEY, userEmail);
+  localStorage.setItem(key, JSON.stringify(bookmarks));
+}
 
 export default function CourseDashboard() {
   const navigate = useNavigate();
@@ -85,7 +116,7 @@ export default function CourseDashboard() {
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
   const [editNote, setEditNote] = useState('');
   const [isEditingNote, setIsEditingNote] = useState(false);
-  const [currentPage, setCurrentPage] = useState<'dashboard' | 'course' | 'profile' | 'certificate'>('dashboard');
+  const [currentPage, setCurrentPage] = useState<'dashboard' | 'course' | 'profile' | 'certificate' | 'bookmarks'>('dashboard');
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const [rightPanelTab, setRightPanelTab] = useState<'notes' | 'transcript' | 'resources'>('notes');
   const lessonRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -121,6 +152,9 @@ export default function CourseDashboard() {
   const [editForm, setEditForm] = useState<UserProfile>(userProfile);
   const [toastMsg, setToastMsg] = useState('');
   const [logoutToast, setLogoutToast] = useState(false);
+  const [bookmarks, setBookmarks] = useState<Bookmark[]>(() => loadBookmarks(user?.email));
+  const [bookmarkAnimating, setBookmarkAnimating] = useState(false);
+  const [showBookmarkTooltip, setShowBookmarkTooltip] = useState(false);
 
   useEffect(() => {
     localStorage.removeItem(PROFILE_KEY);
@@ -218,6 +252,45 @@ export default function CourseDashboard() {
     window.history.replaceState(null, '', '/lms/sign-in');
     navigate('/lms/sign-in', { replace: true });
   }, [lmsLogout, mainLogout, navigate]);
+
+  const isLessonBookmarked = useMemo(() => bookmarks.some((b) => b.lessonId === activeLessonId), [bookmarks, activeLessonId]);
+
+  const toggleBookmark = useCallback(() => {
+    const userId = user?.email || 'anonymous';
+    setBookmarks((prev) => {
+      const existing = prev.find((b) => b.lessonId === activeLessonId);
+      let next: Bookmark[];
+      if (existing) {
+        next = prev.filter((b) => b.lessonId !== activeLessonId);
+      } else {
+        const newBookmark: Bookmark = {
+          userId,
+          courseId: 'hr-course',
+          moduleId: activeChapter.id,
+          lessonId: activeLesson.id,
+          lessonTitle: activeLesson.title,
+          courseName: 'AI for HR Professionals',
+          moduleName: activeChapter.title,
+          lessonType: activeLesson.type,
+          duration: activeLesson.duration,
+          bookmarkedAt: Date.now(),
+        };
+        next = [...prev, newBookmark];
+        setBookmarkAnimating(true);
+        setTimeout(() => setBookmarkAnimating(false), 600);
+      }
+      saveBookmarks(next, user?.email);
+      return next;
+    });
+  }, [user?.email, activeLessonId, activeLesson, activeChapter]);
+
+  const removeBookmark = useCallback((lessonId: string) => {
+    setBookmarks((prev) => {
+      const next = prev.filter((b) => b.lessonId !== lessonId);
+      saveBookmarks(next, user?.email);
+      return next;
+    });
+  }, [user?.email]);
 
   const submitQuiz = useCallback(() => {
     if (!activeLesson.quizQuestions) return;
@@ -383,6 +456,10 @@ export default function CourseDashboard() {
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             <span>Profile</span>
           </button>
+          <button className={`lms-nav-tab ${currentPage === 'bookmarks' ? 'active' : ''}`} onClick={() => setCurrentPage('bookmarks')}>
+            <Bookmark size={15} />
+            <span>Saved</span>
+          </button>
         </nav>
 
         <div className="lms-hr">
@@ -538,6 +615,12 @@ export default function CourseDashboard() {
                         <Download size={20} style={{ color: '#ffffff' }} />
                       </div>
                       <span className="lms-action-label">Download</span>
+                    </button>
+                    <button className="lms-action-card" onClick={() => setCurrentPage('bookmarks')}>
+                      <div className="lms-action-icon" style={{ background: 'linear-gradient(135deg, #9B7A3E, #C5A059)' }}>
+                        <Bookmark size={20} style={{ color: '#ffffff' }} />
+                      </div>
+                      <span className="lms-action-label">Saved Lessons</span>
                     </button>
                   </div>
                 </div>
@@ -767,6 +850,20 @@ export default function CourseDashboard() {
                 <div className="lms-video-meta-actions">
                   <button className="lms-panel-toggle" onClick={() => setRightPanelOpen(!rightPanelOpen)} title="Toggle panel">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+                  </button>
+                  <button
+                    className={`lms-bookmark-btn ${isLessonBookmarked ? 'bookmarked' : ''} ${bookmarkAnimating ? 'bookmark-pop' : ''}`}
+                    onClick={toggleBookmark}
+                    onMouseEnter={() => setShowBookmarkTooltip(true)}
+                    onMouseLeave={() => setShowBookmarkTooltip(false)}
+                    aria-label="Bookmark lesson"
+                    aria-pressed={isLessonBookmarked}
+                    title={isLessonBookmarked ? 'Saved to Bookmarks' : 'Save lesson'}
+                  >
+                    <Bookmark size={16} fill={isLessonBookmarked ? '#9B7A3E' : 'none'} stroke={isLessonBookmarked ? '#9B7A3E' : 'currentColor'} />
+                    {showBookmarkTooltip && (
+                      <span className="lms-bookmark-tooltip">{isLessonBookmarked ? 'Saved to Bookmarks' : 'Save lesson'}</span>
+                    )}
                   </button>
                   <button className={`lms-done-btn ${isCurrentCompleted ? 'done' : ''}`} onClick={toggleComplete}>
                     {isCurrentCompleted ? <><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg> Completed</> : <><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/></svg> Mark Complete</>}
@@ -1107,6 +1204,74 @@ export default function CourseDashboard() {
               <button type="button" className="lms-modal-cancel" onClick={() => setEditModalOpen(false)}>Cancel</button>
               <button type="button" className="lms-modal-save" onClick={() => handleSaveProfile(editForm)}>Save Profile Changes</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Saved Lessons Page */}
+      {currentPage === 'bookmarks' && (
+        <div className="lms-page-content">
+          <div style={{ maxWidth: '840px', margin: '0 auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+              <div>
+                <h2 style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontSize: '1.5rem', fontWeight: 700, color: '#0c1628', margin: 0 }}>Saved Lessons</h2>
+                <p style={{ fontSize: '0.88rem', color: '#64748b', margin: '4px 0 0' }}>{bookmarks.length} bookmarked lesson{bookmarks.length !== 1 ? 's' : ''}</p>
+              </div>
+              <button onClick={() => setCurrentPage('dashboard')} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 18px', background: '#ffffff', border: '1px solid rgba(12,22,40,0.12)', borderRadius: '99px', color: '#0c1628', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+                Back to Dashboard
+              </button>
+            </div>
+
+            {bookmarks.length === 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '64px 24px', background: '#ffffff', borderRadius: '18px', border: '1px solid rgba(12,22,40,0.08)', boxShadow: '0 8px 30px rgba(12,22,40,0.04)' }}>
+                <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(155,122,62,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Bookmark size={28} style={{ color: '#9B7A3E' }} />
+                </div>
+                <h3 style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontSize: '1.1rem', fontWeight: 700, color: '#0c1628', margin: 0 }}>No saved lessons yet</h3>
+                <p style={{ fontSize: '0.88rem', color: '#64748b', margin: 0, textAlign: 'center', maxWidth: '360px', lineHeight: 1.6 }}>
+                  Bookmark lessons while learning and they'll appear here.
+                </p>
+                <button onClick={() => setCurrentPage('course')} style={{ marginTop: '8px', padding: '10px 24px', background: 'linear-gradient(135deg, #9B7A3E, #7D6334)', color: '#fff', border: 'none', borderRadius: '99px', fontSize: '0.88rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 4px 16px rgba(155,122,62,0.3)' }}>
+                  Start Learning
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {bookmarks.map((bm) => (
+                  <div key={bm.lessonId} className="lms-bookmark-card" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px', background: '#ffffff', borderRadius: '14px', border: '1px solid rgba(12,22,40,0.08)', boxShadow: '0 4px 16px rgba(12,22,40,0.03)', transition: 'all 0.2s' }}>
+                    <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: bm.lessonType === 'quiz' ? 'rgba(99,102,241,0.12)' : bm.lessonType === 'assignment' ? 'rgba(236,72,153,0.12)' : 'rgba(155,122,62,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {lessonTypeIcon(bm.lessonType, 20)}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontSize: '0.92rem', fontWeight: 700, color: '#0c1628', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: 0 }}>{bm.lessonTitle}</div>
+                      <div style={{ fontSize: '0.78rem', color: '#64748b', margin: '3px 0 0', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <span>{bm.courseName}</span>
+                        <span>&middot;</span>
+                        <span>{bm.moduleName}</span>
+                        {bm.duration && <><span>&middot;</span><span>{bm.duration}</span></>}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                      <button
+                        onClick={() => { selectLesson(bm.lessonId); setCurrentPage('course'); }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 18px', background: 'linear-gradient(135deg, #9B7A3E, #7D6334)', color: '#fff', border: 'none', borderRadius: '99px', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', transition: 'all 0.2s' }}
+                      >
+                        <Play size={14} />
+                        View Lesson
+                      </button>
+                      <button
+                        onClick={() => removeBookmark(bm.lessonId)}
+                        title="Remove bookmark"
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.15)', borderRadius: '10px', color: '#dc2626', cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1599,6 +1764,16 @@ header.lms-header, .lms-header{position:sticky !important;top:0 !important;left:
 .lms-milestone-labels{display:flex;justify-content:space-between;margin-top:8px}
 .lms-milestone-labels span{font-size:0.72rem;font-weight:700;color:#64748b}
 .lms-milestone-text{font-size:0.82rem;color:#64748b;margin:0;line-height:1.5}
+
+/* Bookmark Button Styles */
+.lms-bookmark-btn{position:relative;display:flex;align-items:center;justify-content:center;width:34px;height:34px;border:1px solid rgba(12,22,40,0.08);border-radius:8px;background:#ffffff;color:#64748b;cursor:pointer;transition:all 0.2s}
+.lms-bookmark-btn:hover{border-color:#9B7A3E;color:#9B7A3E}
+.lms-bookmark-btn.bookmarked{background:rgba(155,122,62,0.08);border-color:rgba(155,122,62,0.3);color:#9B7A3E}
+.lms-bookmark-btn.bookmark-pop{animation:bookmarkPop 0.6s cubic-bezier(0.16,1,0.3,1)}
+@keyframes bookmarkPop{0%{transform:scale(1)}30%{transform:scale(1.25)}60%{transform:scale(0.95)}100%{transform:scale(1)}}
+.lms-bookmark-tooltip{position:absolute;bottom:-32px;left:50%;transform:translateX(-50%);padding:4px 10px;background:#0c1628;color:#ffffff;font-size:0.7rem;font-weight:600;border-radius:6px;white-space:nowrap;pointer-events:none;z-index:100;box-shadow:0 4px 12px rgba(0,0,0,0.2)}
+.lms-bookmark-tooltip::before{content:'';position:absolute;top:-4px;left:50%;transform:translateX(-50%);border-left:4px solid transparent;border-right:4px solid transparent;border-bottom:4px solid #0c1628}
+.lms-bookmark-card:hover{border-color:rgba(155,122,62,0.25);transform:translateY(-1px);box-shadow:0 8px 24px rgba(12,22,40,0.06)}
 
 /* Media Queries */
 @media(max-width:1200px){
