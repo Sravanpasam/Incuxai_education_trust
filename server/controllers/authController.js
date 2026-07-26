@@ -1,6 +1,6 @@
 import { createAndStoreOTP, verifyOTP, cleanupExpiredOTPs } from '../services/otpService.js';
 import { sendOtpEmail } from '../services/emailService.js';
-import { createUser, findUserByEmail, verifyPassword } from '../services/userService.js';
+import { createUser, findUserByEmail, verifyPassword, updatePassword } from '../services/userService.js';
 import { generateToken } from '../utils/jwt.js';
 import { ensureUsersTable } from '../migration/ensureUsersTable.js';
 
@@ -75,7 +75,7 @@ export async function verifyOtp(req, res) {
  */
 export async function register(req, res) {
   try {
-    const { fullName, personalEmail, phone, workEmail, password } = req.body;
+    const { fullName, personalEmail, phone, workEmail, password, companyName, location, role } = req.body;
 
     if (!fullName || !personalEmail || !phone || !workEmail || !password) {
       return res.status(400).json({ success: false, message: 'All fields are required.' });
@@ -92,6 +92,7 @@ export async function register(req, res) {
 
     const { user, error } = await createUser({
       fullName, personalEmail, phone, workEmail, password,
+      companyName, location, role,
       workEmailVerified: true,
     });
 
@@ -162,11 +163,48 @@ export async function login(req, res) {
         id: user.id,
         name: user.full_name,
         email: user.work_email,
+        role: user.role,
       },
       message: 'Login successful',
     });
   } catch (err) {
     console.error('[AuthController] login error:', err);
+    return res.status(500).json({ success: false, message: 'Internal server error.' });
+  }
+}
+
+/**
+ * POST /api/auth/reset-password
+ * Resets user password after OTP verification.
+ */
+export async function resetPassword(req, res) {
+  try {
+    const { email, newPassword } = req.body;
+
+    if (!email || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Email and new password are required.' });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 8 characters.' });
+    }
+
+    const user = await findUserByEmail(email);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'No account found with this email.' });
+    }
+
+    const { success, error } = await updatePassword(email, newPassword);
+    if (!success) {
+      return res.status(500).json({ success: false, message: 'Failed to update password. Please try again.' });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Password reset successfully. You can now sign in with your new password.',
+    });
+  } catch (err) {
+    console.error('[AuthController] resetPassword error:', err);
     return res.status(500).json({ success: false, message: 'Internal server error.' });
   }
 }
@@ -188,6 +226,9 @@ export async function getMe(req, res) {
         name: user.full_name,
         email: user.work_email,
         phone: user.phone_number,
+        companyName: user.company_name,
+        location: user.location,
+        role: user.role,
         createdAt: user.created_at,
       },
     });

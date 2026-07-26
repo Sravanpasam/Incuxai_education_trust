@@ -624,12 +624,12 @@ export default function App() {
         return;
       }
 
-      // 2. Teacher Login
+        // 2. Teacher Login
       const teacherCreds = getSafeArray('teachxai_teachers_pass');
       const foundTeacher = teacherCreds.find((t: any) => t && t.email === email && t.password === pass);
-      if (foundTeacher) {
+      if ((email === 'teacher@incuxai.org' && pass === 'teacher123') || foundTeacher) {
         const role = 'teacher';
-        const name = foundTeacher.name || email.split('@')[0];
+        const name = foundTeacher?.name || (email === 'teacher@incuxai.org' ? 'Teacher Portal' : email.split('@')[0]);
         currentUser = { role, name };
         localStorage.setItem('currentUser', JSON.stringify(currentUser));
         localStorage.setItem('currentUserEmail', email);
@@ -650,9 +650,9 @@ export default function App() {
       // 3. Volunteer Login
       const volCreds = getSafeArray('volunteer_pass');
       const foundVol = volCreds.find((v: any) => v && v.email === email && v.password === pass);
-      if (foundVol) {
+      if ((email === 'volunteer@incuxai.org' && pass === 'volunteer123') || foundVol) {
         const role = 'volunteer';
-        const name = foundVol.name || email.split('@')[0];
+        const name = foundVol?.name || (email === 'volunteer@incuxai.org' ? 'Volunteer Portal' : email.split('@')[0]);
         currentUser = { role, name };
         localStorage.setItem('currentUser', JSON.stringify(currentUser));
         localStorage.setItem('currentUserEmail', email);
@@ -4521,9 +4521,7 @@ export default function App() {
         <div style={{ width: '100%', maxWidth: '440px', background: 'var(--glass)', borderRadius: '20px', border: '1px solid var(--glass-border)', boxShadow: '0 20px 60px rgba(12,22,40,0.1)', overflow: 'hidden' }}>
           
           <div style={{ background: 'linear-gradient(135deg, #0c1628 0%, #1e3a5f 100%)', padding: '2.5rem 2rem 2rem', textAlign: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-            <div style={{ width: '52px', height: '52px', borderRadius: '14px', background: 'linear-gradient(135deg, #9B7A3E, #7D6334)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.4rem', margin: '0 auto 14px', boxShadow: '0 6px 20px rgba(155,122,62,0.35)' }}>
-              I
-            </div>
+            <img src={logoImg} alt="IncuXAI Education Trust" style={{ height: '54px', width: 'auto', borderRadius: '10px', objectFit: 'contain', margin: '0 auto 14px', display: 'block' }} />
             <h2 style={{ margin: 0, color: '#ffffff', fontSize: '1.4rem', fontWeight: 700, fontFamily: 'var(--font-display)' }}>Portal Sign In</h2>
             <p style={{ margin: '8px 0 0', color: 'rgba(255,255,255,0.75)', fontSize: '0.88rem' }}>Access Teacher, Volunteer, or Admin Portal</p>
           </div>
@@ -4542,11 +4540,6 @@ export default function App() {
             <button type="submit" style={{ width: '100%', padding: '13px', background: 'linear-gradient(135deg, #9B7A3E, #7D6334)', color: '#ffffff', border: 'none', borderRadius: '99px', fontSize: '0.95rem', fontWeight: 700, cursor: 'pointer', boxShadow: '0 6px 20px -4px rgba(155, 122, 62, 0.35)', transition: 'all 0.2s' }}>
               Sign In to Portal
             </button>
-
-            <div style={{ marginTop: '1.5rem', padding: '12px 14px', background: '#f8f7f3', borderRadius: '10px', border: '1px solid rgba(12,22,40,0.06)', fontSize: '0.78rem', color: '#64748b', lineHeight: '1.5', textAlign: 'center' }}>
-              ℹ️ Automatic Portal Routing based on your email.<br />
-              <strong>Admin Demo:</strong> <code>sravanpasam74@gmail.com</code> / <code>admin123</code>
-            </div>
 
             <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
               <button type="button" onClick={() => (window as any).showPage('home')} style={{ background: 'none', border: 'none', color: '#9B7A3E', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', textDecoration: 'underline' }}>

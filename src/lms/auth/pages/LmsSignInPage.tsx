@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { loginUser } from '../../../auth/services/authService';
 import { useLmsAuth } from '../context/LmsAuthContext';
+import ietLogo from '../../../../picss/iet logo.png';
 
 export default function LmsSignInPage() {
   const navigate = useNavigate();
@@ -56,7 +57,7 @@ export default function LmsSignInPage() {
       </button>
       <div style={s.card}>
         <div style={s.header}>
-          <div style={s.brandIcon}>I</div>
+          <img src={ietLogo} alt="IncuXAI Education Trust" style={{ height: '52px', width: 'auto', borderRadius: '10px', objectFit: 'contain', margin: '0 auto 12px', display: 'block' }} />
           <h1 style={s.title}>IncuXAI Learning Hub</h1>
           <p style={s.subtitle}>Sign in to continue your course</p>
         </div>
@@ -82,6 +83,11 @@ export default function LmsSignInPage() {
             style={s.input}
             disabled={loading}
           />
+          <div style={{ textAlign: 'right', marginTop: '6px' }}>
+            <Link to="/lms/forgot-password" style={{ color: '#9B7A3E', fontWeight: 600, fontSize: '0.8rem', textDecoration: 'none' }}>
+              Forgot Password?
+            </Link>
+          </div>
 
           <button type="submit" style={{ ...s.btn, opacity: loading ? 0.7 : 1 }} disabled={loading}>
             {loading ? (

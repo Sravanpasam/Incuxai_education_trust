@@ -1,10 +1,13 @@
-import { useState, useEffect, useRef, type FormEvent } from 'react';
+import { useState, useEffect, useRef, useCallback, type FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { validateWorkEmail } from '../validation/emailValidation';
 import { validateCompanyEmail } from '../validation/companyEmailValidation';
-import { sendOtp, verifyOtp, registerUser } from '../services/authService';
+import { sendOtp, verifyOtp, registerUser, loginUser } from '../services/authService';
+import { useAuth } from '../context/AuthContext';
+import { useLmsAuth } from '../../lms/auth/context/LmsAuthContext';
+import RegistrationSuccessPopup from '../components/RegistrationSuccessPopup';
+import { HR_ROLES } from '../constants/hrRoles';
 
-const ROLES = ['Executive', 'Manager', 'Developer', 'Consultant', 'HR Manager', 'Team Lead', 'Other'];
 const OTP_LENGTH = 6;
 const OTP_TIMER = 180;
 
@@ -46,7 +49,11 @@ function isPasswordStrong(pw: string): boolean {
 
 export default function SignUpPage() {
   const navigate = useNavigate();
+  const { login: mainLogin } = useAuth();
+  const { login: lmsLogin } = useLmsAuth();
   const [step, setStep] = useState<Step>('info');
+  const [showPopup, setShowPopup] = useState(false);
+  const [popupLoading, setPopupLoading] = useState(false);
 
   const handleBack = () => {
     if (step === 'otp') setStep('info');
@@ -104,7 +111,7 @@ export default function SignUpPage() {
     }
     if (!form.companyName.trim()) e.companyName = 'Company name is required.';
     if (!form.location.trim()) e.location = 'Location is required.';
-    if (!form.role) e.role = 'Please select a role.';
+    if (!form.role) e.role = 'Please select your HR role.';
 
     if (!form.password) {
       e.password = 'Password is required.';
@@ -187,8 +194,15 @@ export default function SignUpPage() {
       });
 
       if (regRes.success) {
-        showToast('success', 'Account created successfully. Please sign in to continue.');
-        setTimeout(() => navigate('/sign-in'), 1500);
+        setPopupLoading(true);
+
+        const loginRes = await loginUser(workEmail.trim().toLowerCase(), form.password);
+        if (loginRes.success && loginRes.token && loginRes.user) {
+          mainLogin(loginRes.token, loginRes.user.email, loginRes.user.name, loginRes.user.id);
+          lmsLogin(loginRes.token, loginRes.user.email, loginRes.user.name, loginRes.user.id);
+        }
+        setPopupLoading(false);
+        setShowPopup(true);
       } else {
         showToast('error', regRes.message || 'Failed to create account. Please try again.');
       }
@@ -254,6 +268,12 @@ export default function SignUpPage() {
     { key: 'number', label: 'One number (0-9)' },
     { key: 'special', label: 'One special character (!@#$%^&*...)' },
   ];
+
+  const handlePopupComplete = useCallback(() => {
+    setShowPopup(false);
+    window.history.replaceState(null, '', '/course-dashboard');
+    navigate('/course-dashboard', { replace: true });
+  }, [navigate]);
 
   return (
     <div style={s.page}>
@@ -330,8 +350,8 @@ export default function SignUpPage() {
               <div style={s.field}>
                 <label style={s.label}>Role *</label>
                 <select value={form.role} onChange={(e) => update('role', e.target.value)} style={s.input}>
-                  <option value="">Select your role</option>
-                  {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+                  <option value="">Select Your HR Role</option>
+                  {HR_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
                 </select>
                 {errors.role && <span style={s.error}>{errors.role}</span>}
               </div>
@@ -475,6 +495,11 @@ export default function SignUpPage() {
           </span>
         </div>
       )}
+
+      <RegistrationSuccessPopup
+        visible={showPopup}
+        onComplete={handlePopupComplete}
+      />
     </div>
   );
 }

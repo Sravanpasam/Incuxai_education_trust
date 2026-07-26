@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { sendOtp, verifyOtp, register, login, getMe, setupDb } from '../controllers/authController.js';
+import { sendOtp, verifyOtp, register, login, resetPassword, getMe, setupDb } from '../controllers/authController.js';
 import { validateWorkEmail } from '../middleware/validateWorkEmail.js';
 import { verifyToken } from '../utils/jwt.js';
 
@@ -26,6 +26,12 @@ router.post('/register', register);
  * Authenticates with work email + password.
  */
 router.post('/login', login);
+
+/**
+ * POST /api/auth/reset-password
+ * Resets password after OTP verification.
+ */
+router.post('/reset-password', resetPassword);
 
 /**
  * POST /api/auth/setup-db

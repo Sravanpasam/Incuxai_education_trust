@@ -6,7 +6,7 @@ const BCRYPT_ROUNDS = 10;
 /**
  * Create a new user account.
  */
-export async function createUser({ fullName, personalEmail, phone, workEmail, password, workEmailVerified = false }) {
+export async function createUser({ fullName, personalEmail, phone, workEmail, password, companyName, location, role, workEmailVerified = false }) {
   const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
   const { data, error } = await supabase
@@ -18,8 +18,11 @@ export async function createUser({ fullName, personalEmail, phone, workEmail, pa
       work_email: workEmail.toLowerCase(),
       password_hash: passwordHash,
       work_email_verified: workEmailVerified,
+      company_name: companyName || null,
+      location: location || null,
+      role: role || null,
     })
-    .select('id, full_name, personal_email, work_email, phone_number, created_at, updated_at')
+    .select('id, full_name, personal_email, work_email, phone_number, company_name, location, role, created_at, updated_at')
     .single();
 
   if (error) {
@@ -57,4 +60,17 @@ export async function findUserByEmail(workEmail) {
  */
 export async function verifyPassword(plain, hash) {
   return bcrypt.compare(plain, hash);
+}
+
+/**
+ * Update a user's password by work email.
+ */
+export async function updatePassword(workEmail, newPassword) {
+  const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+  const { error } = await supabase
+    .from('users')
+    .update({ password_hash: passwordHash, updated_at: new Date().toISOString() })
+    .eq('work_email', workEmail.toLowerCase());
+  if (error) return { success: false, error: error.message };
+  return { success: true };
 }
