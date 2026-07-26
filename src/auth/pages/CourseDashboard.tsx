@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HR_COURSE, type Lesson, type Chapter, type QuizQuestion } from '../../data/hrCourseData';
+import { TrendingUp, Flame, Clock, Award, Play, RotateCcw, SkipForward, Download, Target, BarChart3, Trophy, Star, Zap, Crown, Sparkles, Flag, CalendarDays, User, BookOpen, ChevronRight, CheckCircle2, Timer, Brain, Medal } from 'lucide-react';
 import { useLmsAuth } from '../../lms/auth/context/LmsAuthContext';
+import { useAuth } from '../context/AuthContext';
 import ietLogo from '../../../picss/iet logo.png';
 
 const PROGRESS_KEY = 'lms_hr_progress';
@@ -53,6 +55,7 @@ function getAllLessons(): { lesson: Lesson; chapter: Chapter; globalIndex: numbe
 
 function parseDuration(d: string): number { const parts = d.split(':').map(Number); return (parts[0] || 0) * 60 + (parts[1] || 0); }
 function formatTimeLeft(s: number): string { const h = Math.floor(s / 3600); const m = Math.round((s % 3600) / 60); return h > 0 ? `${h}h ${m}m` : `${m}m`; }
+function formatTimestamp(ts: number): string { const diff = Date.now() - ts; const mins = Math.floor(diff / 60000); if (mins < 1) return 'Just now'; if (mins < 60) return `${mins}m ago`; const hrs = Math.floor(mins / 60); if (hrs < 24) return `${hrs}h ago`; const days = Math.floor(hrs / 24); return `${days}d ago`; }
 
 interface UserProfile {
   name: string;
@@ -68,7 +71,8 @@ const PROFILE_KEY = 'lms_user_profile';
 
 export default function CourseDashboard() {
   const navigate = useNavigate();
-  const { user, logout } = useLmsAuth();
+  const { user, logout: lmsLogout } = useLmsAuth();
+  const { logout: mainLogout } = useAuth();
   const [progress, setProgress] = useState<CourseProgress>(() => loadProgress(user?.email));
   const [expandedChapters, setExpandedChapters] = useState<Record<string, boolean>>(() => { const m: Record<string, boolean> = {}; HR_COURSE.chapters.forEach((ch) => { m[ch.id] = true; }); return m; });
   const [activeLessonId, setActiveLessonId] = useState(progress.currentLessonId);
@@ -116,6 +120,7 @@ export default function CourseDashboard() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editForm, setEditForm] = useState<UserProfile>(userProfile);
   const [toastMsg, setToastMsg] = useState('');
+  const [logoutToast, setLogoutToast] = useState(false);
 
   useEffect(() => {
     localStorage.removeItem(PROFILE_KEY);
@@ -205,6 +210,15 @@ export default function CourseDashboard() {
 
   const resetProgress = useCallback(() => { localStorage.removeItem(PROGRESS_KEY); setProgress(loadProgress()); setActiveLessonId(HR_COURSE.chapters[0].lessons[0].id); }, []);
 
+  const handleLogout = useCallback(() => {
+    lmsLogout();
+    mainLogout();
+    setLogoutToast(true);
+    setTimeout(() => setLogoutToast(false), 2500);
+    window.history.replaceState(null, '', '/lms/sign-in');
+    navigate('/lms/sign-in', { replace: true });
+  }, [lmsLogout, mainLogout, navigate]);
+
   const submitQuiz = useCallback(() => {
     if (!activeLesson.quizQuestions) return;
     let correct = 0;
@@ -225,6 +239,103 @@ export default function CourseDashboard() {
   const videoProgressPercent = useMemo(() => { const dur = parseDuration(activeLesson.duration); if (!dur) return 0; const pos = currentLessonProgress?.lastPosition || 0; return Math.min(100, Math.round((pos / dur) * 100)); }, [activeLesson.duration, currentLessonProgress]);
   const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2];
   const userInitial = (user?.name || user?.email || 'U')[0].toUpperCase();
+
+  const currentStreak = useMemo(() => {
+    const dates = new Set(
+      Object.values(progress.lessonProgress)
+        .filter(lp => lp.watchPercent >= WATCH_THRESHOLD || lp.completed)
+        .map(lp => { const d = new Date(lp.timestamp); return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; })
+    );
+    let streak = 0;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    for (let i = 0; i < 365; i++) {
+      const check = new Date(today); check.setDate(check.getDate() - i);
+      const key = `${check.getFullYear()}-${check.getMonth()}-${check.getDate()}`;
+      if (dates.has(key)) streak++; else if (i > 0) break;
+    }
+    return streak;
+  }, [progress.lessonProgress]);
+
+  const weeklyData = useMemo(() => {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const now = new Date();
+    return Array.from({ length: 7 }, (_, i) => {
+      const date = new Date(now); date.setDate(date.getDate() - (6 - i));
+      const dateStr = date.toDateString();
+      const count = Object.values(progress.lessonProgress)
+        .filter(lp => new Date(lp.timestamp).toDateString() === dateStr && (lp.completed || lp.watchPercent >= WATCH_THRESHOLD)).length;
+      return { day: days[date.getDay()], count, isToday: i === 6 };
+    });
+  }, [progress.lessonProgress]);
+  const maxWeeklyCount = useMemo(() => Math.max(1, ...weeklyData.map(d => d.count)), [weeklyData]);
+
+  const recentActivity = useMemo(() => {
+    return Object.entries(progress.lessonProgress)
+      .map(([id, lp]) => ({ id, ...lp }))
+      .sort((a, b) => b.timestamp - a.timestamp).slice(0, 5);
+  }, [progress.lessonProgress]);
+
+  const achievements = useMemo(() => {
+    const ms = [
+      { icon: 'star', title: 'First Step', desc: 'Complete your first lesson', t: 1 },
+      { icon: 'flame', title: 'Quarter Way', desc: 'Complete 25% of the course', t: 0.25 },
+      { icon: 'zap', title: 'Halfway Hero', desc: 'Complete 50% of the course', t: 0.5 },
+      { icon: 'trophy', title: 'Almost There', desc: 'Complete 75% of the course', t: 0.75 },
+      { icon: 'crown', title: 'Course Master', desc: 'Complete all lessons', t: 1 },
+    ];
+    return ms.map(m => ({
+      ...m, unlocked: completedCount >= Math.ceil(totalLessons * m.t)
+    }));
+  }, [completedCount, totalLessons]);
+  const unlockedCount = useMemo(() => achievements.filter(a => a.unlocked).length, [achievements]);
+
+  const todayGoalTarget = useMemo(() => {
+    const rem = totalLessons - completedCount;
+    return rem <= 0 ? 0 : Math.min(rem, Math.max(1, Math.ceil(rem * 0.1)));
+  }, [totalLessons, completedCount]);
+  const todayGoalDone = useMemo(() => {
+    const todayStr = new Date().toDateString();
+    return Object.values(progress.lessonProgress)
+      .filter(lp => new Date(lp.timestamp).toDateString() === todayStr && (lp.completed || lp.watchPercent >= WATCH_THRESHOLD)).length;
+  }, [progress.lessonProgress]);
+  const todayGoalMessage = useMemo(() => {
+    if (todayGoalTarget === 0) return 'Congratulations! Course complete!';
+    if (todayGoalDone >= todayGoalTarget) return 'Goal reached! Keep up the great work!';
+    const left = todayGoalTarget - todayGoalDone;
+    return `${left} more lesson${left !== 1 ? 's' : ''} to hit today's goal`;
+  }, [todayGoalTarget, todayGoalDone]);
+
+  const nextMilestone = useMemo(() => {
+    for (const m of [25, 50, 75, 100]) {
+      if (progressPercent < m) {
+        const needed = Math.ceil(totalLessons * m / 100) - completedCount;
+        return { percent: m, needed, message: `${needed} lesson${needed !== 1 ? 's' : ''} to reach ${m}%` };
+      }
+    }
+    return null;
+  }, [progressPercent, completedCount, totalLessons]);
+
+  const calInfo = useMemo(() => {
+    const now = new Date();
+    const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const y = now.getFullYear(), mo = now.getMonth();
+    return {
+      month: months[mo], year: y, monthNum: mo,
+      firstDay: new Date(y, mo, 1).getDay(),
+      daysInMonth: new Date(y, mo + 1, 0).getDate(),
+      today: now.getDate(),
+      accessed: new Set(Object.values(progress.lessonProgress).map(lp => new Date(lp.timestamp).toDateString()))
+    };
+  }, [progress.lessonProgress]);
+
+  const motivationalMessage = useMemo(() => {
+    if (progressPercent >= 100) return "You've mastered the course! Time to apply your knowledge.";
+    if (progressPercent >= 75) return "You're in the final stretch. Finish strong!";
+    if (progressPercent >= 50) return "You're halfway there! The best is yet to come.";
+    if (progressPercent >= 25) return "Great progress! You're building real momentum.";
+    if (completedCount >= 1) return "You've started! That's the hardest part. Keep going!";
+    return "Welcome to your learning journey. Let's begin!";
+  }, [progressPercent, completedCount]);
 
   const lessonTypeIcon = (type: string, size = 14) => {
     if (type === 'quiz') return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>;
@@ -288,7 +399,7 @@ export default function CourseDashboard() {
             )}
           </div>
 
-          <button className="lms-logout-btn" onClick={() => { logout(); navigate('/'); }} title="Sign Out">
+          <button className="lms-logout-btn" onClick={handleLogout} title="Sign Out">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
           </button>
         </div>
@@ -297,124 +408,283 @@ export default function CourseDashboard() {
       {currentPage === 'dashboard' && (
         <div className="lms-page-content">
           <div className="lms-dash">
-            {/* Hero Welcome Banner */}
-            <div className="lms-dash-welcome">
-              <div className="lms-dash-welcome-left">
-                <span className="lms-dash-pill">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                  IncuXAI Learning Hub
-                </span>
-                <h1>Welcome back, <span className="lms-dash-name">{user?.name || 'Student'}</span> 👋</h1>
-                <p>Track your progress, resume your course, and master AI skills step-by-step.</p>
-                <div className="lms-dash-welcome-actions">
-                  <button className="lms-dash-primary-btn" onClick={() => setCurrentPage('course')}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                    Resume Current Lesson
-                  </button>
-                  <button className="lms-dash-secondary-btn" onClick={() => setCurrentPage('profile')}>
-                    View Achievements
-                  </button>
+            {/* Hero Learning Card */}
+            <div className="lms-hero-card">
+              <div className="lms-hero-content">
+                <div className="lms-hero-text">
+                  <div className="lms-hero-badge">
+                    <BookOpen size={14} />
+                    <span>IncuXAI Learning Hub</span>
+                  </div>
+                  <h1 className="lms-hero-name">Welcome back, {user?.name || 'Student'}</h1>
+                  <p style={{ fontSize: '0.92rem', color: 'rgba(255,255,255,0.75)', margin: '0 0 22px', lineHeight: 1.6 }}>
+                    Track your progress, resume your course, and master HR skills step-by-step.
+                  </p>
+                  <div className="lms-hero-actions">
+                    <button className="lms-hero-resume-btn" onClick={() => setCurrentPage('course')}>
+                      <Play size={16} />
+                      Resume Current Module
+                    </button>
+                    <button className="lms-hero-view-btn" onClick={() => setCurrentPage('profile')}>
+                      View Profile
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <div className="lms-dash-welcome-right">
-                <div className="lms-dash-stat-ring">
-                  <svg viewBox="0 0 120 120">
-                    <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="9"/>
-                    <circle cx="60" cy="60" r="52" fill="none" stroke="url(#grad)" strokeWidth="9" strokeLinecap="round" strokeDasharray={`${progressPercent * 3.267} 326.7`} transform="rotate(-90 60 60)"/>
-                    <defs>
-                      <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#F59E0B"/>
-                        <stop offset="50%" stopColor="#6366F1"/>
-                        <stop offset="100%" stopColor="#10B981"/>
-                      </linearGradient>
-                    </defs>
-                  </svg>
-                  <div className="lms-dash-ring-content">
-                    <span className="lms-dash-stat-pct">{progressPercent}%</span>
-                    <span className="lms-dash-ring-sub">Done</span>
+                <div className="lms-hero-ring-wrap">
+                  <div className="lms-hero-ring">
+                    <svg viewBox="0 0 120 120">
+                      <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="8"/>
+                      <circle cx="60" cy="60" r="52" fill="none" stroke="url(#heroGrad)" strokeWidth="8" strokeLinecap="round" strokeDasharray={`${progressPercent * 3.267} 326.7`} transform="rotate(-90 60 60)"/>
+                      <defs>
+                        <linearGradient id="heroGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#F59E0B"/>
+                          <stop offset="50%" stopColor="#C5A059"/>
+                          <stop offset="100%" stopColor="#10B981"/>
+                        </linearGradient>
+                      </defs>
+                    </svg>
+                    <div className="lms-hero-ring-inner">
+                      <span className="lms-hero-pct">{progressPercent}%</span>
+                      <span className="lms-hero-pct-label">Complete</span>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Quick Stat Cards */}
-            <div className="lms-dash-grid">
-              <div className="lms-dash-card lms-dash-continue-card" onClick={() => setCurrentPage('course')}>
-                <div className="lms-dash-card-header">
-                  <span className="lms-dash-card-badge">Current Lesson</span>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+            {/* Smart Insight Cards */}
+            <div className="lms-insights-grid">
+              <div className="lms-insight-card">
+                <div className="lms-insight-icon" style={{ background: 'rgba(245,158,11,0.12)' }}>
+                  <TrendingUp size={20} style={{ color: '#F59E0B' }} />
                 </div>
-                <h3>{activeLesson.title}</h3>
-                <p>{activeChapter.title} &middot; {activeLesson.duration}</p>
-                <div className="lms-dash-card-bar"><div style={{ width: `${progressPercent}%` }} /></div>
-                <div className="lms-dash-card-footer">
-                  <span className="lms-dash-card-cta">Resume Module &rarr;</span>
-                  <span className="lms-dash-card-meta">{completedCount}/{totalLessons} done</span>
+                <div className="lms-insight-data">
+                  <span className="lms-insight-value">{progressPercent}%</span>
+                  <span className="lms-insight-label">Progress</span>
                 </div>
+                <div className="lms-insight-bar"><div style={{ width: `${progressPercent}%`, background: '#F59E0B' }} /></div>
               </div>
-
-              <div className="lms-dash-card">
-                <div className="lms-dash-card-icon icon-amber">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2.2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              <div className="lms-insight-card">
+                <div className="lms-insight-icon" style={{ background: 'rgba(249,115,22,0.12)' }}>
+                  <Flame size={20} style={{ color: '#F97316' }} />
                 </div>
-                <span className="lms-dash-card-num">{completedCount}</span>
-                <span className="lms-dash-card-label">Lessons Completed</span>
+                <div className="lms-insight-data">
+                  <span className="lms-insight-value">{currentStreak}</span>
+                  <span className="lms-insight-label">Day Streak</span>
+                </div>
+                <div className="lms-insight-bar"><div style={{ width: `${Math.min(100, currentStreak * 20)}%`, background: '#F97316' }} /></div>
               </div>
-
-              <div className="lms-dash-card">
-                <div className="lms-dash-card-icon icon-indigo">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6366F1" strokeWidth="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <div className="lms-insight-card">
+                <div className="lms-insight-icon" style={{ background: 'rgba(99,102,241,0.12)' }}>
+                  <Clock size={20} style={{ color: '#6366F1' }} />
                 </div>
-                <span className="lms-dash-card-num">{totalTimeRemaining}</span>
-                <span className="lms-dash-card-label">Est. Time Remaining</span>
+                <div className="lms-insight-data">
+                  <span className="lms-insight-value">{totalTimeRemaining}</span>
+                  <span className="lms-insight-label">Time Left</span>
+                </div>
+                <div className="lms-insight-bar"><div style={{ width: `${100 - progressPercent}%`, background: '#6366F1' }} /></div>
               </div>
-
-              <div className="lms-dash-card">
-                <div className="lms-dash-card-icon icon-emerald">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              <div className="lms-insight-card">
+                <div className="lms-insight-icon" style={{ background: 'rgba(16,185,129,0.12)' }}>
+                  <Award size={20} style={{ color: '#10B981' }} />
                 </div>
-                <span className="lms-dash-card-num">{totalLessons - completedCount}</span>
-                <span className="lms-dash-card-label">Lessons Left</span>
+                <div className="lms-insight-data">
+                  <span className="lms-insight-value">{unlockedCount}/5</span>
+                  <span className="lms-insight-label">Achievements</span>
+                </div>
+                <div className="lms-insight-bar"><div style={{ width: `${(unlockedCount / 5) * 100}%`, background: '#10B981' }} /></div>
               </div>
             </div>
 
-            {/* Course Overview Section */}
-            <div className="lms-dash-section">
-              <div className="lms-section-header">
-                <h2>Enrolled Course Overview</h2>
-                <button className="lms-section-link" onClick={() => setCurrentPage('course')}>Go to Course &rarr;</button>
-              </div>
-              <div className="lms-dash-course-card" onClick={() => setCurrentPage('course')}>
-                <div className="lms-dash-course-icon">
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+            {/* Two Column Layout */}
+            <div className="lms-dash-two-col">
+              <div className="lms-dash-left-col">
+                {/* Quick Action Center */}
+                <div className="lms-section-card">
+                  <h3 className="lms-section-title">Quick Actions</h3>
+                  <div className="lms-actions-grid">
+                    <button className="lms-action-card" onClick={() => setCurrentPage('course')}>
+                      <div className="lms-action-icon" style={{ background: 'linear-gradient(135deg, #9B7A3E, #7D6334)' }}>
+                        <Play size={20} style={{ color: '#ffffff' }} />
+                      </div>
+                      <span className="lms-action-label">Resume Course</span>
+                    </button>
+                    <button className="lms-action-card" onClick={() => setCurrentPage('certificate')}>
+                      <div className="lms-action-icon" style={{ background: 'linear-gradient(135deg, #6366F1, #4F46E5)' }}>
+                        <Award size={20} style={{ color: '#ffffff' }} />
+                      </div>
+                      <span className="lms-action-label">Certificate</span>
+                    </button>
+                    <button className="lms-action-card" onClick={() => setCurrentPage('profile')}>
+                      <div className="lms-action-icon" style={{ background: 'linear-gradient(135deg, #10B981, #059669)' }}>
+                        <User size={20} style={{ color: '#ffffff' }} />
+                      </div>
+                      <span className="lms-action-label">My Profile</span>
+                    </button>
+                    <button className="lms-action-card" onClick={() => { if (confirm('Reset all progress?')) resetProgress(); }}>
+                      <div className="lms-action-icon" style={{ background: 'linear-gradient(135deg, #F59E0B, #D97706)' }}>
+                        <RotateCcw size={20} style={{ color: '#ffffff' }} />
+                      </div>
+                      <span className="lms-action-label">Restart Course</span>
+                    </button>
+                    <button className="lms-action-card" onClick={() => { if (nextLesson) selectLesson(nextLesson.lesson.id); setCurrentPage('course'); }}>
+                      <div className="lms-action-icon" style={{ background: 'linear-gradient(135deg, #EC4899, #DB2777)' }}>
+                        <SkipForward size={20} style={{ color: '#ffffff' }} />
+                      </div>
+                      <span className="lms-action-label">Next Lesson</span>
+                    </button>
+                    <button className="lms-action-card" onClick={() => window.print()}>
+                      <div className="lms-action-icon" style={{ background: 'linear-gradient(135deg, #8B5CF6, #7C3AED)' }}>
+                        <Download size={20} style={{ color: '#ffffff' }} />
+                      </div>
+                      <span className="lms-action-label">Download</span>
+                    </button>
+                  </div>
                 </div>
-                <div className="lms-dash-course-info">
-                  <h3>{HR_COURSE.title}</h3>
-                  <p>{HR_COURSE.instructor} &middot; {totalLessons} lessons &middot; {HR_COURSE.chapters.length} Modules &middot; Updated {HR_COURSE.lastUpdated}</p>
-                  <div className="lms-dash-course-bar"><div style={{ width: `${progressPercent}%` }} /></div>
+
+                {/* Recent Activity Timeline */}
+                <div className="lms-section-card">
+                  <h3 className="lms-section-title">Recent Activity</h3>
+                  {recentActivity.length > 0 ? (
+                    <div className="lms-timeline">
+                      {recentActivity.map((item) => (
+                        <div key={item.id} className="lms-timeline-item" onClick={() => { selectLesson(item.id); setCurrentPage('course'); }}>
+                          <div className={`lms-timeline-dot ${item.completed ? 'completed' : 'progress'}`} />
+                          <div className="lms-timeline-content">
+                            <span className="lms-timeline-title">{allLessons.find(l => l.lesson.id === item.id)?.lesson.title || item.id}</span>
+                            <span className="lms-timeline-meta">{formatTimestamp(item.timestamp)} {item.completed ? '• Completed' : '• In Progress'}</span>
+                          </div>
+                          <ChevronRight size={16} style={{ color: '#94a3b8', flexShrink: 0 }} />
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="lms-empty-state">
+                      <BookOpen size={32} style={{ color: '#cbd5e1' }} />
+                      <p>No activity yet. Start your first lesson!</p>
+                    </div>
+                  )}
                 </div>
-                <div className="lms-dash-course-pct-box">
-                  <span className="lms-dash-course-pct">{progressPercent}%</span>
-                  <span className="lms-dash-course-sub">{progressPercent >= 100 ? 'Completed' : 'In Progress'}</span>
+
+                {/* Learning Calendar */}
+                <div className="lms-section-card">
+                  <h3 className="lms-section-title">Learning Calendar</h3>
+                  <div className="lms-mini-calendar">
+                    <div className="lms-cal-header">
+                      <span>{calInfo.month} {calInfo.year}</span>
+                    </div>
+                    <div className="lms-cal-grid">
+                      {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+                        <div key={i} className="lms-cal-day-name">{d}</div>
+                      ))}
+                      {Array.from({ length: calInfo.firstDay }).map((_, i) => (
+                        <div key={`empty-${i}`} className="lms-cal-day empty" />
+                      ))}
+                      {Array.from({ length: calInfo.daysInMonth }).map((_, i) => {
+                        const dayNum = i + 1;
+                        const dateObj = new Date(calInfo.year, calInfo.monthNum, dayNum);
+                        const dateStr = dateObj.toDateString();
+                        const isAccessed = calInfo.accessed.has(dateStr);
+                        const isToday = dayNum === calInfo.today;
+                        return (
+                          <div key={dayNum} className={`lms-cal-day ${isAccessed ? 'accessed' : ''} ${isToday ? 'today' : ''}`}>
+                            {dayNum}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* Modules Breakdown Grid */}
-              <div className="lms-modules-grid">
-                {HR_COURSE.chapters.map((ch, idx) => {
-                  const cp = getChapterProgress(ch);
-                  return (
-                    <div key={ch.id} className="lms-module-card" onClick={() => { selectLesson(ch.lessons[0].id); setCurrentPage('course'); }}>
-                      <div className="lms-module-top">
-                        <span className="lms-module-badge">Module {idx + 1}</span>
-                        <span className="lms-module-stat">{cp.done}/{cp.total} Done</span>
+              <div className="lms-dash-right-col">
+                {/* Today's Goal */}
+                <div className="lms-section-card lms-goal-card">
+                  <div className="lms-goal-header">
+                    <Target size={18} style={{ color: '#F59E0B' }} />
+                    <span style={{ fontWeight: 700, fontSize: '0.92rem', color: '#0c1628' }}>Today's Goal</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '16px' }}>
+                    <div className="lms-goal-ring-wrap">
+                      <div className="lms-goal-ring">
+                        <svg viewBox="0 0 80 80">
+                          <circle cx="40" cy="40" r="34" fill="none" stroke="rgba(12,22,40,0.08)" strokeWidth="6"/>
+                          <circle cx="40" cy="40" r="34" fill="none" stroke="url(#goalGrad)" strokeWidth="6" strokeLinecap="round" strokeDasharray={`${todayGoalTarget > 0 ? (todayGoalDone / todayGoalTarget) * 213.6 : 0} 213.6`} transform="rotate(-90 40 40)"/>
+                          <defs>
+                            <linearGradient id="goalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                              <stop offset="0%" stopColor="#F59E0B"/>
+                              <stop offset="100%" stopColor="#10B981"/>
+                            </linearGradient>
+                          </defs>
+                        </svg>
+                        <div className="lms-goal-ring-text">
+                          <span className="lms-goal-done">{todayGoalDone}</span>
+                          <span className="lms-goal-sep">/</span>
+                          <span className="lms-goal-target">{todayGoalTarget}</span>
+                        </div>
                       </div>
-                      <h4>{ch.title}</h4>
-                      <p>{ch.lessons.length} structured lessons</p>
-                      <div className="lms-module-bar"><div style={{ width: `${cp.percent}%` }} /></div>
                     </div>
-                  );
-                })}
+                    <p className="lms-goal-message">{todayGoalMessage}</p>
+                  </div>
+                </div>
+
+                {/* Weekly Progress */}
+                <div className="lms-section-card">
+                  <h3 className="lms-section-title">Weekly Progress</h3>
+                  <div className="lms-weekly-chart">
+                    {weeklyData.map((d, i) => (
+                      <div key={i} className="lms-weekly-bar-col">
+                        <div className="lms-weekly-bar-track">
+                          <div className="lms-weekly-bar-fill" style={{ height: `${d.count > 0 ? Math.max(8, (d.count / maxWeeklyCount) * 100) : 4}%`, background: d.isToday ? 'linear-gradient(135deg, #9B7A3E, #C5A059)' : 'rgba(99,102,241,0.2)' }} />
+                        </div>
+                        <span className={`lms-weekly-day ${d.isToday ? 'today' : ''}`}>{d.day}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Achievement Badges */}
+                <div className="lms-section-card">
+                  <h3 className="lms-section-title">Achievement Badges</h3>
+                  <div className="lms-achievements-grid">
+                    {achievements.map((a, i) => {
+                      const IconComp = a.icon === 'star' ? Star : a.icon === 'flame' ? Flame : a.icon === 'zap' ? Zap : a.icon === 'trophy' ? Trophy : Crown;
+                      return (
+                        <div key={i} className={`lms-ach-badge ${a.unlocked ? 'unlocked' : ''}`}>
+                          <div className="lms-ach-icon">
+                            <IconComp size={20} />
+                          </div>
+                          <span className="lms-ach-title">{a.title}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Personalized Motivation */}
+                <div className="lms-section-card lms-motivation-card">
+                  <div className="lms-motivation-icon">
+                    <Sparkles size={22} style={{ color: '#F59E0B' }} />
+                  </div>
+                  <p className="lms-motivation-text">{motivationalMessage}</p>
+                </div>
+
+                {/* Next Milestone */}
+                {nextMilestone && (
+                  <div className="lms-section-card lms-milestone-card">
+                    <h3 className="lms-section-title">Next Milestone</h3>
+                    <div className="lms-milestone-progress">
+                      <div className="lms-milestone-bar">
+                        <div style={{ width: `${progressPercent}%`, background: 'linear-gradient(135deg, #9B7A3E, #C5A059)', height: '100%', borderRadius: '100px', transition: 'width 0.5s' }} />
+                      </div>
+                      <div className="lms-milestone-labels">
+                        <span>{progressPercent}%</span>
+                        <span>{nextMilestone.percent}%</span>
+                      </div>
+                    </div>
+                    <p className="lms-milestone-text">{nextMilestone.message}</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -425,7 +695,7 @@ export default function CourseDashboard() {
         <div className="lms-body">
           <aside className={`lms-sidebar ${sidebarOpen ? 'open' : 'closed'} ${mobileSidebar ? 'mobile-open' : ''}`}>
             <div className="lms-sidebar-header">
-              <h2 className="lms-sidebar-title">Course Content</h2>
+              <h2 className="lms-sidebar-title">Learning Path</h2>
               <span className="lms-sidebar-meta">{completedCount}/{totalLessons}</span>
             </div>
             <div className="lms-sidebar-scroll">
@@ -590,7 +860,7 @@ export default function CourseDashboard() {
             <div className="lms-tab-content">
               {activeTab === 'overview' && (
                 <div className="lms-overview">
-                  <div className="lms-overview-card"><h3>About This Lesson</h3><p>{activeLesson.description}</p></div>
+                  <div className="lms-overview-card"><h3>About This Module</h3><p>{activeLesson.description}</p></div>
                   <div className="lms-overview-grid">
                     <div className="lms-ov-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C9A227" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><div><span className="lms-ov-label">Duration</span><span className="lms-ov-val">{activeLesson.duration}</span></div></div>
                     <div className="lms-ov-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C9A227" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><div><span className="lms-ov-label">Last Updated</span><span className="lms-ov-val">{HR_COURSE.lastUpdated}</span></div></div>
@@ -610,17 +880,17 @@ export default function CourseDashboard() {
                     <h3>Your Notes</h3>
                     {!isEditingNote ? (<button className="lms-note-edit-btn" onClick={() => { setEditNote(currentLessonProgress?.notes || activeLesson.notes || ''); setIsEditingNote(true); }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Edit</button>) : (<div className="lms-note-actions"><button className="lms-note-save" onClick={() => { saveLessonProgress(activeLessonId, { notes: editNote }); setIsEditingNote(false); }}>Save</button><button className="lms-note-cancel" onClick={() => setIsEditingNote(false)}>Cancel</button></div>)}
                   </div>
-                  {isEditingNote ? (<textarea className="lms-note-textarea" value={editNote} onChange={(e) => setEditNote(e.target.value)} placeholder="Write your notes for this lesson..." />) : (<div className="lms-note-content">{(currentLessonProgress?.notes || activeLesson.notes) ? ((currentLessonProgress?.notes || activeLesson.notes || '').split('\n').map((line: string, i: number) => <p key={i}>{line || '\u00A0'}</p>)) : <p className="lms-note-empty">No notes yet. Click Edit to add notes.</p>}</div>)}
+                  {isEditingNote ? (<textarea className="lms-note-textarea" value={editNote} onChange={(e) => setEditNote(e.target.value)} placeholder="Write your notes for this module..." />) : (<div className="lms-note-content">{(currentLessonProgress?.notes || activeLesson.notes) ? ((currentLessonProgress?.notes || activeLesson.notes || '').split('\n').map((line: string, i: number) => <p key={i}>{line || '\u00A0'}</p>)) : <p className="lms-note-empty">No notes yet. Click Edit to add notes.</p>}</div>)}
                 </div>
               )}
               {activeTab === 'transcript' && (
                 <div className="lms-transcript">
-                  {activeLesson.transcript ? (<div className="lms-transcript-content">{activeLesson.transcript.split('. ').reduce((acc: string[], sentence: string, i: number) => { if (i % 3 === 0) acc.push(sentence); else acc[acc.length - 1] += '. ' + sentence; return acc; }, []).map((para: string, i: number) => <p key={i}>{para}{para.endsWith('.') ? '' : '.'}</p>)}</div>) : <p className="lms-note-empty">Transcript not available for this lesson.</p>}
+                  {activeLesson.transcript ? (<div className="lms-transcript-content">{activeLesson.transcript.split('. ').reduce((acc: string[], sentence: string, i: number) => { if (i % 3 === 0) acc.push(sentence); else acc[acc.length - 1] += '. ' + sentence; return acc; }, []).map((para: string, i: number) => <p key={i}>{para}{para.endsWith('.') ? '' : '.'}</p>)}</div>) : <p className="lms-note-empty">Transcript not available for this module.</p>}
                 </div>
               )}
               {activeTab === 'resources' && (
                 <div className="lms-resources">
-                  {activeLesson.resources && activeLesson.resources.length > 0 ? (<div className="lms-resources-list">{activeLesson.resources.map((r, i) => (<a key={i} href={r.url} target="_blank" rel="noopener noreferrer" className="lms-resource-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C9A227" strokeWidth="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg><span>{r.title}</span></a>))}</div>) : <p className="lms-note-empty">No additional resources for this lesson.</p>}
+                  {activeLesson.resources && activeLesson.resources.length > 0 ? (<div className="lms-resources-list">{activeLesson.resources.map((r, i) => (<a key={i} href={r.url} target="_blank" rel="noopener noreferrer" className="lms-resource-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C9A227" strokeWidth="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg><span>{r.title}</span></a>))}</div>) : <p className="lms-note-empty">No additional resources for this module.</p>}
                 </div>
               )}
             </div>
@@ -636,7 +906,7 @@ export default function CourseDashboard() {
                 {(['notes', 'transcript', 'resources'] as const).map((t) => <button key={t} className={`lms-rp-tab ${rightPanelTab === t ? 'active' : ''}`} onClick={() => setRightPanelTab(t)}>{t.charAt(0).toUpperCase() + t.slice(1)}</button>)}
               </div>
               <div className="lms-rp-content">
-                {rightPanelTab === 'notes' && (<div className="lms-rp-notes">{(currentLessonProgress?.notes || activeLesson.notes) ? ((currentLessonProgress?.notes || activeLesson.notes || '').split('\n').map((line: string, i: number) => <p key={i}>{line || '\u00A0'}</p>)) : <p className="lms-note-empty">No notes for this lesson.</p>}</div>)}
+                {rightPanelTab === 'notes' && (<div className="lms-rp-notes">{(currentLessonProgress?.notes || activeLesson.notes) ? ((currentLessonProgress?.notes || activeLesson.notes || '').split('\n').map((line: string, i: number) => <p key={i}>{line || '\u00A0'}</p>)) : <p className="lms-note-empty">No notes for this module.</p>}</div>)}
                 {rightPanelTab === 'transcript' && (<div className="lms-rp-transcript">{activeLesson.transcript ? activeLesson.transcript.split('. ').reduce((acc: string[], s: string, i: number) => { if (i % 3 === 0) acc.push(s); else acc[acc.length - 1] += '. ' + s; return acc; }, []).map((p: string, i: number) => <p key={i}>{p}{p.endsWith('.') ? '' : '.'}</p>) : <p className="lms-note-empty">No transcript available.</p>}</div>)}
                 {rightPanelTab === 'resources' && (<div className="lms-rp-resources">{activeLesson.resources && activeLesson.resources.length > 0 ? activeLesson.resources.map((r, i) => <a key={i} href={r.url} target="_blank" rel="noopener noreferrer" className="lms-resource-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C9A227" strokeWidth="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg><span>{r.title}</span></a>) : <p className="lms-note-empty">No resources available.</p>}</div>)}
               </div>
@@ -683,7 +953,7 @@ export default function CourseDashboard() {
 
                 <div className="lms-profile-card lms-danger-zone">
                   <h3>Account Controls</h3>
-                  <p>Resetting progress will clear all completed lesson states and quiz scores.</p>
+                  <p>Resetting progress will clear all completed module states and quiz scores.</p>
                   <button className="lms-reset-progress-btn" onClick={() => { if (confirm('Are you sure you want to reset all course progress?')) resetProgress(); }}>
                     Reset All Progress
                   </button>
@@ -703,7 +973,7 @@ export default function CourseDashboard() {
                     </div>
                     <div>
                       <p className="lms-profile-course-title">{HR_COURSE.title}</p>
-                      <p className="lms-profile-course-meta">{HR_COURSE.instructor} &middot; {totalLessons} lessons &middot; Updated {HR_COURSE.lastUpdated}</p>
+                      <p className="lms-profile-course-meta">{HR_COURSE.instructor} &middot; {totalLessons} modules &middot; Updated {HR_COURSE.lastUpdated}</p>
                     </div>
                   </div>
                   <div className="lms-profile-prog-block">
@@ -715,47 +985,6 @@ export default function CourseDashboard() {
                   </div>
                 </div>
 
-                {/* Achievements Showcase */}
-                <div className="lms-profile-card">
-                  <div className="lms-card-head">
-                    <h3>Achievement Badges</h3>
-                    <span className="lms-card-sub-tag">Milestones</span>
-                  </div>
-                  <div className="lms-badges-grid">
-                    <div className={`lms-badge-item ${completedCount >= 1 ? 'unlocked' : 'locked'}`}>
-                      <div className="lms-badge-icon">🚀</div>
-                      <div className="lms-badge-info">
-                        <h4>First Step</h4>
-                        <p>Completed first lesson</p>
-                      </div>
-                      <span className="lms-badge-status">{completedCount >= 1 ? 'Unlocked' : 'Locked'}</span>
-                    </div>
-                    <div className={`lms-badge-item ${progressPercent >= 50 ? 'unlocked' : 'locked'}`}>
-                      <div className="lms-badge-icon">📈</div>
-                      <div className="lms-badge-info">
-                        <h4>Halfway Hero</h4>
-                        <p>Completed 50% of course</p>
-                      </div>
-                      <span className="lms-badge-status">{progressPercent >= 50 ? 'Unlocked' : 'Locked'}</span>
-                    </div>
-                    <div className={`lms-badge-item ${Object.values(progress.lessonProgress).some(lp => (lp.quizScore || 0) >= 80) ? 'unlocked' : 'locked'}`}>
-                      <div className="lms-badge-icon">🧠</div>
-                      <div className="lms-badge-info">
-                        <h4>Quiz Master</h4>
-                        <p>Scored 80%+ on a quiz</p>
-                      </div>
-                      <span className="lms-badge-status">{Object.values(progress.lessonProgress).some(lp => (lp.quizScore || 0) >= 80) ? 'Unlocked' : 'Locked'}</span>
-                    </div>
-                    <div className={`lms-badge-item ${progressPercent >= 100 ? 'unlocked' : 'locked'}`}>
-                      <div className="lms-badge-icon">🎓</div>
-                      <div className="lms-badge-info">
-                        <h4>Certified Graduate</h4>
-                        <p>Earn official certificate</p>
-                      </div>
-                      <span className="lms-badge-status">{progressPercent >= 100 ? 'Unlocked' : 'Locked'}</span>
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
@@ -786,9 +1015,9 @@ export default function CourseDashboard() {
               <div className="lms-cert-locked">
                 <div className="lms-cert-lock-icon"><svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#C9A227" strokeWidth="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div>
                 <h2>Complete the Course to Earn Your Certificate</h2>
-                <p>You are <strong>{progressPercent}%</strong> done. Complete all {totalLessons} lessons to unlock your certificate.</p>
+                <p>You are <strong>{progressPercent}%</strong> done. Complete all {totalLessons} modules to unlock your certificate.</p>
                 <div className="lms-cert-progress-bar"><div className="lms-cert-progress-fill" style={{ width: `${progressPercent}%` }} /></div>
-                <p className="lms-cert-remaining">{totalLessons - completedCount} lessons remaining</p>
+                <p className="lms-cert-remaining">{totalLessons - completedCount} modules remaining</p>
                 <button className="lms-cert-cta" onClick={() => setCurrentPage('course')}>Continue Learning</button>
               </div>
             )}
@@ -799,6 +1028,13 @@ export default function CourseDashboard() {
       {toastMsg && (
         <div style={{ position: 'fixed', bottom: '2rem', left: '50%', transform: 'translateX(-50%)', padding: '12px 24px', background: '#0c1628', color: '#ffffff', border: '1px solid rgba(155,122,62,0.5)', borderRadius: '99px', boxShadow: '0 10px 30px rgba(0,0,0,0.3)', zIndex: 9999, fontWeight: 600, fontSize: '0.88rem' }}>
           {toastMsg}
+        </div>
+      )}
+
+      {/* Logout Toast Notification */}
+      {logoutToast && (
+        <div style={{ position: 'fixed', bottom: '2rem', left: '50%', transform: 'translateX(-50%)', padding: '12px 24px', background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', borderRadius: '99px', boxShadow: '0 10px 30px rgba(0,0,0,0.15)', zIndex: 10000, fontWeight: 600, fontSize: '0.88rem', animation: 'fadeIn 0.3s ease' }}>
+          \u2705 Logged out successfully.
         </div>
       )}
 
@@ -1226,17 +1462,6 @@ header.lms-header, .lms-header{position:sticky !important;top:0 !important;left:
 
 .lms-profile-stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 
-.lms-badges-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.lms-badge-item{display:flex;align-items:center;gap:12px;padding:16px;background:#f8f7f3;border:1px solid rgba(12,22,40,0.06);border-radius:14px;transition:all 0.2s}
-.lms-badge-item.unlocked{border-color:rgba(155,122,62,0.3);background:rgba(155,122,62,0.08)}
-.lms-badge-item.locked{opacity:0.55}
-.lms-badge-icon{font-size:1.6rem;flex-shrink:0}
-.lms-badge-info{flex:1;min-width:0}
-.lms-badge-info h4{font-family:'Plus Jakarta Sans',sans-serif;font-size:0.85rem;font-weight:700;color:#0c1628;margin:0 0 2px}
-.lms-badge-info p{font-size:0.72rem;color:#64748b;margin:0}
-.lms-badge-status{font-size:0.65rem;font-weight:700;text-transform:uppercase;padding:2px 6px;border-radius:4px;background:rgba(12,22,40,0.08);color:#64748b;flex-shrink:0}
-.lms-badge-item.unlocked .lms-badge-status{background:#9B7A3E;color:#ffffff}
-
 /* Certificate View */
 .lms-certificate-page{max-width:840px;margin:0 auto}
 .lms-cert-ready{display:flex;flex-direction:column;align-items:center;gap:28px}
@@ -1271,6 +1496,110 @@ header.lms-header, .lms-header{position:sticky !important;top:0 !important;left:
 .lms-cert-cta{padding:14px 36px;border:none;border-radius:99px;background:linear-gradient(135deg,#9B7A3E,#7D6334);color:#ffffff;font-size:0.92rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all 0.3s ease;box-shadow:0 6px 20px -4px rgba(155,122,62,0.35);margin-top:8px}
 .lms-cert-cta:hover{box-shadow:0 12px 28px -4px rgba(155,122,62,0.45);transform:translateY(-1px);background:#B89047}
 
+/* Dashboard Premium Styles */
+.lms-hero-card{background:linear-gradient(135deg,#0c1628 0%,#1e3a5f 100%);border-radius:20px;padding:36px;margin-bottom:24px;border:1px solid rgba(255,255,255,0.1);box-shadow:0 16px 48px rgba(12,22,40,0.3);position:relative;overflow:hidden}
+.lms-hero-card::before{content:'';position:absolute;top:-50%;right:-20%;width:400px;height:400px;background:radial-gradient(circle,rgba(155,122,62,0.12) 0%,transparent 70%);pointer-events:none}
+.lms-hero-content{display:flex;align-items:center;justify-content:space-between;gap:32px;position:relative;z-index:1}
+.lms-hero-text{flex:1;min-width:0}
+.lms-hero-badge{display:inline-flex;align-items:center;gap:6px;font-size:0.72rem;font-weight:700;color:#C5A059;background:rgba(155,122,62,0.15);padding:5px 14px;border-radius:99px;border:1px solid rgba(155,122,62,0.3);margin-bottom:16px;text-transform:uppercase;letter-spacing:0.5px}
+.lms-hero-name{font-family:'Plus Jakarta Sans',sans-serif;font-size:1.75rem;font-weight:800;color:#ffffff;margin:0 0 8px;line-height:1.25;letter-spacing:-0.02em}
+.lms-hero-actions{display:flex;align-items:center;gap:12px;margin-top:8px}
+.lms-hero-resume-btn{display:inline-flex;align-items:center;gap:8px;padding:12px 28px;border:none;border-radius:99px;background:linear-gradient(135deg,#9B7A3E,#7D6334);color:#ffffff;font-size:0.88rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all 0.3s cubic-bezier(0.16,1,0.3,1);box-shadow:0 6px 24px -4px rgba(155,122,62,0.4)}
+.lms-hero-resume-btn:hover{transform:translateY(-2px);box-shadow:0 12px 32px -4px rgba(155,122,62,0.5);background:#B89047}
+.lms-hero-view-btn{display:inline-flex;align-items:center;padding:12px 22px;border:1.5px solid rgba(255,255,255,0.25);border-radius:99px;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.9);font-size:0.88rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.3s ease;backdrop-filter:blur(8px)}
+.lms-hero-view-btn:hover{background:rgba(255,255,255,0.18);border-color:rgba(255,255,255,0.5);color:#ffffff}
+.lms-hero-ring-wrap{flex-shrink:0}
+.lms-hero-ring{position:relative;width:140px;height:140px}
+.lms-hero-ring svg{width:100%;height:100%}
+.lms-hero-ring-inner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.lms-hero-pct{font-family:'Plus Jakarta Sans',sans-serif;font-size:2rem;font-weight:800;color:#ffffff;line-height:1}
+.lms-hero-pct-label{font-size:0.72rem;color:#C5A059;font-weight:600;text-transform:uppercase;margin-top:2px;letter-spacing:0.5px}
+
+.lms-insights-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.lms-insight-card{background:#ffffff;border:1px solid rgba(12,22,40,0.08);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px;transition:all 0.25s cubic-bezier(0.4,0,0.2,1);box-shadow:0 8px 30px rgba(12,22,40,0.04)}
+.lms-insight-card:hover{border-color:rgba(155,122,62,0.3);transform:translateY(-2px);box-shadow:0 12px 32px rgba(12,22,40,0.08)}
+.lms-insight-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center}
+.lms-insight-data{display:flex;flex-direction:column}
+.lms-insight-value{font-family:'Plus Jakarta Sans',sans-serif;font-size:1.4rem;font-weight:800;color:#0c1628;line-height:1}
+.lms-insight-label{font-size:0.72rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;margin-top:2px}
+.lms-insight-bar{height:4px;background:rgba(12,22,40,0.06);border-radius:100px;overflow:hidden}
+.lms-insight-bar div{height:100%;border-radius:100px;transition:width 0.5s}
+
+.lms-dash-two-col{display:grid;grid-template-columns:1.2fr 1fr;gap:24px}
+.lms-dash-left-col,.lms-dash-right-col{display:flex;flex-direction:column;gap:20px}
+
+.lms-section-card{background:#ffffff;border:1px solid rgba(12,22,40,0.08);border-radius:16px;padding:24px;box-shadow:0 8px 30px rgba(12,22,40,0.04);transition:all 0.25s}
+.lms-section-card:hover{box-shadow:0 12px 36px rgba(12,22,40,0.07)}
+.lms-section-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:1.05rem;color:#0c1628;margin:0 0 18px}
+
+.lms-actions-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.lms-action-card{display:flex;flex-direction:column;align-items:center;gap:10px;padding:18px 12px;border:1px solid rgba(12,22,40,0.06);border-radius:14px;background:#f8f7f3;cursor:pointer;font-family:inherit;transition:all 0.25s cubic-bezier(0.4,0,0.2,1)}
+.lms-action-card:hover{border-color:rgba(155,122,62,0.3);transform:translateY(-3px);box-shadow:0 8px 24px rgba(12,22,40,0.08)}
+.lms-action-icon{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:transform 0.3s cubic-bezier(0.16,1,0.3,1)}
+.lms-action-card:hover .lms-action-icon{transform:scale(1.1)}
+.lms-action-label{font-size:0.78rem;font-weight:600;color:#0c1628}
+
+.lms-timeline{display:flex;flex-direction:column;gap:0}
+.lms-timeline-item{display:flex;align-items:center;gap:14px;padding:12px 14px;border-radius:12px;cursor:pointer;transition:all 0.2s;border-left:3px solid transparent}
+.lms-timeline-item:hover{background:#f8f7f3}
+.lms-timeline-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;transition:all 0.2s}
+.lms-timeline-dot.completed{background:#10B981;box-shadow:0 0 8px rgba(16,185,129,0.4)}
+.lms-timeline-dot.progress{background:#94a3b8;box-shadow:0 0 8px rgba(148,163,184,0.3)}
+.lms-timeline-content{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.lms-timeline-title{font-size:0.85rem;font-weight:600;color:#0c1628;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lms-timeline-meta{font-size:0.72rem;color:#64748b;font-weight:500}
+
+.lms-empty-state{display:flex;flex-direction:column;align-items:center;gap:10px;padding:32px 16px;color:#94a3b8}
+.lms-empty-state p{font-size:0.85rem;font-weight:500}
+
+.lms-mini-calendar{padding:4px 0}
+.lms-cal-header{text-align:center;margin-bottom:14px}
+.lms-cal-header span{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:0.95rem;color:#0c1628}
+.lms-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.lms-cal-day-name{text-align:center;font-size:0.68rem;font-weight:700;color:#94a3b8;text-transform:uppercase;padding:6px 0}
+.lms-cal-day{text-align:center;padding:8px 4px;font-size:0.78rem;font-weight:500;color:#64748b;border-radius:8px;transition:all 0.2s}
+.lms-cal-day.accessed{background:rgba(155,122,62,0.15);color:#7D6334;font-weight:700}
+.lms-cal-day.today{background:#9B7A3E;color:#ffffff;font-weight:700;box-shadow:0 2px 8px rgba(155,122,62,0.3)}
+.lms-cal-day.empty{background:transparent}
+
+.lms-goal-card{overflow:visible}
+.lms-goal-header{display:flex;align-items:center;gap:8px}
+.lms-goal-ring-wrap{flex-shrink:0}
+.lms-goal-ring{position:relative;width:72px;height:72px}
+.lms-goal-ring svg{width:100%;height:100%}
+.lms-goal-ring-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:1px}
+.lms-goal-done{font-family:'Plus Jakarta Sans',sans-serif;font-size:1.1rem;font-weight:800;color:#0c1628}
+.lms-goal-sep{font-size:0.8rem;color:#94a3b8}
+.lms-goal-target{font-size:0.8rem;color:#64748b;font-weight:600}
+.lms-goal-message{font-size:0.85rem;color:#64748b;line-height:1.5;margin:0;flex:1}
+
+.lms-weekly-chart{display:flex;align-items:flex-end;gap:8px;height:120px;padding:8px 0}
+.lms-weekly-bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%}
+.lms-weekly-bar-track{flex:1;width:100%;background:rgba(12,22,40,0.04);border-radius:8px;display:flex;align-items:flex-end;overflow:hidden}
+.lms-weekly-bar-fill{width:100%;border-radius:8px;transition:height 0.5s cubic-bezier(0.4,0,0.2,1);min-height:4px}
+.lms-weekly-day{font-size:0.68rem;font-weight:600;color:#94a3b8}
+.lms-weekly-day.today{color:#9B7A3E;font-weight:700}
+
+.lms-achievements-grid{display:flex;gap:12px}
+.lms-ach-badge{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 8px;border-radius:14px;background:rgba(12,22,40,0.04);border:1px solid rgba(12,22,40,0.06);transition:all 0.25s;opacity:0.5}
+.lms-ach-badge.unlocked{background:linear-gradient(135deg,rgba(155,122,62,0.12),rgba(155,122,62,0.06));border-color:rgba(155,122,62,0.25);opacity:1}
+.lms-ach-badge.unlocked:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(155,122,62,0.15)}
+.lms-ach-icon{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(12,22,40,0.08);color:#94a3b8}
+.lms-ach-badge.unlocked .lms-ach-icon{background:linear-gradient(135deg,#9B7A3E,#7D6334);color:#ffffff;box-shadow:0 4px 12px rgba(155,122,62,0.3)}
+.lms-ach-title{font-size:0.65rem;font-weight:700;color:#64748b;text-align:center;line-height:1.2}
+.lms-ach-badge.unlocked .lms-ach-title{color:#0c1628}
+
+.lms-motivation-card{display:flex;align-items:center;gap:16px;padding:20px 24px;background:linear-gradient(135deg,rgba(245,158,11,0.06),rgba(99,102,241,0.04));border-color:rgba(245,158,11,0.15)}
+.lms-motivation-icon{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(245,158,11,0.08));display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.lms-motivation-text{font-size:0.9rem;color:#334155;line-height:1.6;margin:0;font-weight:500}
+
+.lms-milestone-card{padding:20px 24px}
+.lms-milestone-progress{margin:12px 0 10px}
+.lms-milestone-bar{height:8px;background:rgba(12,22,40,0.06);border-radius:100px;overflow:hidden}
+.lms-milestone-labels{display:flex;justify-content:space-between;margin-top:8px}
+.lms-milestone-labels span{font-size:0.72rem;font-weight:700;color:#64748b}
+.lms-milestone-text{font-size:0.82rem;color:#64748b;margin:0;line-height:1.5}
+
 /* Media Queries */
 @media(max-width:1200px){
   .lms-dash-grid{grid-template-columns:1fr 1fr}
@@ -1278,6 +1607,8 @@ header.lms-header, .lms-header{position:sticky !important;top:0 !important;left:
   .lms-modules-grid{grid-template-columns:1fr 1fr}
   .lms-profile-layout{grid-template-columns:1fr}
   .lms-right-panel{width:280px;min-width:280px}
+  .lms-insights-grid{grid-template-columns:1fr 1fr}
+  .lms-dash-two-col{grid-template-columns:1fr}
 }
 @media(max-width:1024px){
   .lms-header-nav{gap:2px}
@@ -1305,8 +1636,10 @@ header.lms-header, .lms-header{position:sticky !important;top:0 !important;left:
   .lms-dash-grid{grid-template-columns:1fr}
   .lms-dash-course-card{flex-direction:column;text-align:center}
   .lms-modules-grid{grid-template-columns:1fr}
-  .lms-badges-grid{grid-template-columns:1fr}
   .lms-profile-stats-grid{grid-template-columns:1fr 1fr}
+  .lms-insights-grid{grid-template-columns:1fr}
+  .lms-actions-grid{grid-template-columns:repeat(2,1fr)}
+  .lms-hero-card{padding:24px}
 }
 @media(max-width:480px){
   .lms-header{padding:0 12px;height:64px}
@@ -1316,5 +1649,7 @@ header.lms-header, .lms-header{position:sticky !important;top:0 !important;left:
   .lms-video-section{padding:16px 14px 0}
   .lms-page-content{padding:20px 14px}
   .lms-profile-stats-grid{grid-template-columns:1fr}
+  .lms-actions-grid{grid-template-columns:1fr}
+  .lms-achievements-grid{flex-wrap:wrap}
 }
 `;

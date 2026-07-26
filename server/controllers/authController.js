@@ -75,7 +75,7 @@ export async function verifyOtp(req, res) {
  */
 export async function register(req, res) {
   try {
-    const { fullName, personalEmail, phone, workEmail, password } = req.body;
+    const { fullName, personalEmail, phone, workEmail, password, companyName, location, role } = req.body;
 
     if (!fullName || !personalEmail || !phone || !workEmail || !password) {
       return res.status(400).json({ success: false, message: 'All fields are required.' });
@@ -92,6 +92,7 @@ export async function register(req, res) {
 
     const { user, error } = await createUser({
       fullName, personalEmail, phone, workEmail, password,
+      companyName, location, role,
       workEmailVerified: true,
     });
 
@@ -162,6 +163,7 @@ export async function login(req, res) {
         id: user.id,
         name: user.full_name,
         email: user.work_email,
+        role: user.role,
       },
       message: 'Login successful',
     });
@@ -224,6 +226,9 @@ export async function getMe(req, res) {
         name: user.full_name,
         email: user.work_email,
         phone: user.phone_number,
+        companyName: user.company_name,
+        location: user.location,
+        role: user.role,
         createdAt: user.created_at,
       },
     });

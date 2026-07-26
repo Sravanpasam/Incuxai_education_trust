@@ -21,6 +21,9 @@ CREATE TABLE IF NOT EXISTS users (
   phone_number        TEXT NOT NULL,
   password_hash       TEXT NOT NULL,
   work_email_verified BOOLEAN NOT NULL DEFAULT false,
+  company_name        TEXT,
+  location            TEXT,
+  role                TEXT,
   created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
