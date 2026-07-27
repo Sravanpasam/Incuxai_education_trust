@@ -79,6 +79,16 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', key: process.env.RAZORPAY_KEY_ID ? 'configured' : 'missing' });
 });
 
+// Auth health (NEW path never tested before — bypasses Vercel cache)
+app.get('/api/authcheck', (_req, res) => {
+  res.json({ status: 'ok', service: 'auth', path: 'via api/index.js', env: {
+    hasResendKey: !!process.env.RESEND_API_KEY,
+    hasSupabaseUrl: !!process.env.SUPABASE_URL,
+    hasSupabaseKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+    hasJwtSecret: !!process.env.JWT_SECRET,
+  }});
+});
+
 // Root route
 app.get('/api', (req, res) => {
   res.json({ message: 'IncuXai Payment Backend is running. Frontend should be on port 3000.' });
