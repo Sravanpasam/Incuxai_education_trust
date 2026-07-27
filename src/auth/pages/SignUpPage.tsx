@@ -10,6 +10,7 @@ import { HR_ROLES } from '../constants/hrRoles';
 
 const OTP_LENGTH = 6;
 const OTP_TIMER = 180;
+const RESEND_CD = 30;
 
 type Step = 'info' | 'otp';
 
@@ -64,7 +65,9 @@ export default function SignUpPage() {
   const [workEmail, setWorkEmail] = useState('');
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(''));
   const [timer, setTimer] = useState(OTP_TIMER);
-  const [resendCd, setResendCd] = useState(60);
+  const [resendCd, setResendCd] = useState(RESEND_CD);
+  const [resendCount, setResendCount] = useState(0);
+  const [otpTarget, setOtpTarget] = useState<'work' | 'personal'>('work');
   const refs = useRef<(HTMLInputElement | null)[]>([]);
 
   const [form, setForm] = useState({
@@ -132,25 +135,26 @@ export default function SignUpPage() {
   };
 
   const handleSendOtp = async () => {
-    const { valid, error } = validateWorkEmail(workEmail);
-    if (!valid) {
-      showToast('error', error!);
-      return;
+    if (otpTarget === 'work') {
+      const { valid, error } = validateWorkEmail(workEmail);
+      if (!valid) {
+        showToast('error', error!);
+        return;
+      }
+      const companyCheck = validateCompanyEmail(workEmail, form.companyName);
+      if (!companyCheck.valid) {
+        showToast('error', companyCheck.error!);
+        return;
+      }
     }
-
-    const companyCheck = validateCompanyEmail(workEmail, form.companyName);
-    if (!companyCheck.valid) {
-      showToast('error', companyCheck.error!);
-      return;
-    }
-
+    const targetEmail = otpTarget === 'work' ? workEmail.trim().toLowerCase() : form.personalEmail.trim().toLowerCase();
     setLoading(true);
     try {
-      const res = await sendOtp(workEmail.trim().toLowerCase(), form.fullName);
+      const res = await sendOtp(targetEmail, form.fullName);
       if (res.success) {
         showToast('success', res.message || 'OTP sent successfully!');
         setTimer(OTP_TIMER);
-        setResendCd(60);
+        setResendCd(RESEND_CD);
         setOtp(Array(OTP_LENGTH).fill(''));
       } else {
         showToast('error', res.message);
@@ -173,9 +177,10 @@ export default function SignUpPage() {
       showToast('error', 'Please enter the complete 6-digit code.');
       return;
     }
+    const verifyEmail = otpTarget === 'work' ? workEmail.trim().toLowerCase() : form.personalEmail.trim().toLowerCase();
     setLoading(true);
     try {
-      const otpRes = await verifyOtp(workEmail.trim().toLowerCase(), code);
+      const otpRes = await verifyOtp(verifyEmail, code);
       if (!otpRes.success) {
         showToast('error', otpRes.message);
         setLoading(false);
@@ -218,12 +223,23 @@ export default function SignUpPage() {
   };
 
   const handleResend = async () => {
-    setResendCd(60);
+    const newCount = resendCount + 1;
+    setResendCount(newCount);
+    if (newCount >= 2 && otpTarget === 'work') {
+      setOtpTarget('personal');
+      showToast('error', 'Work email not receiving OTP? Switching to your personal email.');
+    }
+    const targetEmail = (newCount >= 2 && otpTarget === 'work')
+      ? form.personalEmail.trim().toLowerCase()
+      : otpTarget === 'personal'
+        ? form.personalEmail.trim().toLowerCase()
+        : workEmail.trim().toLowerCase();
+    setResendCd(RESEND_CD);
     setTimer(OTP_TIMER);
     setOtp(Array(OTP_LENGTH).fill(''));
     try {
-      const res = await sendOtp(workEmail.trim().toLowerCase(), form.fullName);
-      if (res.success) showToast('success', `New code sent to ${workEmail}`);
+      const res = await sendOtp(targetEmail, form.fullName);
+      if (res.success) showToast('success', `New code sent to ${targetEmail}`);
       else showToast('error', res.message);
     } catch {
       showToast('error', 'Failed to resend code.');
@@ -302,7 +318,9 @@ export default function SignUpPage() {
           <p style={s.subtitle}>
             {step === 'info'
               ? 'Step 1 of 2 \u2014 Enter your personal details'
-              : 'Step 2 of 2 \u2014 Verify your work email'
+              : otpTarget === 'work'
+                ? 'Step 2 of 2 \u2014 Verify your work email'
+                : 'Step 2 of 2 \u2014 Verify your personal email'
             }
           </p>
         </div>
@@ -408,30 +426,58 @@ export default function SignUpPage() {
         {/* ===== STEP 2: Work Email + OTP ===== */}
         {step === 'otp' && (
           <form onSubmit={handleVerifyOtp} style={s.form}>
-            <label style={s.label}>Work Email Address *</label>
-            <input
-              type="email"
-              value={workEmail}
-              onChange={(e) => setWorkEmail(e.target.value)}
-              placeholder="you@company.com"
-              style={s.input}
-              autoFocus
-              disabled={loading}
-            />
-            <p style={s.hint}>
-              Only work/business emails are accepted. Personal emails (Gmail, Yahoo, Outlook, etc.) are not allowed.
-              <br/>Your work email must match your company: <strong style={{ color: '#1e293b' }}>{form.companyName}</strong>
-            </p>
+            {otpTarget === 'work' ? (
+              <>
+                <label style={s.label}>Work Email Address *</label>
+                <input
+                  type="email"
+                  value={workEmail}
+                  onChange={(e) => setWorkEmail(e.target.value)}
+                  placeholder="you@company.com"
+                  style={s.input}
+                  autoFocus
+                  disabled={loading}
+                />
+                <p style={s.hint}>
+                  Only work/business emails are accepted. Personal emails (Gmail, Yahoo, Outlook, etc.) are not allowed.
+                  <br/>Your work email must match your company: <strong style={{ color: '#1e293b' }}>{form.companyName}</strong>
+                </p>
 
-            <button type="button" onClick={handleSendOtp}
-              style={{ ...s.btn, opacity: loading || !workEmail.trim() ? 0.6 : 1, marginTop: '1rem' }}
-              disabled={loading || !workEmail.trim()}>
-              {loading ? (
-                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                  <span style={s.spin} /> Sending...
-                </span>
-              ) : 'Send OTP'}
-            </button>
+                <button type="button" onClick={handleSendOtp}
+                  style={{ ...s.btn, opacity: loading || !workEmail.trim() ? 0.6 : 1, marginTop: '1rem' }}
+                  disabled={loading || !workEmail.trim()}>
+                  {loading ? (
+                    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                      <span style={s.spin} /> Sending...
+                    </span>
+                  ) : 'Send OTP'}
+                </button>
+              </>
+            ) : (
+              <>
+                <div style={{ background: 'rgba(201,162,39,0.1)', border: '1px solid rgba(201,162,39,0.3)', borderRadius: '10px', padding: '12px 16px', marginBottom: '12px' }}>
+                  <p style={{ margin: 0, fontSize: '0.82rem', color: '#1e293b', fontWeight: 600 }}>
+                    Work email not receiving OTP. Sending to your personal email instead.
+                  </p>
+                </div>
+                <label style={s.label}>Personal Email Address</label>
+                <input
+                  type="email"
+                  value={form.personalEmail}
+                  style={s.input}
+                  disabled
+                />
+                <button type="button" onClick={handleSendOtp}
+                  style={{ ...s.btn, opacity: loading ? 0.6 : 1, marginTop: '1rem' }}
+                  disabled={loading}>
+                  {loading ? (
+                    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                      <span style={s.spin} /> Sending...
+                    </span>
+                  ) : 'Send OTP to Personal Email'}
+                </button>
+              </>
+            )}
 
             {/* OTP Input Section */}
             <div style={{ marginTop: '1.5rem' }}>
