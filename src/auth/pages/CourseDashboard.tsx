@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HR_COURSE, type Lesson, type Chapter, type QuizQuestion } from '../../data/hrCourseData';
-import { TrendingUp, Flame, Clock, Award, Play, RotateCcw, SkipForward, Download, Target, BarChart3, Trophy, Star, Zap, Crown, Sparkles, Flag, CalendarDays, User, BookOpen, ChevronRight, CheckCircle2, Timer, Brain, Medal, Bookmark } from 'lucide-react';
+import { TrendingUp, Flame, Clock, Award, Play, RotateCcw, SkipForward, Download, Target, BarChart3, Trophy, Star, Zap, Crown, Sparkles, Flag, CalendarDays, Calendar, User, BookOpen, ChevronRight, CheckCircle2, Timer, Brain, Medal, Bookmark } from 'lucide-react';
 import { useLmsAuth } from '../../lms/auth/context/LmsAuthContext';
 import { useAuth } from '../context/AuthContext';
 import ietLogo from '../../../picss/iet logo.png';
@@ -100,6 +100,74 @@ function saveBookmarks(bookmarks: Bookmark[], userEmail?: string) {
   localStorage.setItem(key, JSON.stringify(bookmarks));
 }
 
+interface LearningSchedule {
+  modulesPerDay: number;
+  startDate: string;
+  reminderTime: string;
+  active: boolean;
+}
+
+interface ScheduleDay {
+  date: string;
+  dayLabel: string;
+  modules: { chapterId: string; chapterTitle: string; chapterIndex: number }[];
+  completed: boolean;
+}
+
+const SCHEDULE_KEY = 'lms_learning_schedule';
+
+function loadSchedule(userEmail?: string): LearningSchedule | null {
+  try {
+    const key = getUserStorageKey(SCHEDULE_KEY, userEmail);
+    const raw = localStorage.getItem(key);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+}
+
+function saveSchedule(schedule: LearningSchedule | null, userEmail?: string) {
+  const key = getUserStorageKey(SCHEDULE_KEY, userEmail);
+  if (schedule) {
+    localStorage.setItem(key, JSON.stringify(schedule));
+  } else {
+    localStorage.removeItem(key);
+  }
+}
+
+function generateSchedulePlan(schedule: LearningSchedule, totalChapters: number, completedLessons: string[]): ScheduleDay[] {
+  const days: ScheduleDay[] = [];
+  const start = new Date(schedule.startDate);
+  let chapterIdx = 0;
+
+  while (chapterIdx < totalChapters) {
+    const dayDate = new Date(start);
+    dayDate.setDate(start.getDate() + days.length);
+
+    const modulesForDay: ScheduleDay['modules'] = [];
+    for (let i = 0; i < schedule.modulesPerDay && chapterIdx < totalChapters; i++, chapterIdx++) {
+      const ch = HR_COURSE.chapters[chapterIdx];
+      modulesForDay.push({ chapterId: ch.id, chapterTitle: ch.title, chapterIndex: chapterIdx });
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dayNoTime = new Date(dayDate);
+    dayNoTime.setHours(0, 0, 0, 0);
+    const isCompleted = dayNoTime <= today && modulesForDay.every((m) => {
+      const ch = HR_COURSE.chapters[m.chapterIndex];
+      return ch.lessons.every((l) => completedLessons.includes(l.id));
+    });
+
+    days.push({
+      date: dayDate.toISOString(),
+      dayLabel: `Day ${days.length + 1}`,
+      modules: modulesForDay,
+      completed: isCompleted,
+    });
+  }
+  return days;
+}
+
 export default function CourseDashboard() {
   const navigate = useNavigate();
   const { user, logout: lmsLogout } = useLmsAuth();
@@ -152,6 +220,15 @@ export default function CourseDashboard() {
   const [editForm, setEditForm] = useState<UserProfile>(userProfile);
   const [toastMsg, setToastMsg] = useState('');
   const [logoutToast, setLogoutToast] = useState(false);
+
+  const [schedule, setSchedule] = useState<LearningSchedule | null>(() => loadSchedule(user?.email));
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+  const [scheduleForm, setScheduleForm] = useState<LearningSchedule>({
+    modulesPerDay: 1,
+    startDate: new Date().toISOString().split('T')[0],
+    reminderTime: '09:00',
+    active: true,
+  });
   const [bookmarks, setBookmarks] = useState<Bookmark[]>(() => loadBookmarks(user?.email));
   const [bookmarkAnimating, setBookmarkAnimating] = useState(false);
   const [showBookmarkTooltip, setShowBookmarkTooltip] = useState(false);
@@ -290,6 +367,27 @@ export default function CourseDashboard() {
       saveBookmarks(next, user?.email);
       return next;
     });
+  }, [user?.email]);
+
+  const schedulePlan = useMemo(() => {
+    if (!schedule?.active) return [];
+    return generateSchedulePlan(schedule, HR_COURSE.chapters.length, progress.completedLessons);
+  }, [schedule, progress.completedLessons]);
+
+  const saveLearningSchedule = useCallback(() => {
+    const updated = { ...scheduleForm, active: true };
+    setSchedule(updated);
+    saveSchedule(updated, user?.email);
+    setScheduleModalOpen(false);
+    setToastMsg('Learning schedule saved!');
+    setTimeout(() => setToastMsg(''), 2500);
+  }, [scheduleForm, user?.email]);
+
+  const clearLearningSchedule = useCallback(() => {
+    setSchedule(null);
+    saveSchedule(null, user?.email);
+    setToastMsg('Schedule removed');
+    setTimeout(() => setToastMsg(''), 2500);
   }, [user?.email]);
 
   const submitQuiz = useCallback(() => {
@@ -456,10 +554,6 @@ export default function CourseDashboard() {
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             <span>Profile</span>
           </button>
-          <button className={`lms-nav-tab ${currentPage === 'bookmarks' ? 'active' : ''}`} onClick={() => setCurrentPage('bookmarks')}>
-            <Bookmark size={15} />
-            <span>Saved</span>
-          </button>
         </nav>
 
         <div className="lms-hr">
@@ -529,245 +623,89 @@ export default function CourseDashboard() {
               </div>
             </div>
 
-            {/* Smart Insight Cards */}
-            <div className="lms-insights-grid">
-              <div className="lms-insight-card">
-                <div className="lms-insight-icon" style={{ background: 'rgba(245,158,11,0.12)' }}>
-                  <TrendingUp size={20} style={{ color: '#F59E0B' }} />
+            {/* Quick Actions */}
+            <div className="lms-quick-actions">
+              <button className="lms-qa-card" onClick={() => setCurrentPage('course')}>
+                <div className="lms-qa-icon" style={{ background: 'linear-gradient(135deg, #9B7A3E, #7D6334)' }}>
+                  <Play size={22} style={{ color: '#ffffff' }} />
                 </div>
-                <div className="lms-insight-data">
-                  <span className="lms-insight-value">{progressPercent}%</span>
-                  <span className="lms-insight-label">Progress</span>
+                <div className="lms-qa-info">
+                  <span className="lms-qa-title">Resume Course</span>
+                  <span className="lms-qa-sub">Continue where you left off</span>
                 </div>
-                <div className="lms-insight-bar"><div style={{ width: `${progressPercent}%`, background: '#F59E0B' }} /></div>
-              </div>
-              <div className="lms-insight-card">
-                <div className="lms-insight-icon" style={{ background: 'rgba(249,115,22,0.12)' }}>
-                  <Flame size={20} style={{ color: '#F97316' }} />
+              </button>
+              <button className="lms-qa-card" onClick={() => { if (nextLesson) { selectLesson(nextLesson.lesson.id); setCurrentPage('course'); } }}>
+                <div className="lms-qa-icon" style={{ background: 'linear-gradient(135deg, #10B981, #059669)' }}>
+                  <SkipForward size={22} style={{ color: '#ffffff' }} />
                 </div>
-                <div className="lms-insight-data">
-                  <span className="lms-insight-value">{currentStreak}</span>
-                  <span className="lms-insight-label">Day Streak</span>
+                <div className="lms-qa-info">
+                  <span className="lms-qa-title">Next Chapter</span>
+                  <span className="lms-qa-sub">{nextLesson ? nextLesson.lesson.title : 'All done!'}</span>
                 </div>
-                <div className="lms-insight-bar"><div style={{ width: `${Math.min(100, currentStreak * 20)}%`, background: '#F97316' }} /></div>
-              </div>
-              <div className="lms-insight-card">
-                <div className="lms-insight-icon" style={{ background: 'rgba(99,102,241,0.12)' }}>
-                  <Clock size={20} style={{ color: '#6366F1' }} />
+              </button>
+              <button className="lms-qa-card" onClick={() => { if (prevLesson) { selectLesson(prevLesson.lesson.id); setCurrentPage('course'); } }}>
+                <div className="lms-qa-icon" style={{ background: 'linear-gradient(135deg, #6366F1, #4F46E5)' }}>
+                  <SkipForward size={22} style={{ color: '#ffffff', transform: 'scaleX(-1)' }} />
                 </div>
-                <div className="lms-insight-data">
-                  <span className="lms-insight-value">{totalTimeRemaining}</span>
-                  <span className="lms-insight-label">Time Left</span>
+                <div className="lms-qa-info">
+                  <span className="lms-qa-title">Previous Chapter</span>
+                  <span className="lms-qa-sub">{prevLesson ? prevLesson.lesson.title : 'Start of course'}</span>
                 </div>
-                <div className="lms-insight-bar"><div style={{ width: `${100 - progressPercent}%`, background: '#6366F1' }} /></div>
-              </div>
-              <div className="lms-insight-card">
-                <div className="lms-insight-icon" style={{ background: 'rgba(16,185,129,0.12)' }}>
-                  <Award size={20} style={{ color: '#10B981' }} />
+              </button>
+              <button className="lms-qa-card" onClick={() => setCurrentPage('bookmarks')}>
+                <div className="lms-qa-icon" style={{ background: 'linear-gradient(135deg, #F59E0B, #D97706)' }}>
+                  <Bookmark size={22} style={{ color: '#ffffff' }} />
                 </div>
-                <div className="lms-insight-data">
-                  <span className="lms-insight-value">{unlockedCount}/5</span>
-                  <span className="lms-insight-label">Achievements</span>
+                <div className="lms-qa-info">
+                  <span className="lms-qa-title">Saved Lessons</span>
+                  <span className="lms-qa-sub">{bookmarks.length === 0 ? 'No bookmarks yet' : `${bookmarks.length} bookmarked`}</span>
                 </div>
-                <div className="lms-insight-bar"><div style={{ width: `${(unlockedCount / 5) * 100}%`, background: '#10B981' }} /></div>
-              </div>
+              </button>
             </div>
 
-            {/* Two Column Layout */}
-            <div className="lms-dash-two-col">
-              <div className="lms-dash-left-col">
-                {/* Quick Action Center */}
-                <div className="lms-section-card">
-                  <h3 className="lms-section-title">Quick Actions</h3>
-                  <div className="lms-actions-grid">
-                    <button className="lms-action-card" onClick={() => setCurrentPage('course')}>
-                      <div className="lms-action-icon" style={{ background: 'linear-gradient(135deg, #9B7A3E, #7D6334)' }}>
-                        <Play size={20} style={{ color: '#ffffff' }} />
-                      </div>
-                      <span className="lms-action-label">Resume Course</span>
-                    </button>
-                    <button className="lms-action-card" onClick={() => setCurrentPage('certificate')}>
-                      <div className="lms-action-icon" style={{ background: 'linear-gradient(135deg, #6366F1, #4F46E5)' }}>
-                        <Award size={20} style={{ color: '#ffffff' }} />
-                      </div>
-                      <span className="lms-action-label">Certificate</span>
-                    </button>
-                    <button className="lms-action-card" onClick={() => setCurrentPage('profile')}>
-                      <div className="lms-action-icon" style={{ background: 'linear-gradient(135deg, #10B981, #059669)' }}>
-                        <User size={20} style={{ color: '#ffffff' }} />
-                      </div>
-                      <span className="lms-action-label">My Profile</span>
-                    </button>
-                    <button className="lms-action-card" onClick={() => { if (confirm('Reset all progress?')) resetProgress(); }}>
-                      <div className="lms-action-icon" style={{ background: 'linear-gradient(135deg, #F59E0B, #D97706)' }}>
-                        <RotateCcw size={20} style={{ color: '#ffffff' }} />
-                      </div>
-                      <span className="lms-action-label">Restart Course</span>
-                    </button>
-                    <button className="lms-action-card" onClick={() => { if (nextLesson) selectLesson(nextLesson.lesson.id); setCurrentPage('course'); }}>
-                      <div className="lms-action-icon" style={{ background: 'linear-gradient(135deg, #EC4899, #DB2777)' }}>
-                        <SkipForward size={20} style={{ color: '#ffffff' }} />
-                      </div>
-                      <span className="lms-action-label">Next Lesson</span>
-                    </button>
-                    <button className="lms-action-card" onClick={() => window.print()}>
-                      <div className="lms-action-icon" style={{ background: 'linear-gradient(135deg, #8B5CF6, #7C3AED)' }}>
-                        <Download size={20} style={{ color: '#ffffff' }} />
-                      </div>
-                      <span className="lms-action-label">Download</span>
-                    </button>
-                    <button className="lms-action-card" onClick={() => setCurrentPage('bookmarks')}>
-                      <div className="lms-action-icon" style={{ background: 'linear-gradient(135deg, #9B7A3E, #C5A059)' }}>
-                        <Bookmark size={20} style={{ color: '#ffffff' }} />
-                      </div>
-                      <span className="lms-action-label">Saved Lessons</span>
-                    </button>
+            {/* Course Overview */}
+            <div className="lms-section-card">
+              <h3 className="lms-section-title">
+                <BookOpen size={18} style={{ color: '#9B7A3E' }} />
+                Course Overview
+              </h3>
+              <div className="lms-overview-header">
+                <div>
+                  <h4 className="lms-overview-course-name">{HR_COURSE.title}</h4>
+                  <p className="lms-overview-course-sub">{HR_COURSE.subtitle}</p>
+                </div>
+                <div className="lms-overview-stats">
+                  <div className="lms-overview-stat">
+                    <span className="lms-overview-stat-val">{HR_COURSE.chapters.length}</span>
+                    <span className="lms-overview-stat-label">Modules</span>
                   </div>
-                </div>
-
-                {/* Recent Activity Timeline */}
-                <div className="lms-section-card">
-                  <h3 className="lms-section-title">Recent Activity</h3>
-                  {recentActivity.length > 0 ? (
-                    <div className="lms-timeline">
-                      {recentActivity.map((item) => (
-                        <div key={item.id} className="lms-timeline-item" onClick={() => { selectLesson(item.id); setCurrentPage('course'); }}>
-                          <div className={`lms-timeline-dot ${item.completed ? 'completed' : 'progress'}`} />
-                          <div className="lms-timeline-content">
-                            <span className="lms-timeline-title">{allLessons.find(l => l.lesson.id === item.id)?.lesson.title || item.id}</span>
-                            <span className="lms-timeline-meta">{formatTimestamp(item.timestamp)} {item.completed ? '• Completed' : '• In Progress'}</span>
-                          </div>
-                          <ChevronRight size={16} style={{ color: '#94a3b8', flexShrink: 0 }} />
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="lms-empty-state">
-                      <BookOpen size={32} style={{ color: '#cbd5e1' }} />
-                      <p>No activity yet. Start your first lesson!</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Learning Calendar */}
-                <div className="lms-section-card">
-                  <h3 className="lms-section-title">Learning Calendar</h3>
-                  <div className="lms-mini-calendar">
-                    <div className="lms-cal-header">
-                      <span>{calInfo.month} {calInfo.year}</span>
-                    </div>
-                    <div className="lms-cal-grid">
-                      {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
-                        <div key={i} className="lms-cal-day-name">{d}</div>
-                      ))}
-                      {Array.from({ length: calInfo.firstDay }).map((_, i) => (
-                        <div key={`empty-${i}`} className="lms-cal-day empty" />
-                      ))}
-                      {Array.from({ length: calInfo.daysInMonth }).map((_, i) => {
-                        const dayNum = i + 1;
-                        const dateObj = new Date(calInfo.year, calInfo.monthNum, dayNum);
-                        const dateStr = dateObj.toDateString();
-                        const isAccessed = calInfo.accessed.has(dateStr);
-                        const isToday = dayNum === calInfo.today;
-                        return (
-                          <div key={dayNum} className={`lms-cal-day ${isAccessed ? 'accessed' : ''} ${isToday ? 'today' : ''}`}>
-                            {dayNum}
-                          </div>
-                        );
-                      })}
-                    </div>
+                  <div className="lms-overview-stat">
+                    <span className="lms-overview-stat-val">{totalLessons}</span>
+                    <span className="lms-overview-stat-label">Lessons</span>
+                  </div>
+                  <div className="lms-overview-stat">
+                    <span className="lms-overview-stat-val">{progressPercent}%</span>
+                    <span className="lms-overview-stat-label">Complete</span>
                   </div>
                 </div>
               </div>
-
-              <div className="lms-dash-right-col">
-                {/* Today's Goal */}
-                <div className="lms-section-card lms-goal-card">
-                  <div className="lms-goal-header">
-                    <Target size={18} style={{ color: '#F59E0B' }} />
-                    <span style={{ fontWeight: 700, fontSize: '0.92rem', color: '#0c1628' }}>Today's Goal</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '16px' }}>
-                    <div className="lms-goal-ring-wrap">
-                      <div className="lms-goal-ring">
-                        <svg viewBox="0 0 80 80">
-                          <circle cx="40" cy="40" r="34" fill="none" stroke="rgba(12,22,40,0.08)" strokeWidth="6"/>
-                          <circle cx="40" cy="40" r="34" fill="none" stroke="url(#goalGrad)" strokeWidth="6" strokeLinecap="round" strokeDasharray={`${todayGoalTarget > 0 ? (todayGoalDone / todayGoalTarget) * 213.6 : 0} 213.6`} transform="rotate(-90 40 40)"/>
-                          <defs>
-                            <linearGradient id="goalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                              <stop offset="0%" stopColor="#F59E0B"/>
-                              <stop offset="100%" stopColor="#10B981"/>
-                            </linearGradient>
-                          </defs>
-                        </svg>
-                        <div className="lms-goal-ring-text">
-                          <span className="lms-goal-done">{todayGoalDone}</span>
-                          <span className="lms-goal-sep">/</span>
-                          <span className="lms-goal-target">{todayGoalTarget}</span>
-                        </div>
+              <div className="lms-overview-modules">
+                {HR_COURSE.chapters.map((chapter, ci) => {
+                  const cp = getChapterProgress(chapter);
+                  return (
+                    <div key={chapter.id} className="lms-overview-module" onClick={() => { selectLesson(chapter.lessons[0].id); setCurrentPage('course'); }}>
+                      <div className="lms-overview-module-header">
+                        <span className="lms-overview-module-num">Module {ci + 1}</span>
+                        <span className="lms-overview-module-count">{cp.done}/{cp.total} lessons</span>
                       </div>
+                      <h5 className="lms-overview-module-title">{chapter.title}</h5>
+                      <div className="lms-overview-module-bar">
+                        <div className="lms-overview-module-fill" style={{ width: `${cp.percent}%` }} />
+                      </div>
+                      <span className="lms-overview-module-pct">{cp.percent}%</span>
                     </div>
-                    <p className="lms-goal-message">{todayGoalMessage}</p>
-                  </div>
-                </div>
-
-                {/* Weekly Progress */}
-                <div className="lms-section-card">
-                  <h3 className="lms-section-title">Weekly Progress</h3>
-                  <div className="lms-weekly-chart">
-                    {weeklyData.map((d, i) => (
-                      <div key={i} className="lms-weekly-bar-col">
-                        <div className="lms-weekly-bar-track">
-                          <div className="lms-weekly-bar-fill" style={{ height: `${d.count > 0 ? Math.max(8, (d.count / maxWeeklyCount) * 100) : 4}%`, background: d.isToday ? 'linear-gradient(135deg, #9B7A3E, #C5A059)' : 'rgba(99,102,241,0.2)' }} />
-                        </div>
-                        <span className={`lms-weekly-day ${d.isToday ? 'today' : ''}`}>{d.day}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Achievement Badges */}
-                <div className="lms-section-card">
-                  <h3 className="lms-section-title">Achievement Badges</h3>
-                  <div className="lms-achievements-grid">
-                    {achievements.map((a, i) => {
-                      const IconComp = a.icon === 'star' ? Star : a.icon === 'flame' ? Flame : a.icon === 'zap' ? Zap : a.icon === 'trophy' ? Trophy : Crown;
-                      return (
-                        <div key={i} className={`lms-ach-badge ${a.unlocked ? 'unlocked' : ''}`}>
-                          <div className="lms-ach-icon">
-                            <IconComp size={20} />
-                          </div>
-                          <span className="lms-ach-title">{a.title}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Personalized Motivation */}
-                <div className="lms-section-card lms-motivation-card">
-                  <div className="lms-motivation-icon">
-                    <Sparkles size={22} style={{ color: '#F59E0B' }} />
-                  </div>
-                  <p className="lms-motivation-text">{motivationalMessage}</p>
-                </div>
-
-                {/* Next Milestone */}
-                {nextMilestone && (
-                  <div className="lms-section-card lms-milestone-card">
-                    <h3 className="lms-section-title">Next Milestone</h3>
-                    <div className="lms-milestone-progress">
-                      <div className="lms-milestone-bar">
-                        <div style={{ width: `${progressPercent}%`, background: 'linear-gradient(135deg, #9B7A3E, #C5A059)', height: '100%', borderRadius: '100px', transition: 'width 0.5s' }} />
-                      </div>
-                      <div className="lms-milestone-labels">
-                        <span>{progressPercent}%</span>
-                        <span>{nextMilestone.percent}%</span>
-                      </div>
-                    </div>
-                    <p className="lms-milestone-text">{nextMilestone.message}</p>
-                  </div>
-                )}
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -1082,6 +1020,106 @@ export default function CourseDashboard() {
                   </div>
                 </div>
 
+                {/* Scheduled Learning Card */}
+                <div className="lms-profile-card lms-schedule-card">
+                  <div className="lms-card-head">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Calendar size={18} style={{ color: '#9B7A3E' }} />
+                      <h3>Scheduled Learning</h3>
+                    </div>
+                    {schedule?.active ? (
+                      <span className="lms-badge-green">Active</span>
+                    ) : (
+                      <span className="lms-card-sub-tag">Not set</span>
+                    )}
+                  </div>
+
+                  {schedule?.active && schedulePlan.length > 0 ? (
+                    <>
+                      <div className="lms-schedule-summary">
+                        <div className="lms-schedule-stat">
+                          <span className="lms-schedule-stat-val">{schedule.modulesPerDay}</span>
+                          <span className="lms-schedule-stat-label">Modules/Day</span>
+                        </div>
+                        <div className="lms-schedule-stat">
+                          <span className="lms-schedule-stat-val">{schedulePlan.length}</span>
+                          <span className="lms-schedule-stat-label">Total Days</span>
+                        </div>
+                        <div className="lms-schedule-stat">
+                          <span className="lms-schedule-stat-val">{schedule.reminderTime}</span>
+                          <span className="lms-schedule-stat-label">Reminder</span>
+                        </div>
+                      </div>
+
+                      <div className="lms-schedule-timeline">
+                        {schedulePlan.map((day, di) => {
+                          const dayDate = new Date(day.date);
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          const dayNoTime = new Date(dayDate);
+                          dayNoTime.setHours(0, 0, 0, 0);
+                          const isToday = dayNoTime.getTime() === today.getTime();
+                          const isPast = dayNoTime < today;
+                          const allDone = day.modules.every((m) => {
+                            const ch = HR_COURSE.chapters[m.chapterIndex];
+                            return ch.lessons.every((l) => progress.completedLessons.includes(l.id));
+                          });
+
+                          return (
+                            <div key={di} className={`lms-schedule-day ${isToday ? 'today' : ''} ${allDone ? 'done' : ''} ${isPast && !allDone ? 'missed' : ''}`}>
+                              <div className="lms-schedule-day-left">
+                                <div className={`lms-schedule-day-dot ${allDone ? 'done' : isToday ? 'current' : isPast ? 'missed' : ''}`}>
+                                  {allDone ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg> : null}
+                                </div>
+                                {di < schedulePlan.length - 1 && <div className={`lms-schedule-day-line ${allDone ? 'done' : ''}`} />}
+                              </div>
+                              <div className="lms-schedule-day-content">
+                                <div className="lms-schedule-day-head">
+                                  <span className={`lms-schedule-day-label ${isToday ? 'today' : ''}`}>{day.dayLabel}{isToday ? ' (Today)' : ''}</span>
+                                  <span className="lms-schedule-day-date">{dayDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                                </div>
+                                {day.modules.map((m, mi) => {
+                                  const chDone = HR_COURSE.chapters[m.chapterIndex].lessons.every((l) => progress.completedLessons.includes(l.id));
+                                  return (
+                                    <div key={mi} className="lms-schedule-day-module" onClick={() => { selectLesson(HR_COURSE.chapters[m.chapterIndex].lessons[0].id); setCurrentPage('course'); }}>
+                                      <div className={`lms-schedule-module-dot ${chDone ? 'done' : ''}`}>
+                                        {chDone ? <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg> : <span>{m.chapterIndex + 1}</span>}
+                                      </div>
+                                      <span className="lms-schedule-module-name">{m.chapterTitle}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <div className="lms-schedule-actions">
+                        <button className="lms-schedule-edit-btn" onClick={() => { setScheduleForm(schedule); setScheduleModalOpen(true); }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                          Edit Schedule
+                        </button>
+                        <button className="lms-schedule-clear-btn" onClick={clearLearningSchedule}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                          Remove
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="lms-schedule-empty">
+                      <div className="lms-schedule-empty-icon">
+                        <Calendar size={32} style={{ color: '#9B7A3E' }} />
+                      </div>
+                      <p className="lms-schedule-empty-text">Set a learning pace and we'll build a day-by-day plan to help you finish the course on time.</p>
+                      <button className="lms-schedule-setup-btn" onClick={() => { setScheduleForm({ modulesPerDay: 1, startDate: new Date().toISOString().split('T')[0], reminderTime: '09:00', active: true }); setScheduleModalOpen(true); }}>
+                        <Calendar size={16} />
+                        Create Schedule
+                      </button>
+                    </div>
+                  )}
+                </div>
+
               </div>
             </div>
           </div>
@@ -1203,6 +1241,79 @@ export default function CourseDashboard() {
             <div className="lms-modal-footer">
               <button type="button" className="lms-modal-cancel" onClick={() => setEditModalOpen(false)}>Cancel</button>
               <button type="button" className="lms-modal-save" onClick={() => handleSaveProfile(editForm)}>Save Profile Changes</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Learning Schedule Modal */}
+      {scheduleModalOpen && (
+        <div className="lms-modal-overlay" onClick={() => setScheduleModalOpen(false)}>
+          <div className="lms-modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+            <div className="lms-modal-header">
+              <h2 className="lms-modal-title">
+                <Calendar size={20} style={{ color: '#9B7A3E', marginRight: '8px' }} />
+                Set Learning Schedule
+              </h2>
+              <button className="lms-modal-close" onClick={() => setScheduleModalOpen(false)}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div className="lms-form-group">
+                <label className="lms-form-label">Modules per Day</label>
+                <div className="lms-schedule-speed-grid">
+                  {[1, 2, 3, 4].map((num) => (
+                    <button
+                      key={num}
+                      className={`lms-schedule-speed-btn ${scheduleForm.modulesPerDay === num ? 'active' : ''}`}
+                      onClick={() => setScheduleForm({ ...scheduleForm, modulesPerDay: num })}
+                    >
+                      <span className="lms-schedule-speed-num">{num}</span>
+                      <span className="lms-schedule-speed-label">
+                        {num === 1 ? 'module' : 'modules'}/day
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                <p style={{ fontSize: '0.78rem', color: '#64748b', margin: '8px 0 0', lineHeight: 1.5 }}>
+                  {scheduleForm.modulesPerDay === 1 && `You'll finish the course in ${HR_COURSE.chapters.length} days.`}
+                  {scheduleForm.modulesPerDay === 2 && `You'll finish the course in ${Math.ceil(HR_COURSE.chapters.length / 2)} days.`}
+                  {scheduleForm.modulesPerDay === 3 && `You'll finish the course in ${Math.ceil(HR_COURSE.chapters.length / 3)} days.`}
+                  {scheduleForm.modulesPerDay === 4 && `You'll finish the course in ${Math.ceil(HR_COURSE.chapters.length / 4)} days.`}
+                </p>
+              </div>
+
+              <div className="lms-form-grid">
+                <div className="lms-form-group">
+                  <label className="lms-form-label">Start Date</label>
+                  <input
+                    type="date"
+                    className="lms-form-input"
+                    value={scheduleForm.startDate}
+                    min={new Date().toISOString().split('T')[0]}
+                    onChange={(e) => setScheduleForm({ ...scheduleForm, startDate: e.target.value })}
+                  />
+                </div>
+                <div className="lms-form-group">
+                  <label className="lms-form-label">Daily Reminder</label>
+                  <input
+                    type="time"
+                    className="lms-form-input"
+                    value={scheduleForm.reminderTime}
+                    onChange={(e) => setScheduleForm({ ...scheduleForm, reminderTime: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="lms-modal-footer">
+              <button type="button" className="lms-modal-cancel" onClick={() => setScheduleModalOpen(false)}>Cancel</button>
+              <button type="button" className="lms-modal-save" onClick={saveLearningSchedule}>
+                <Calendar size={15} style={{ marginRight: '6px' }} />
+                Save Schedule
+              </button>
             </div>
           </div>
         </div>
@@ -1627,6 +1738,57 @@ header.lms-header, .lms-header{position:sticky !important;top:0 !important;left:
 
 .lms-profile-stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 
+/* Schedule Learning */
+.lms-schedule-card{overflow:hidden}
+.lms-schedule-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px;padding:14px;background:#f8f7f3;border-radius:12px;border:1px solid rgba(12,22,40,0.06)}
+.lms-schedule-stat{display:flex;flex-direction:column;align-items:center}
+.lms-schedule-stat-val{font-family:'Plus Jakarta Sans',sans-serif;font-size:1.15rem;font-weight:800;color:#9B7A3E;line-height:1}
+.lms-schedule-stat-label{font-size:0.68rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;margin-top:3px}
+.lms-schedule-timeline{display:flex;flex-direction:column;gap:0;max-height:320px;overflow-y:auto;margin-bottom:16px;padding-right:4px}
+.lms-schedule-timeline::-webkit-scrollbar{width:4px}
+.lms-schedule-timeline::-webkit-scrollbar-track{background:transparent}
+.lms-schedule-timeline::-webkit-scrollbar-thumb{background:rgba(12,22,40,0.1);border-radius:100px}
+.lms-schedule-day{display:flex;gap:14px;min-height:40px}
+.lms-schedule-day-left{display:flex;flex-direction:column;align-items:center;width:20px;flex-shrink:0}
+.lms-schedule-day-dot{width:20px;height:20px;border-radius:50%;border:2px solid rgba(12,22,40,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;background:#ffffff;z-index:1;transition:all 0.2s}
+.lms-schedule-day-dot.done{background:#10B981;border-color:#10B981}
+.lms-schedule-day-dot.done svg{color:#ffffff}
+.lms-schedule-day-dot.current{background:#9B7A3E;border-color:#9B7A3E;box-shadow:0 0 0 4px rgba(155,122,62,0.2)}
+.lms-schedule-day-dot.missed{background:#fee2e2;border-color:#fca5a5}
+.lms-schedule-day-line{width:2px;flex:1;min-height:12px;background:rgba(12,22,40,0.08);margin:2px 0}
+.lms-schedule-day-line.done{background:#10B981}
+.lms-schedule-day-content{flex:1;padding-bottom:14px}
+.lms-schedule-day-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.lms-schedule-day-label{font-size:0.78rem;font-weight:700;color:#64748b}
+.lms-schedule-day-label.today{color:#9B7A3E;font-weight:800}
+.lms-schedule-day-date{font-size:0.72rem;color:#94a3b8}
+.lms-schedule-day-module{display:flex;align-items:center;gap:8px;padding:6px 10px;margin:3px 0;border-radius:8px;cursor:pointer;transition:all 0.15s}
+.lms-schedule-day-module:hover{background:#f8f7f3}
+.lms-schedule-module-dot{width:20px;height:20px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:700;color:#64748b;background:rgba(12,22,40,0.05);flex-shrink:0;transition:all 0.2s}
+.lms-schedule-module-dot.done{background:#10B981;color:#ffffff}
+.lms-schedule-module-dot.done svg{color:#ffffff}
+.lms-schedule-module-name{font-size:0.8rem;color:#334155;font-weight:500}
+.lms-schedule-day.done .lms-schedule-module-name{color:#64748b}
+.lms-schedule-day.missed .lms-schedule-module-name{color:#94a3b8}
+.lms-schedule-actions{display:flex;gap:10px}
+.lms-schedule-edit-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 16px;border:1px solid rgba(155,122,62,0.25);border-radius:10px;background:#ffffff;color:#9B7A3E;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.2s}
+.lms-schedule-edit-btn:hover{background:#f8f7f3;border-color:rgba(155,122,62,0.4)}
+.lms-schedule-clear-btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 16px;border:1px solid rgba(220,38,38,0.15);border-radius:10px;background:#ffffff;color:#dc2626;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.2s}
+.lms-schedule-clear-btn:hover{background:#fef2f2;border-color:rgba(220,38,38,0.3)}
+.lms-schedule-empty{display:flex;flex-direction:column;align-items:center;gap:12px;padding:28px 20px;text-align:center}
+.lms-schedule-empty-icon{width:56px;height:56px;border-radius:16px;background:rgba(155,122,62,0.1);display:flex;align-items:center;justify-content:center}
+.lms-schedule-empty-text{font-size:0.84rem;color:#64748b;margin:0;line-height:1.6;max-width:320px}
+.lms-schedule-setup-btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 24px;background:linear-gradient(135deg,#9B7A3E,#7D6334);color:#ffffff;border:none;border-radius:99px;font-size:0.88rem;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 16px rgba(155,122,62,0.3);transition:all 0.3s ease;margin-top:4px}
+.lms-schedule-setup-btn:hover{box-shadow:0 8px 24px rgba(155,122,62,0.4);transform:translateY(-1px)}
+.lms-schedule-speed-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.lms-schedule-speed-btn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px 8px;border:2px solid rgba(12,22,40,0.08);border-radius:12px;background:#ffffff;cursor:pointer;font-family:inherit;transition:all 0.2s}
+.lms-schedule-speed-btn:hover{border-color:rgba(155,122,62,0.3)}
+.lms-schedule-speed-btn.active{border-color:#9B7A3E;background:rgba(155,122,62,0.06)}
+.lms-schedule-speed-num{font-family:'Plus Jakarta Sans',sans-serif;font-size:1.3rem;font-weight:800;color:#0c1628;line-height:1}
+.lms-schedule-speed-btn.active .lms-schedule-speed-num{color:#9B7A3E}
+.lms-schedule-speed-label{font-size:0.7rem;color:#64748b;font-weight:500}
+.lms-schedule-speed-btn.active .lms-schedule-speed-label{color:#9B7A3E}
+
 /* Certificate View */
 .lms-certificate-page{max-width:840px;margin:0 auto}
 .lms-cert-ready{display:flex;flex-direction:column;align-items:center;gap:28px}
@@ -1690,12 +1852,35 @@ header.lms-header, .lms-header{position:sticky !important;top:0 !important;left:
 .lms-insight-bar{height:4px;background:rgba(12,22,40,0.06);border-radius:100px;overflow:hidden}
 .lms-insight-bar div{height:100%;border-radius:100px;transition:width 0.5s}
 
-.lms-dash-two-col{display:grid;grid-template-columns:1.2fr 1fr;gap:24px}
-.lms-dash-left-col,.lms-dash-right-col{display:flex;flex-direction:column;gap:20px}
+.lms-quick-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.lms-qa-card{display:flex;align-items:center;gap:16px;padding:20px 22px;background:#ffffff;border:1px solid rgba(12,22,40,0.08);border-radius:16px;cursor:pointer;font-family:inherit;transition:all 0.25s cubic-bezier(0.4,0,0.2,1);box-shadow:0 8px 30px rgba(12,22,40,0.04);text-align:left}
+.lms-qa-card:hover{border-color:rgba(155,122,62,0.3);transform:translateY(-2px);box-shadow:0 12px 32px rgba(12,22,40,0.08)}
+.lms-qa-icon{width:50px;height:50px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform 0.3s cubic-bezier(0.16,1,0.3,1)}
+.lms-qa-card:hover .lms-qa-icon{transform:scale(1.08)}
+.lms-qa-info{display:flex;flex-direction:column;gap:3px}
+.lms-qa-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:0.92rem;color:#0c1628}
+.lms-qa-sub{font-size:0.78rem;color:#64748b;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px}
 
-.lms-section-card{background:#ffffff;border:1px solid rgba(12,22,40,0.08);border-radius:16px;padding:24px;box-shadow:0 8px 30px rgba(12,22,40,0.04);transition:all 0.25s}
-.lms-section-card:hover{box-shadow:0 12px 36px rgba(12,22,40,0.07)}
-.lms-section-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:1.05rem;color:#0c1628;margin:0 0 18px}
+.lms-section-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:1.05rem;color:#0c1628;margin:0 0 18px;display:flex;align-items:center;gap:8px}
+
+.lms-overview-header{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:22px;padding:18px 20px;background:#f8f7f3;border-radius:14px;border:1px solid rgba(12,22,40,0.06)}
+.lms-overview-course-name{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.1rem;color:#0c1628;margin:0 0 4px}
+.lms-overview-course-sub{font-size:0.82rem;color:#64748b;margin:0;line-height:1.4}
+.lms-overview-stats{display:flex;gap:24px;flex-shrink:0}
+.lms-overview-stat{display:flex;flex-direction:column;align-items:center}
+.lms-overview-stat-val{font-family:'Plus Jakarta Sans',sans-serif;font-size:1.2rem;font-weight:800;color:#9B7A3E;line-height:1}
+.lms-overview-stat-label{font-size:0.68rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;margin-top:3px}
+
+.lms-overview-modules{display:flex;flex-direction:column;gap:12px}
+.lms-overview-module{padding:16px 18px;border:1px solid rgba(12,22,40,0.06);border-radius:12px;cursor:pointer;transition:all 0.2s;background:#ffffff}
+.lms-overview-module:hover{border-color:rgba(155,122,62,0.25);box-shadow:0 4px 16px rgba(12,22,40,0.06);transform:translateY(-1px)}
+.lms-overview-module-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.lms-overview-module-num{font-size:0.72rem;font-weight:700;color:#9B7A3E;text-transform:uppercase;letter-spacing:0.3px}
+.lms-overview-module-count{font-size:0.72rem;color:#64748b;font-weight:500}
+.lms-overview-module-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:0.88rem;color:#0c1628;margin:0 0 10px}
+.lms-overview-module-bar{height:6px;background:rgba(12,22,40,0.06);border-radius:100px;overflow:hidden;margin-bottom:4px}
+.lms-overview-module-fill{height:100%;border-radius:100px;background:linear-gradient(90deg,#9B7A3E,#C5A059);transition:width 0.5s cubic-bezier(0.4,0,0.2,1)}
+.lms-overview-module-pct{font-size:0.72rem;font-weight:600;color:#64748b}
 
 .lms-actions-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
 .lms-action-card{display:flex;flex-direction:column;align-items:center;gap:10px;padding:18px 12px;border:1px solid rgba(12,22,40,0.06);border-radius:14px;background:#f8f7f3;cursor:pointer;font-family:inherit;transition:all 0.25s cubic-bezier(0.4,0,0.2,1)}
@@ -1815,6 +2000,10 @@ header.lms-header, .lms-header{position:sticky !important;top:0 !important;left:
   .lms-insights-grid{grid-template-columns:1fr}
   .lms-actions-grid{grid-template-columns:repeat(2,1fr)}
   .lms-hero-card{padding:24px}
+  .lms-quick-actions{grid-template-columns:repeat(2,1fr)}
+  .lms-overview-header{flex-direction:column;text-align:center}
+  .lms-overview-stats{justify-content:center}
+  .lms-schedule-speed-grid{grid-template-columns:repeat(2,1fr)}
 }
 @media(max-width:480px){
   .lms-header{padding:0 12px;height:64px}
@@ -1825,6 +2014,7 @@ header.lms-header, .lms-header{position:sticky !important;top:0 !important;left:
   .lms-page-content{padding:20px 14px}
   .lms-profile-stats-grid{grid-template-columns:1fr}
   .lms-actions-grid{grid-template-columns:1fr}
+  .lms-quick-actions{grid-template-columns:1fr}
   .lms-achievements-grid{flex-wrap:wrap}
 }
 `;
