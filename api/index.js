@@ -79,6 +79,12 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', key: process.env.RAZORPAY_KEY_ID ? 'configured' : 'missing' });
 });
 
+// DEBUG: Catch-all to see what URL Express receives
+app.use('/api', (req, res, next) => {
+  console.log('[DEBUG] URL:', req.url, 'OriginalURL:', req.originalUrl, 'Path:', req.path);
+  next();
+});
+
 // Auth health check (moved to top to ensure registration)
 app.get('/api/auth/health', (_req, res) => {
   res.json({
