@@ -108,6 +108,12 @@ function buildOtpHtml(name, otp) {
               <p style="margin:0 0 10px;font-size:14px;color:#4A5568;line-height:1.7;">
                 We're delighted to welcome you to our professional learning community and appreciate your interest in building your HR career with us.
               </p>
+              <p style="margin:0 0 10px;font-size:14px;color:#4A5568;line-height:1.7;">
+                Congratulations on taking this exciting step in your HR career! We're thrilled to have you join a growing community of HR professionals committed to learning and growth.
+              </p>
+              <p style="margin:0 0 10px;font-size:14px;color:#4A5568;line-height:1.7;">
+                Once you verify your email with the OTP below, your <strong style="color:#15345B;">HR Professional Development Program</strong> course will be instantly unlocked, giving you full access to all modules, lessons, and certification opportunities.
+              </p>
               <p style="margin:0;font-size:14px;color:#4A5568;line-height:1.7;">
                 To securely complete your registration, please verify your email address using the One-Time Password (OTP) below.
               </p>

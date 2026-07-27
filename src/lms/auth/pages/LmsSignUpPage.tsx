@@ -143,7 +143,7 @@ export default function LmsSignUpPage() {
     }
     setLoading(true);
     try {
-      const res = await sendOtp(workEmail.trim().toLowerCase());
+      const res = await sendOtp(workEmail.trim().toLowerCase(), form.fullName);
       if (res.success) {
         showToast('success', res.message || 'OTP sent successfully!');
         setTimer(OTP_TIMER);
@@ -214,7 +214,7 @@ export default function LmsSignUpPage() {
     setTimer(OTP_TIMER);
     setOtp(Array(OTP_LENGTH).fill(''));
     try {
-      const res = await sendOtp(workEmail.trim().toLowerCase());
+      const res = await sendOtp(workEmail.trim().toLowerCase(), form.fullName);
       if (res.success) showToast('success', `New code sent to ${workEmail}`);
       else showToast('error', res.message);
     } catch {

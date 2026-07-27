@@ -31,12 +31,12 @@ function saveLocalUser(user: any) {
   localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(users));
 }
 
-export async function sendOtp(email: string): Promise<ApiResponse> {
+export async function sendOtp(email: string, name?: string): Promise<ApiResponse> {
   try {
     const res = await fetch(`${API_BASE}/api/auth/send-otp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, name: name || '' }),
     });
     if (res.ok) {
       return await res.json();

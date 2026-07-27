@@ -410,7 +410,7 @@ export default function RegistrationSuccessPopup({ visible, onComplete }: Props)
               margin: '0 0 6px', fontSize: '13px', color: '#475569', lineHeight: 1.6,
               textAlign: 'center',
             }}>
-              We're excited to support your learning with expert guidance, practical training, and career-focused programs.
+              We're excited to support your learning with practical training and career-focused programs.
             </p>
             <p style={{
               margin: '0 0 16px', fontSize: '13px', color: '#475569', lineHeight: 1.6,
@@ -446,9 +446,9 @@ export default function RegistrationSuccessPopup({ visible, onComplete }: Props)
               {/* Checklist */}
               {[
                 { icon: '\u2713', text: 'Account Created Successfully', color: BRAND.green, delay: '0.5s' },
-                { icon: '\u2713', text: 'Email Verified', color: BRAND.green, delay: '0.65s' },
-                { icon: '\u2713', text: 'Access Granted', color: BRAND.green, delay: '0.8s' },
-                { icon: '\u2713', text: 'Ready to Start Learning', color: BRAND.green, delay: '0.95s' },
+                { icon: '\u2713', text: 'Course Access Granted', color: BRAND.green, delay: '0.65s' },
+                { icon: '\u2713', text: 'Ready to Start Learning', color: BRAND.green, delay: '0.8s' },
+                { icon: '\u2713', text: 'Certification after completing course', color: BRAND.green, delay: '0.95s' },
               ].map((item, idx) => (
                 <div key={idx} className="rsp-checklist-item" style={{
                   display: 'flex', alignItems: 'center', gap: '8px',

@@ -9,7 +9,7 @@ export const HR_ROLES = [
   'HR Consultant / HR Analyst',
   'HR Business Partner (HRBP) / People Partner / HR Generalist',
   'HR Transformation Specialist',
-  'HR Executive Leadership',
+  'HR Executive Leadership ( V.P/ Manager/ C.H.R.O)',
 ] as const;
 
 export type HrRole = (typeof HR_ROLES)[number];

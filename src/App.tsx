@@ -3153,7 +3153,7 @@ export default function App() {
                 <p className="panel-desc">
                   This course is exclusively for HR professionals. To gain access, register using your official company email address.
                 </p>
-                <button className="panel-btn-register" onClick={() => navigate('/lms/sign-in')}>
+                <button className="panel-btn-register" onClick={() => navigate('/lms/sign-up')}>
                   <span>Register & Unlock Course</span>
                   <span>→</span>
                 </button>
