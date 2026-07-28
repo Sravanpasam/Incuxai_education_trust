@@ -12,13 +12,15 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5000', 'https://www.incuxaieducationtrust.org', 'https://incuxai.com', 'https://incuxaicademy.incuxai.com'];
+const defaultOrigins = ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5000', 'https://www.incuxaieducationtrust.org', 'https://incuxai.com', 'https://incuxaicademy.incuxai.com'];
+const envOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [];
+const allowedOrigins = [...new Set([...envOrigins, ...defaultOrigins])];
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin || allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      callback(null, true);
     }
   }
 }));
