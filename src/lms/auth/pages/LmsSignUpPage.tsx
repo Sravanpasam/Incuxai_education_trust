@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import ietLogo from '../../../../picss/iet logo.png';
 import { validateWorkEmail } from '../../../auth/validation/emailValidation';
 import { validateCompanyEmail } from '../../../auth/validation/companyEmailValidation';
-import { sendOtp, verifyOtp, registerUser, loginUser } from '../../../auth/services/authService';
+import { sendOtp, resendOtpApi, sendPersonalOtpApi, verifyOtp, registerUser, loginUser } from '../../../auth/services/authService';
 import { useLmsAuth } from '../context/LmsAuthContext';
 import { useAuth } from '../../../auth/context/AuthContext';
 import RegistrationSuccessPopup from '../../../auth/components/RegistrationSuccessPopup';
@@ -146,10 +146,18 @@ export default function LmsSignUpPage() {
         return;
       }
     }
-    const targetEmail = otpTarget === 'work' ? workEmail.trim().toLowerCase() : form.personalEmail.trim().toLowerCase();
     setLoading(true);
     try {
-      const res = await sendOtp(targetEmail, form.fullName);
+      let res;
+      if (otpTarget === 'personal') {
+        res = await sendPersonalOtpApi(
+          workEmail.trim().toLowerCase(),
+          form.personalEmail.trim().toLowerCase(),
+          form.fullName,
+        );
+      } else {
+        res = await sendOtp(workEmail.trim().toLowerCase(), form.fullName);
+      }
       if (res.success) {
         showToast('success', res.message || 'OTP sent successfully!');
         setTimer(OTP_TIMER);
@@ -221,20 +229,23 @@ export default function LmsSignUpPage() {
     setResendCount(newCount);
     if (newCount >= 2 && otpTarget === 'work') {
       setOtpTarget('personal');
-      showToast('error', 'Work email not receiving OTP? Switching to your personal email.');
     }
-    const targetEmail = (newCount >= 2 && otpTarget === 'work')
-      ? form.personalEmail.trim().toLowerCase()
-      : otpTarget === 'personal'
-        ? form.personalEmail.trim().toLowerCase()
-        : workEmail.trim().toLowerCase();
     setResendCd(RESEND_CD);
     setTimer(OTP_TIMER);
     setOtp(Array(OTP_LENGTH).fill(''));
     try {
-      const res = await sendOtp(targetEmail, form.fullName);
-      if (res.success) showToast('success', `New code sent to ${targetEmail}`);
-      else showToast('error', res.message);
+      const res = await resendOtpApi(
+        workEmail.trim().toLowerCase(),
+        form.personalEmail.trim().toLowerCase(),
+        newCount,
+        form.fullName,
+      );
+      if (res.success) {
+        const recipient = res.recipient === 'personal' ? 'Personal Email' : 'Work Email';
+        showToast('success', res.message || `OTP resent to your ${recipient}.`);
+      } else {
+        showToast('error', res.message);
+      }
     } catch {
       showToast('error', 'Failed to resend code.');
     }
