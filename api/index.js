@@ -93,6 +93,11 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', key: process.env.RAZORPAY_KEY_ID ? 'configured' : 'missing' });
 });
 
+// V2 test route
+app.get('/api/v2test', (_req, res) => {
+  res.json({ status: 'ok', message: 'v2test works!' });
+});
+
 // ── AUTH ROUTES ──────────────────────────────────────────────────────────────
 
 let authCtrl = null;
@@ -781,4 +786,6 @@ if (process.env.NODE_ENV !== 'production') {
   });
 }
 
-export default app;
+export default function handler(req, res) {
+  return app(req, res);
+}
