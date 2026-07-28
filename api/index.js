@@ -3,7 +3,6 @@ import express from 'express';
 import cors from 'cors';
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
-import mysql from 'mysql2/promise';
 import { verifyToken } from './trustToken.js';
 import fs from 'fs';
 import path from 'path';
@@ -35,43 +34,58 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET || '',
 });
 
-// Database Connection
-const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'incuxai_website',
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
-});
+// Database Connection (lazy-loaded — skip on Vercel where no MySQL exists)
+let pool = null;
 
-// Initialize database tables (skip on Vercel — no MySQL available)
+async function getPool() {
+  if (pool) return pool;
+  try {
+    const mysql = await import('mysql2/promise');
+    pool = mysql.createPool({
+      host: process.env.DB_HOST || 'localhost',
+      user: process.env.DB_USER || 'root',
+      password: process.env.DB_PASSWORD || '',
+      database: process.env.DB_NAME || 'incuxai_website',
+      waitForConnections: true,
+      connectionLimit: 10,
+      queueLimit: 0
+    });
+    console.log('[Database] MySQL pool created');
+    return pool;
+  } catch (err) {
+    console.error('[Database] Failed to create pool:', err.message);
+    return null;
+  }
+}
+
+// Initialize database tables (only when MySQL is available)
 if (process.env.DB_HOST && process.env.DB_HOST !== 'localhost') {
   async function initDb() {
     try {
-      await pool.query(`
-      CREATE TABLE IF NOT EXISTS trust_transactions (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        transaction_id VARCHAR(255) UNIQUE NOT NULL,
-        user_id VARCHAR(255) NOT NULL,
-        amount INT NOT NULL,
-        course_id VARCHAR(255),
-        razorpay_order_id VARCHAR(255),
-        razorpay_payment_id VARCHAR(255),
-        status VARCHAR(50) DEFAULT 'pending',
-        success_token VARCHAR(255),
-        token_expires_at DATETIME,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-      )
-    `);
-    console.log('[Database] trust_transactions table initialized successfully');
-  } catch (err) {
-    console.error('[Database] Failed to initialize trust_transactions table:', err);
+      const p = await getPool();
+      if (!p) return;
+      await p.query(`
+        CREATE TABLE IF NOT EXISTS trust_transactions (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          transaction_id VARCHAR(255) UNIQUE NOT NULL,
+          user_id VARCHAR(255) NOT NULL,
+          amount INT NOT NULL,
+          course_id VARCHAR(255),
+          razorpay_order_id VARCHAR(255),
+          razorpay_payment_id VARCHAR(255),
+          status VARCHAR(50) DEFAULT 'pending',
+          success_token VARCHAR(255),
+          token_expires_at DATETIME,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )
+      `);
+      console.log('[Database] trust_transactions table initialized successfully');
+    } catch (err) {
+      console.error('[Database] Failed to initialize trust_transactions table:', err.message);
+    }
   }
-}
-initDb();
+  initDb();
 }
 
 // Health check
@@ -79,15 +93,110 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', key: process.env.RAZORPAY_KEY_ID ? 'configured' : 'missing' });
 });
 
-// Auth health (NEW path never tested before — bypasses Vercel cache)
-app.get('/api/authcheck', (_req, res) => {
-  res.json({ status: 'ok', service: 'auth', path: 'via api/index.js', env: {
-    hasResendKey: !!process.env.RESEND_API_KEY,
-    hasSupabaseUrl: !!process.env.SUPABASE_URL,
-    hasSupabaseKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-    hasJwtSecret: !!process.env.JWT_SECRET,
-  }});
+// ── AUTH ROUTES ──────────────────────────────────────────────────────────────
+
+let authCtrl = null;
+let authJwt = null;
+
+async function loadAuth() {
+  if (authCtrl) return true;
+  try {
+    const ctrl = await import('../server/controllers/authController.js');
+    authCtrl = ctrl;
+    const jwt = await import('../server/utils/jwt.js');
+    authJwt = jwt;
+    console.log('[Auth] Auth modules loaded successfully');
+    return true;
+  } catch (err) {
+    console.error('[Auth] Failed to load auth modules:', err.message);
+    return false;
+  }
+}
+
+function authHandler(handlerName) {
+  return async (req, res) => {
+    if (!(await loadAuth())) {
+      return res.status(500).json({ success: false, message: 'Auth system failed to initialize.' });
+    }
+    try {
+      authCtrl[handlerName](req, res);
+    } catch (err) {
+      console.error('[Auth] Handler error:', err);
+      res.status(500).json({ success: false, message: 'Internal server error.' });
+    }
+  };
+}
+
+app.get('/api/auth/health', (_req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'auth',
+    env: {
+      hasResendKey: !!process.env.RESEND_API_KEY,
+      hasSupabaseUrl: !!process.env.SUPABASE_URL,
+      hasSupabaseKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+      hasJwtSecret: !!process.env.JWT_SECRET,
+    }
+  });
 });
+
+app.get('/api/auth/test-email', async (_req, res) => {
+  const diagnostics = {
+    hasResendKey: !!process.env.RESEND_API_KEY,
+    resendKeyPrefix: process.env.RESEND_API_KEY ? process.env.RESEND_API_KEY.substring(0, 7) + '...' : 'MISSING',
+    emailFrom: process.env.EMAIL_FROM || 'info@incuxaieducationtrust.org',
+  };
+  if (!process.env.RESEND_API_KEY) {
+    return res.status(500).json({ success: false, message: 'RESEND_API_KEY not set', diagnostics });
+  }
+  try {
+    const { Resend } = await import('resend');
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    const result = await resend.emails.send({
+      from: `IncuXAI Education Trust <${process.env.EMAIL_FROM || 'info@incuxaieducationtrust.org'}>`,
+      to: 'sravanpasam74@gmail.com',
+      subject: 'Test Email | IncuXAI Education Trust',
+      html: '<h1>Test</h1><p>If you see this, Resend is working.</p>',
+    });
+    if (result.error) {
+      return res.status(500).json({ success: false, message: 'Resend API error', error: result.error, diagnostics });
+    }
+    return res.json({ success: true, message: 'Test email sent!', resendId: result.data?.id, diagnostics });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message, diagnostics });
+  }
+});
+
+app.post('/api/auth/send-otp', authHandler('sendOtp'));
+app.post('/api/auth/verify-otp', authHandler('verifyOtp'));
+app.post('/api/auth/register', authHandler('register'));
+app.post('/api/auth/login', authHandler('login'));
+app.post('/api/auth/reset-password', authHandler('resetPassword'));
+app.post('/api/auth/setup-db', authHandler('setupDb'));
+
+app.get('/api/auth/me', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ success: false, message: 'Authentication required.' });
+  }
+  const token = authHeader.split(' ')[1];
+  if (!(await loadAuth())) {
+    return res.status(500).json({ success: false, message: 'Auth system failed to initialize.' });
+  }
+  const decoded = authJwt.verifyToken(token);
+  if (!decoded) {
+    return res.status(401).json({ success: false, message: 'Invalid or expired token.' });
+  }
+  req.user = decoded;
+  try {
+    authCtrl.getMe(req, res);
+  } catch (err) {
+    console.error('[Auth] getMe error:', err);
+    res.status(500).json({ success: false, message: 'Internal server error.' });
+  }
+});
+
+// ── END AUTH ROUTES ───────────────────────────────────────────────────────────
 
 // Root route
 app.get('/api', (req, res) => {
@@ -147,7 +256,7 @@ app.post('/api/create-trust-order', async (req, res) => {
     });
 
     // Record or update transaction in SQL
-    await pool.query(
+    await (await getPool())?.query(
       `INSERT INTO trust_transactions 
        (transaction_id, user_id, amount, course_id, razorpay_order_id, status)
        VALUES (?, ?, ?, ?, ?, 'pending')
@@ -199,7 +308,7 @@ app.post('/api/verify-trust-payment', async (req, res) => {
     const successToken = crypto.randomBytes(32).toString('hex');
     const expiry = new Date(Date.now() + 5 * 60 * 1000);
 
-    await pool.query(
+    await (await getPool())?.query(
       `UPDATE trust_transactions 
        SET status = 'completed',
            razorpay_payment_id = ?,
@@ -229,7 +338,7 @@ app.post('/api/verify-transaction', async (req, res) => {
   }
 
   try {
-    const [rows] = await pool.query(
+    const [rows] = await (await getPool())?.query(
       `SELECT transaction_id, user_id, amount, course_id, token_expires_at 
        FROM trust_transactions 
        WHERE success_token = ? AND status = 'completed' LIMIT 1`,
@@ -247,7 +356,7 @@ app.post('/api/verify-transaction', async (req, res) => {
     }
 
     // Invalidate token so it can only be query-verified once (safety against replay attacks)
-    await pool.query(
+    await (await getPool())?.query(
       `UPDATE trust_transactions SET success_token = NULL WHERE success_token = ?`,
       [reference]
     );
@@ -271,7 +380,7 @@ app.post('/api/verify-transaction', async (req, res) => {
 app.get('/api/get-registration/:reg_code', async (req, res) => {
   try {
     const { reg_code } = req.params;
-    const [rows] = await pool.query(
+    const [rows] = await (await getPool())?.query(
       "SELECT id, full_name, email, phone, status, payment_status FROM iit_visit_registrations WHERE registration_code = ? LIMIT 1",
       [reg_code]
     );
@@ -356,7 +465,7 @@ app.post('/api/verify-payment', async (req, res) => {
       const successToken = crypto.randomBytes(32).toString('hex');
       const expiry = new Date(Date.now() + 5 * 60 * 1000);
 
-      await pool.query(
+      await (await getPool())?.query(
         `UPDATE iit_visit_registrations 
          SET payment_status = 'completed',
              completed_at = NOW(),
@@ -416,7 +525,7 @@ app.post('/api/webhook', async (req, res) => {
 
     try {
       // 1. Check in new trust_transactions table
-      const [trustRows] = await pool.query(
+      const [trustRows] = await (await getPool())?.query(
         'SELECT transaction_id, status FROM trust_transactions WHERE razorpay_order_id = ? LIMIT 1',
         [orderId]
       );
@@ -427,7 +536,7 @@ app.post('/api/webhook', async (req, res) => {
           const successToken = crypto.randomBytes(32).toString('hex');
           const expiry = new Date(Date.now() + 5 * 60 * 1000);
 
-          await pool.query(
+          await (await getPool())?.query(
             `UPDATE trust_transactions
              SET status = 'completed',
                  razorpay_payment_id = ?,
@@ -442,7 +551,7 @@ app.post('/api/webhook', async (req, res) => {
       }
 
       // 2. Fallback: Check in legacy iit_visit_registrations table
-      const [rows] = await pool.query(
+      const [rows] = await (await getPool())?.query(
         'SELECT registration_code, payment_status FROM iit_visit_registrations WHERE razorpay_order_id = ? LIMIT 1',
         [orderId]
       );
@@ -459,7 +568,7 @@ app.post('/api/webhook', async (req, res) => {
       const successToken = crypto.randomBytes(32).toString('hex');
       const expiry = new Date(Date.now() + 5 * 60 * 1000);
 
-      await pool.query(
+      await (await getPool())?.query(
         `UPDATE iit_visit_registrations
          SET payment_status      = 'completed',
              completed_at        = NOW(),
