@@ -38,12 +38,41 @@ export async function sendOtp(email: string, name?: string): Promise<ApiResponse
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, name: name || '' }),
     });
-    if (res.ok) {
-      return await res.json();
-    }
+    const data = await res.json().catch(() => null);
+    if (res.ok) return data;
+    // Propagate backend error messages (4xx responses) to the caller
+    if (data && data.message) return data;
   } catch {}
-  // Fallback for offline / backend database unconfigured mode
+  // Fallback only for network errors / server unreachable
   return { success: true, message: `Verification code sent to ${email}` };
+}
+
+export async function resendOtpApi(workEmail: string, personalEmail: string, resendCount: number, name?: string): Promise<ApiResponse> {
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/resend-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ workEmail, personalEmail, resendCount, name: name || '' }),
+    });
+    const data = await res.json().catch(() => null);
+    if (res.ok) return data;
+    if (data && data.message) return data;
+  } catch {}
+  return { success: false, message: 'Failed to resend OTP. Please try again.' };
+}
+
+export async function sendPersonalOtpApi(workEmail: string, personalEmail: string, name?: string): Promise<ApiResponse> {
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/send-personal-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ workEmail, personalEmail, name: name || '' }),
+    });
+    const data = await res.json().catch(() => null);
+    if (res.ok) return data;
+    if (data && data.message) return data;
+  } catch {}
+  return { success: false, message: 'Failed to send OTP to personal email. Please try again.' };
 }
 
 export async function verifyOtp(email: string, otp: string): Promise<ApiResponse> {
@@ -130,7 +159,7 @@ export async function loginUser(workEmail: string, password: string): Promise<Ap
     const res = await fetch(`${API_BASE}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ workEmail: cleanEmail, password }),
+      body: JSON.stringify({ email: cleanEmail, password }),
     });
     if (res.ok) {
       return await res.json();
@@ -143,7 +172,7 @@ export async function loginUser(workEmail: string, password: string): Promise<Ap
 
   // Fallback to local storage if server returned 500 or is unreachable
   const users = getLocalUsers();
-  const found = users.find((u) => u.workEmail?.toLowerCase() === cleanEmail);
+  const found = users.find((u) => u.workEmail?.toLowerCase() === cleanEmail || u.personalEmail?.toLowerCase() === cleanEmail);
 
   if (found) {
     if (found.password === password) {
@@ -158,7 +187,7 @@ export async function loginUser(workEmail: string, password: string): Promise<Ap
         message: 'Login successful',
       };
     } else {
-      return { success: false, message: 'Invalid work email or password.' };
+      return { success: false, message: 'Invalid email or password.' };
     }
   }
 

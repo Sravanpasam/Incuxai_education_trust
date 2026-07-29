@@ -37,6 +37,157 @@ export async function sendOtp(req, res) {
 }
 
 /**
+ * POST /api/auth/resend-otp
+ * Dedicated endpoint for resending OTP during signup.
+ * Supports dual-email verification: switches to personal email after 3 resends.
+ * Does NOT apply validateWorkEmail middleware (personal emails are valid here).
+ */
+export async function resendOtp(req, res) {
+  try {
+    const { workEmail, personalEmail, resendCount, name } = req.body;
+
+    if (!workEmail || typeof workEmail !== 'string') {
+      return res.status(400).json({ success: false, message: 'Work email is required.' });
+    }
+
+    const normalizedWork = workEmail.trim().toLowerCase();
+    const normalizedPersonal = personalEmail ? personalEmail.trim().toLowerCase() : '';
+    const count = typeof resendCount === 'number' ? resendCount : 0;
+
+    // Determine recipient email based on resend count threshold
+    let recipientEmail;
+    let emailType;
+
+    if (count >= 3 && normalizedPersonal && normalizedPersonal !== normalizedWork) {
+      // After 3 resends, switch to personal email if available and different from work
+      recipientEmail = normalizedPersonal;
+      emailType = 'personal';
+    } else {
+      recipientEmail = normalizedWork;
+      emailType = 'work';
+    }
+
+    console.log('[AuthController] Resend OTP Request:');
+    console.log(`  resendCount: ${count}`);
+    console.log(`  workEmail: ${normalizedWork}`);
+    console.log(`  personalEmail: ${normalizedPersonal || '(not provided)'}`);
+    console.log(`  selectedRecipient: ${recipientEmail}`);
+    console.log(`  emailType: ${emailType}`);
+
+    // Generate new OTP and store it against the recipient email
+    const { otp, error: otpError } = await createAndStoreOTP(recipientEmail);
+    if (otpError) {
+      return res.status(429).json({ success: false, message: otpError });
+    }
+
+    console.log(`  generatedOTP: ${otp}`);
+
+    // Send email to the determined recipient
+    const emailResult = await sendOtpEmail(recipientEmail, otp, name || '');
+
+    if (!emailResult.success) {
+      console.error(`[AuthController] Resend OTP email failed: ${emailResult.error}`);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to send verification email. Please try again.',
+      });
+    }
+
+    console.log(`[AuthController] Resend OTP email sent successfully to ${recipientEmail}`);
+    console.log(`  Resend Message ID: ${emailResult.data?.id}`);
+
+    cleanupExpiredOTPs().catch(() => {});
+
+    // Determine user-facing message based on email type
+    let message;
+    if (emailType === 'personal') {
+      message = 'OTP resent to your Personal Email.';
+    } else {
+      message = 'OTP resent to your Work Email.';
+    }
+
+    return res.status(200).json({
+      success: true,
+      recipient: emailType,
+      resendCount: count,
+      message,
+    });
+  } catch (err) {
+    console.error('[AuthController] resendOtp error:', err);
+    return res.status(500).json({ success: false, message: 'Internal server error.' });
+  }
+}
+
+/**
+ * POST /api/auth/send-personal-otp
+ * Sends a brand-new OTP to the personal email.
+ * Completely independent from the work email resend flow and resend rate limiter.
+ */
+export async function sendPersonalOtp(req, res) {
+  try {
+    const { personalEmail, workEmail, name } = req.body;
+
+    console.log('[AuthController] Send Personal OTP Request:');
+    console.log(`  workEmail: ${workEmail || '(not provided)'}`);
+    console.log(`  personalEmail: ${personalEmail || '(not provided)'}`);
+
+    if (!personalEmail || typeof personalEmail !== 'string') {
+      return res.status(400).json({ success: false, message: 'Personal email is required.' });
+    }
+
+    const normalizedPersonal = personalEmail.trim().toLowerCase();
+    const normalizedWork = workEmail ? workEmail.trim().toLowerCase() : '';
+
+    // Validate personal email format
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedPersonal)) {
+      return res.status(400).json({ success: false, message: 'Invalid personal email format.' });
+    }
+
+    // Ensure personal email is different from work email
+    if (normalizedWork && normalizedPersonal === normalizedWork) {
+      return res.status(400).json({ success: false, message: 'Personal email must be different from your work email.' });
+    }
+
+    console.log(`  verificationMode: personal`);
+    console.log(`  selectedEmail: ${normalizedPersonal}`);
+
+    // Generate brand-new OTP for the personal email
+    const { otp, error: otpError } = await createAndStoreOTP(normalizedPersonal);
+    if (otpError) {
+      console.error(`[AuthController] Personal OTP generation failed: ${otpError}`);
+      return res.status(429).json({ success: false, message: otpError });
+    }
+
+    console.log(`  OTP generated for personal email: ${otp}`);
+
+    // Send OTP to personal email
+    const emailResult = await sendOtpEmail(normalizedPersonal, otp, name || '');
+
+    if (!emailResult.success) {
+      console.error(`[AuthController] Personal OTP email failed: ${emailResult.error}`);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to send OTP to personal email. Please try again.',
+      });
+    }
+
+    console.log(`[AuthController] Personal OTP email sent successfully to ${normalizedPersonal}`);
+    console.log(`  Resend Message ID: ${emailResult.data?.id}`);
+
+    cleanupExpiredOTPs().catch(() => {});
+
+    return res.status(200).json({
+      success: true,
+      recipient: 'personal',
+      message: `OTP sent to your personal email (${normalizedPersonal})`,
+    });
+  } catch (err) {
+    console.error('[AuthController] sendPersonalOtp error:', err);
+    return res.status(500).json({ success: false, message: 'Internal server error.' });
+  }
+}
+
+/**
  * POST /api/auth/verify-otp
  */
 export async function verifyOtp(req, res) {
@@ -125,28 +276,29 @@ export async function register(req, res) {
 
 /**
  * POST /api/auth/login
- * Authenticates a user with work email + password.
+ * Authenticates a user with email (work or personal) + password.
  */
 export async function login(req, res) {
   try {
-    const { workEmail, password } = req.body;
+    const { workEmail, email, password } = req.body;
+    const loginEmail = email || workEmail;
 
-    if (!workEmail || !password) {
-      return res.status(400).json({ success: false, message: 'Work email and password are required.' });
+    if (!loginEmail || !password) {
+      return res.status(400).json({ success: false, message: 'Email and password are required.' });
     }
 
-    const user = await findUserByEmail(workEmail);
+    const user = await findUserByEmail(loginEmail);
     if (!user) {
-      return res.status(401).json({ success: false, message: 'Invalid work email or password.' });
+      return res.status(401).json({ success: false, message: 'Invalid email or password.' });
     }
 
     if (user.work_email_verified === false) {
-      return res.status(403).json({ success: false, message: 'Please verify your work email before signing in.' });
+      return res.status(403).json({ success: false, message: 'Please verify your email before signing in.' });
     }
 
     const match = await verifyPassword(password, user.password_hash);
     if (!match) {
-      return res.status(401).json({ success: false, message: 'Invalid work email or password.' });
+      return res.status(401).json({ success: false, message: 'Invalid email or password.' });
     }
 
     const token = generateToken({

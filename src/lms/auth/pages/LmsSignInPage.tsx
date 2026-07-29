@@ -32,7 +32,7 @@ export default function LmsSignInPage() {
         login(res.token, res.user.email, res.user.name, res.user.id);
         setTimeout(() => navigate('/course-dashboard'), 800);
       } else {
-        showToast('error', res.message || 'Invalid work email or password.');
+        showToast('error', res.message || 'Invalid email or password.');
       }
     } catch (err: any) {
       if (err?.name === 'TypeError' && err?.message?.includes('Failed to fetch')) {
@@ -64,12 +64,12 @@ export default function LmsSignInPage() {
         </div>
 
         <form onSubmit={handleSubmit} style={s.form}>
-          <label style={s.label}>Work Email</label>
+          <label style={s.label}>Email</label>
           <input
             type="email"
             value={workEmail}
             onChange={(e) => setWorkEmail(e.target.value)}
-            placeholder="you@company.com"
+            placeholder="you@company.com or you@gmail.com"
             style={s.input}
             autoFocus
             disabled={loading}
