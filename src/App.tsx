@@ -2653,7 +2653,7 @@ export default function App() {
               <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.7)', fontWeight: '600', marginRight: '0.5rem' }}>
                 {authUser?.name || authUser?.email}
               </span>
-              <button className="btn-login" onClick={() => { authLogout(); navigate('/'); }} style={{ background: 'rgba(220,38,38,0.8)', border: 'none' }}>
+              <button className="btn-login" onClick={() => { authLogout(); window.history.replaceState(null, '', '/sign-in'); navigate('/sign-in', { replace: true }); }} style={{ background: 'rgba(220,38,38,0.8)', border: 'none' }}>
                 Sign Out
               </button>
             </>

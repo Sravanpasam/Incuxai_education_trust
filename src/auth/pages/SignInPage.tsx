@@ -29,7 +29,7 @@ export default function SignInPage() {
       if (res.success && res.token && res.user) {
         showToast('success', 'Login successful!');
         login(res.token, res.user.email, res.user.name, res.user.id);
-        setTimeout(() => navigate('/'), 800);
+        setTimeout(() => navigate('/course-dashboard'), 800);
       } else {
         showToast('error', res.message || 'Invalid email or password.');
       }

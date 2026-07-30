@@ -16,9 +16,9 @@ const CREATE_TABLE_SQL = `
 CREATE TABLE IF NOT EXISTS users (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   full_name           TEXT NOT NULL,
-  personal_email      TEXT NOT NULL,
-  work_email          TEXT NOT NULL UNIQUE,
-  phone_number        TEXT NOT NULL,
+  personal_email      TEXT NOT NULL UNIQUE,
+  work_email          TEXT,
+  phone_number        TEXT NOT NULL DEFAULT '',
   password_hash       TEXT NOT NULL,
   work_email_verified BOOLEAN NOT NULL DEFAULT false,
   company_name        TEXT,
@@ -48,6 +48,19 @@ END $$;
 
 const SUPABASE_DASHBOARD_SQL_URL = `https://supabase.com/dashboard/project/tuolfpbvpdubxdfthbfq/sql/new`;
 
+/**
+ * SQL to repair missing columns in an existing users table.
+ * Runs ALTER TABLE ADD COLUMN IF NOT EXISTS for each column the code expects.
+ */
+const REPAIR_TABLE_SQL = `
+ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS work_email_verified BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS company_name TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS location TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+`.trim();
+
 export async function ensureUsersTable() {
   console.log('[Migration] Checking users table...');
 
@@ -55,40 +68,42 @@ export async function ensureUsersTable() {
   try {
     const { error } = await supabase.from('users').select('id').limit(1);
     if (!error) {
-      console.log('[Migration] users table exists. OK');
+      console.log('[Migration] users table exists. Running column repair...');
+      await repairUsersTable();
       return true;
     }
     // "relation does not exist" is PGRST204 or 42P01
     if (error.code !== '42P01' && !error.message?.includes('does not exist')) {
-      console.log('[Migration] users table exists (other non-critical error). OK');
+      console.log('[Migration] users table exists (other non-critical error). Running column repair...');
+      await repairUsersTable();
       return true;
     }
     console.log('[Migration] users table does not exist. Creating...');
   } catch (e) {
     console.log('[Migration] Could not check users table:', e.message);
+    // Try repair anyway
+    await repairUsersTable().catch(() => {});
   }
 
   // Step 2: Try to create via a PL/pgSQL function call (rpc)
   try {
-    // First, create the helper function
-    const fnSql = `
-      CREATE OR REPLACE FUNCTION exec_sql(sql TEXT)
-      RETURNS VOID AS $$
-      BEGIN
-        EXECUTE sql;
-      END;
-      $$ LANGUAGE plpgsql SECURITY DEFINER;
-    `;
-    const fnRes = await supabase.rpc('exec_sql', { sql: 'SELECT 1' }).single();
-    // If exec_sql already exists, we can use it
-    if (fnRes.error && fnRes.error.message?.includes('function exec_sql')) {
-      // Function doesn't exist — we can't create it via rpc, skip to manual instructions
-      throw new Error('exec_sql function not available');
-    }
-    // Use exec_sql to create the table
     const { error: execErr } = await supabase.rpc('exec_sql', { sql: CREATE_TABLE_SQL });
-    if (execErr) throw execErr;
-
+    if (execErr) {
+      // exec_sql function may not exist yet — try creating it
+      const createFnSql = `
+        CREATE OR REPLACE FUNCTION exec_sql(sql TEXT)
+        RETURNS VOID AS $$
+        BEGIN
+          EXECUTE sql;
+        END;
+        $$ LANGUAGE plpgsql SECURITY DEFINER;
+      `;
+      const fnErr = await supabase.rpc('exec_sql', { sql: createFnSql });
+      if (fnErr.error) throw fnErr.error;
+      // Retry table creation
+      const retryErr = await supabase.rpc('exec_sql', { sql: CREATE_TABLE_SQL });
+      if (retryErr.error) throw retryErr.error;
+    }
     console.log('[Migration] users table created successfully via exec_sql.');
     return true;
   } catch (e) {
@@ -98,7 +113,7 @@ export async function ensureUsersTable() {
   // Step 3: Fall back to manual instructions
   console.log('');
   console.log('╔══════════════════════════════════════════════════════════════╗');
-  console.log('║  ACTION REQUIRED: Create the users table in Supabase       ║');
+  console.log('║  ACTION REQUIRED: Create/repair the users table            ║');
   console.log('╠══════════════════════════════════════════════════════════════╣');
   console.log('║                                                            ║');
   console.log('║  1. Open the Supabase SQL Editor:                          ║');
@@ -115,4 +130,19 @@ export async function ensureUsersTable() {
   console.log('');
 
   return false;
+}
+
+/**
+ * Repair an existing users table by adding any missing columns.
+ * This is safe to run on existing tables — it uses IF NOT EXISTS.
+ */
+async function repairUsersTable() {
+  try {
+    console.log('[Migration] Repairing users table columns...');
+    await supabase.rpc('exec_sql', { sql: REPAIR_TABLE_SQL });
+    console.log('[Migration] Column repair completed.');
+  } catch (e) {
+    // Silent fail — the table might not exist yet, or exec_sql isn't available
+    console.log('[Migration] Column repair skipped (will be handled by manual SQL if needed):', e.message);
+  }
 }

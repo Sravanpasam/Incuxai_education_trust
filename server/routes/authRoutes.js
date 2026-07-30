@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { sendOtp, verifyOtp, register, login, resetPassword, getMe, setupDb, resendOtp, sendPersonalOtp } from '../controllers/authController.js';
-import { validateWorkEmail } from '../middleware/validateWorkEmail.js';
 import { verifyToken } from '../utils/jwt.js';
 
 const router = Router();
@@ -8,7 +7,7 @@ const router = Router();
 /**
  * POST /api/auth/send-otp
  */
-router.post('/send-otp', validateWorkEmail, sendOtp);
+router.post('/send-otp', sendOtp);
 
 /**
  * POST /api/auth/resend-otp
@@ -38,7 +37,7 @@ router.post('/register', register);
 
 /**
  * POST /api/auth/login
- * Authenticates with work email + password.
+ * Authenticates with personal email + password.
  */
 router.post('/login', login);
 
