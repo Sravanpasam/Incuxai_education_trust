@@ -1,7 +1,7 @@
-const Razorpay = require('razorpay');
-const crypto = require('crypto');
+import Razorpay from 'razorpay';
+import crypto from 'crypto';
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -41,4 +41,5 @@ module.exports = async function handler(req, res) {
     console.error('Create order error:', err.message || err);
     return res.status(500).json({ error: err.message || 'Failed to create order' });
   }
-};
+}
+
