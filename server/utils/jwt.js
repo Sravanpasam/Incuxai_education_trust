@@ -5,7 +5,6 @@ const JWT_EXPIRES_IN = '24h';
 
 if (!JWT_SECRET) {
   console.error('[JWT] Missing JWT_SECRET environment variable');
-  process.exit(1);
 }
 
 /**

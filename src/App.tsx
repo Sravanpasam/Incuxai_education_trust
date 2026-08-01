@@ -556,7 +556,7 @@ export default function App() {
       } else {
         if (header) header.classList.add('page-active');
       }
-      const portalPages = ['vol-portal', 'admin-portal', 'teacher-portal'];
+      const portalPages = ['vol-portal', 'admin-portal'];
       if (portalPages.includes(id)) {
         if (header) header.classList.add('portal-mode');
       } else {
@@ -573,7 +573,7 @@ export default function App() {
         return;
       }
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-      const footerHide = ['vol-portal', 'admin-portal', 'teacher-portal'];
+      const footerHide = ['vol-portal', 'admin-portal'];
       const targetPage = document.getElementById(id);
       if (targetPage) {
         targetPage.classList.add('active');
@@ -588,6 +588,11 @@ export default function App() {
       if (footer) {
         footer.style.display = footerHide.includes(id) ? 'none' : 'block';
       }
+      const loginBtn = document.getElementById('login-btn');
+      const hideLoginPages = ['ai4all', 'corporate-course'];
+      if (loginBtn) {
+        loginBtn.style.display = hideLoginPages.includes(id) ? 'none' : '';
+      }
       if (id === 'home') {
         setTimeout(() => {
           loadSpline();
@@ -597,85 +602,6 @@ export default function App() {
     };
 
     // Logins
-    w.unifiedPortalLogin = (e?: React.FormEvent) => {
-      if (e) e.preventDefault();
-      const email = (document.getElementById('portal-login-email') as HTMLInputElement)?.value?.trim();
-      const pass = (document.getElementById('portal-login-pass') as HTMLInputElement)?.value?.trim();
-
-      if (!email || !pass) {
-        w.showToast?.('Please enter your email and password.');
-        return;
-      }
-
-      // 1. Admin Login
-      if ((email === 'sravanpasam74@gmail.com' || email === 'admin@incuxai.org') && pass === 'admin123') {
-        const role = 'admin';
-        const name = 'Admin';
-        currentUser = { role, name };
-        localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        localStorage.setItem('currentUserEmail', email);
-
-        w.renderEvents?.();
-        w.renderTasks?.();
-        w.renderVolunteersAndLeaderboard?.();
-        w.loadEventRegistrations?.();
-        w.showToast?.('Welcome Admin! Opening Admin Portal...');
-        setTimeout(() => w.showPage('admin-portal'), 500);
-        return;
-      }
-
-        // 2. Teacher Login
-      const teacherCreds = getSafeArray('teachxai_teachers_pass');
-      const foundTeacher = teacherCreds.find((t: any) => t && t.email === email && t.password === pass);
-      if ((email === 'teacher@incuxai.org' && pass === 'teacher123') || foundTeacher) {
-        const role = 'teacher';
-        const name = foundTeacher?.name || (email === 'teacher@incuxai.org' ? 'Teacher Portal' : email.split('@')[0]);
-        currentUser = { role, name };
-        localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        localStorage.setItem('currentUserEmail', email);
-
-        const tpName = document.getElementById('tportal-name');
-        const tpFullName = document.getElementById('tportal-fullname');
-        const tpAvatar = document.getElementById('tportal-avatar');
-        if (tpName) tpName.textContent = name;
-        if (tpFullName) tpFullName.textContent = name;
-        if (tpAvatar) tpAvatar.textContent = name[0].toUpperCase();
-
-        w.renderTeacherPortal?.();
-        w.showToast?.(`Welcome ${name}! Opening Teacher Portal...`);
-        setTimeout(() => w.showPage('teacher-portal'), 500);
-        return;
-      }
-
-      // 3. Volunteer Login
-      const volCreds = getSafeArray('volunteer_pass');
-      const foundVol = volCreds.find((v: any) => v && v.email === email && v.password === pass);
-      if ((email === 'volunteer@incuxai.org' && pass === 'volunteer123') || foundVol) {
-        const role = 'volunteer';
-        const name = foundVol?.name || (email === 'volunteer@incuxai.org' ? 'Volunteer Portal' : email.split('@')[0]);
-        currentUser = { role, name };
-        localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        localStorage.setItem('currentUserEmail', email);
-
-        const pName = document.getElementById('portal-name');
-        const pFullName = document.getElementById('portal-fullname');
-        const pAvatar = document.getElementById('portal-avatar');
-        if (pName) pName.textContent = name;
-        if (pFullName) pFullName.textContent = name;
-        if (pAvatar) pAvatar.textContent = name[0].toUpperCase();
-
-        w.renderEvents?.();
-        w.renderTasks?.();
-        w.renderVolunteersAndLeaderboard?.();
-        w.populateVolunteerProfile?.();
-        w.showToast?.(`Welcome ${name}! Opening Volunteer Portal...`);
-        setTimeout(() => w.showPage('vol-portal'), 500);
-        return;
-      }
-
-      w.showToast?.('Invalid email or password. Please check your credentials.');
-    };
-
     w.handleLoginBtn = () => {
       if (currentUser) {
         currentUser = null;
@@ -688,7 +614,7 @@ export default function App() {
         if (loggedUserEl) loggedUserEl.style.display = 'none';
         w.showPage('home');
       } else {
-        w.showPage('portal-login');
+        w.openModal();
       }
     };
 
@@ -756,19 +682,6 @@ export default function App() {
         }
         name = found.name || email.split('@')[0];
         w.currentUserEmail = email;
-      } else if (role === 'teacher') {
-        const email = (document.getElementById('tch-login-email') as HTMLInputElement)?.value;
-        const pass = (document.getElementById('tch-login-pass') as HTMLInputElement)?.value;
-        const teacherCreds = getSafeArray('teachxai_teachers_pass');
-        const found = teacherCreds.find((t: any) => t && t.email === email && t.password === pass);
-        if (!found) {
-          w.showToast('Invalid teacher credentials');
-          document.querySelectorAll('#login-modal .modal-form').forEach(f => { (f as HTMLElement).style.display = ''; });
-          if (success) success.style.display = 'none';
-          return;
-        }
-        name = found.name || email.split('@')[0];
-        w.currentUserEmail = email;
       } else {
         const email = (document.getElementById('ad-login-email') as HTMLInputElement)?.value;
         const pass = (document.getElementById('ad-login-pass') as HTMLInputElement)?.value;
@@ -797,8 +710,7 @@ export default function App() {
 
       setTimeout(() => {
         w.closeModal();
-        if (role === 'volunteer') {
-          const pName = document.getElementById('portal-name');
+        if (role === 'volunteer') {          const pName = document.getElementById('portal-name');
           const pFullName = document.getElementById('portal-fullname');
           const pAvatar = document.getElementById('portal-avatar');
           if (pName) pName.textContent = name;
@@ -812,15 +724,6 @@ export default function App() {
           // Populate profile fields
           w.populateVolunteerProfile();
           w.showPage('vol-portal');
-        } else if (role === 'teacher') {
-          const tpName = document.getElementById('tportal-name');
-          const tpFullName = document.getElementById('tportal-fullname');
-          const tpAvatar = document.getElementById('tportal-avatar');
-          if (tpName) tpName.textContent = name;
-          if (tpFullName) tpFullName.textContent = name;
-          if (tpAvatar) tpAvatar.textContent = name[0].toUpperCase();
-          w.renderTeacherPortal();
-          w.showPage('teacher-portal');
         } else {
           w.renderEvents();
           w.renderTasks();
@@ -2635,15 +2538,6 @@ export default function App() {
           w.renderVolunteersAndLeaderboard();
           w.populateVolunteerProfile();
           w.showPage('vol-portal');
-        } else if (currentUser?.role === 'teacher') {
-          const tpName = document.getElementById('tportal-name');
-          const tpFullName = document.getElementById('tportal-fullname');
-          const tpAvatar = document.getElementById('tportal-avatar');
-          if (tpName) tpName.textContent = currentUser.name;
-          if (tpFullName) tpFullName.textContent = currentUser.name;
-          if (tpAvatar) tpAvatar.textContent = currentUser.name[0].toUpperCase();
-          w.renderTeacherPortal();
-          w.showPage('teacher-portal');
         } else if (currentUser?.role === 'admin') {
           w.renderEvents();
           w.renderTasks();
@@ -2747,8 +2641,8 @@ export default function App() {
           <a onClick={() => (window as any).showPage('contact')}>Contact</a>
         </nav>
         <nav id="portal-nav" style={{ display: 'none', alignItems: 'center', gap: '0.25rem', flexWrap: 'wrap' }}>
-          <a id="portal-nav-dashboard" onClick={() => { const u = JSON.parse(localStorage.getItem('currentUser')||'{}'); if(u.role==='volunteer') (window as any).showPage('vol-portal'); else if(u.role==='teacher') (window as any).showPage('teacher-portal'); else (window as any).showPage('admin-portal'); }}>Dashboard</a>
-          <a id="portal-nav-profile" onClick={() => { const u = JSON.parse(localStorage.getItem('currentUser')||'{}'); if(u.role==='volunteer') (window as any).showPage('vol-portal'); else if(u.role==='teacher') (window as any).showPage('teacher-portal'); setTimeout(() => { const el = document.getElementById(u.role==='teacher'?'tportal-profile':'vol-profile'); if(el) (window as any)[u.role==='teacher'?'showTportalSection':'showPortalSection'](u.role==='teacher'?'tportal-profile':'vol-profile', {currentTarget: el}); }, 50); }}>Profile</a>
+          <a id="portal-nav-dashboard" onClick={() => { const u = JSON.parse(localStorage.getItem('currentUser')||'{}'); if(u.role==='volunteer') (window as any).showPage('vol-portal'); else (window as any).showPage('admin-portal'); }}>Dashboard</a>
+          <a id="portal-nav-profile" onClick={() => { const u = JSON.parse(localStorage.getItem('currentUser')||'{}'); if(u.role==='volunteer') (window as any).showPage('vol-portal'); else (window as any).showPage('admin-portal'); setTimeout(() => { const el = document.getElementById(u.role==='volunteer'?'vol-profile':'vol-profile'); if(el) (window as any).showPortalSection('vol-profile', {currentTarget: el}); }, 50); }}>Profile</a>
         </nav>
         <div className="header-right">
           <span id="logged-user" style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.8)', fontWeight: '600', display: 'none' }}></span>
@@ -2759,7 +2653,7 @@ export default function App() {
               <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.7)', fontWeight: '600', marginRight: '0.5rem' }}>
                 {authUser?.name || authUser?.email}
               </span>
-              <button className="btn-login" onClick={() => { authLogout(); navigate('/'); }} style={{ background: 'rgba(220,38,38,0.8)', border: 'none' }}>
+              <button className="btn-login" onClick={() => { authLogout(); window.history.replaceState(null, '', '/sign-in'); navigate('/sign-in', { replace: true }); }} style={{ background: 'rgba(220,38,38,0.8)', border: 'none' }}>
                 Sign Out
               </button>
             </>
@@ -3259,7 +3153,7 @@ export default function App() {
                 <p className="panel-desc">
                   This course is exclusively for HR professionals. To gain access, register using your official company email address.
                 </p>
-                <button className="panel-btn-register" onClick={() => navigate('/lms/sign-in')}>
+                <button className="panel-btn-register" onClick={() => navigate('/lms/sign-up')}>
                   <span>Register & Unlock Course</span>
                   <span>→</span>
                 </button>
@@ -3929,128 +3823,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* ========== TEACHER PORTAL ========== */}
-      <div id="teacher-portal" className="page">
-        <div className="portal-header">
-          <div>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', color: 'var(--success)' }}>Teacher Portal</h2>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>Welcome back, <span id="tportal-name" style={{ color: 'var(--success)', fontWeight: '700' }}></span></p>
-          </div>
-          <div className="portal-user">
-            <div className="avatar" id="tportal-avatar" style={{ background: 'linear-gradient(135deg,var(--success),var(--primary))' }}>T</div>
-            <div>
-              <div style={{ fontWeight: '700' }} id="tportal-fullname">Teacher</div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>TeachXai Educator</div>
-            </div>
-          </div>
-        </div>
-        <div className="portal-nav">
-          <button className="portal-nav-btn" onClick={(e) => (window as any).showTportalSection('tportal-dashboard', e)}>Dashboard</button>
-          <button className="portal-nav-btn" onClick={(e) => (window as any).showTportalSection('tportal-classes', e)}>My Classes</button>
-          <button className="portal-nav-btn" onClick={(e) => (window as any).showTportalSection('tportal-tasks', e)}>Assignments</button>
-          <button className="portal-nav-btn" onClick={(e) => (window as any).showTportalSection('tportal-attendance', e)}>Attendance</button>
-          <button className="portal-nav-btn" onClick={(e) => (window as any).showTportalSection('tportal-courses', e)}>Courses</button>
-          <button className="portal-nav-btn active" onClick={(e) => (window as any).showTportalSection('tportal-profile', e)}>Profile</button>
-        </div>
-
-        {/* Dashboard */}
-        <div id="tportal-dashboard" className="portal-section">
-          <div className="hours-display">
-            <div className="hours-box"><div className="hours-num" id="tportal-hours">0</div><div className="hours-label">Hours Taught</div></div>
-            <div className="hours-box"><div className="hours-num" id="tportal-upcoming">0</div><div className="hours-label">Upcoming Classes</div></div>
-            <div className="hours-box"><div className="hours-num" id="tportal-assigned">0</div><div className="hours-label">Assigned Lessons</div></div>
-            <div className="hours-box"><div className="hours-num" id="tportal-att-pct">0%</div><div className="hours-label">Attendance</div></div>
-          </div>
-          <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--success)', fontSize: '1rem', marginBottom: '1rem' }}>Your Recent Activity</h3>
-          <div id="tportal-recent-activity"><p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No recent activity yet.</p></div>
-        </div>
-
-        {/* My Classes */}
-        <div id="tportal-classes" className="portal-section">
-          <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--success)', fontSize: '1rem', marginBottom: '1rem' }}>Upcoming & Past Classes</h3>
-          <div id="tportal-classes-list"><p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No classes yet.</p></div>
-        </div>
-
-        {/* Assignments */}
-        <div id="tportal-tasks" className="portal-section">
-          <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--success)', fontSize: '1rem', marginBottom: '1rem' }}>Assigned Lessons</h3>
-          <div id="tportal-tasks-list"><p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No assignments yet.</p></div>
-        </div>
-
-        {/* Attendance */}
-        <div id="tportal-attendance" className="portal-section">
-          <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--success)', fontSize: '1rem', marginBottom: '1rem' }}>Your Attendance</h3>
-          <div id="tportal-attendance-list"><p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No attendance records yet.</p></div>
-        </div>
-
-        {/* Courses */}
-        <div id="tportal-courses" className="portal-section">
-          <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--success)', fontSize: '1rem', marginBottom: '1rem' }}>Suggested Courses for You</h3>
-          <div id="tportal-courses-list"><p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Courses will be suggested based on your registered subjects.</p></div>
-        </div>
-
-        {/* Settings - Change Password */}
-        <div id="tportal-profile" className="portal-section active">
-          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', color: 'var(--success)', marginBottom: '1.5rem' }}>My Profile</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '2rem', alignItems: 'start' }}>
-            <div style={{ textAlign: 'center' }}>
-              <div id="tch-profile-photo" style={{ width: '140px', height: '140px', borderRadius: '50%', background: 'linear-gradient(135deg,var(--success),var(--primary))', margin: '0 auto 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem', color: '#fff', fontWeight: '700', overflow: 'hidden', position: 'relative', cursor: 'pointer', border: '3px solid var(--glass-border)' }} onClick={() => document.getElementById('tch-photo-input')?.click()}>
-                <span id="tch-profile-photo-text">T</span>
-                <img id="tch-profile-photo-img" style={{ display: 'none', width: '100%', height: '100%', objectFit: 'cover', position: 'absolute' }} alt="Profile" />
-              </div>
-              <input type="file" id="tch-photo-input" accept="image/*" style={{ display: 'none' }} onChange={(e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (file) { const reader = new FileReader(); reader.onload = (ev) => { const img = document.getElementById('tch-profile-photo-img') as HTMLImageElement; const txt = document.getElementById('tch-profile-photo-text'); if (img && txt) { img.src = ev.target?.result as string; img.style.display = 'block'; txt.style.display = 'none'; localStorage.setItem('tch_profile_photo_' + (window as any).currentUserEmail, ev.target?.result as string); } }; reader.readAsDataURL(file); } }} />
-              <button className="btn-small" onClick={() => document.getElementById('tch-photo-input')?.click()} style={{ fontSize: '0.78rem', padding: '0.3rem 0.8rem', marginTop: '0.3rem' }}>Change Photo</button>
-            </div>
-            <div>
-              <div className="card" style={{ padding: '1.5rem', background: 'var(--glass)', border: '1px solid var(--glass-border)', borderRadius: '16px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group">
-                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)' }}>Full Name</label>
-                    <input type="text" id="tch-profile-name" style={{ padding: '0.6rem 0.8rem', fontSize: '0.85rem', border: '1.5px solid var(--glass-border)', borderRadius: '8px', outline: 'none', width: '100%' }} />
-                  </div>
-                  <div className="form-group">
-                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)' }}>Email</label>
-                    <input type="email" id="tch-profile-email" style={{ padding: '0.6rem 0.8rem', fontSize: '0.85rem', border: '1.5px solid var(--glass-border)', borderRadius: '8px', outline: 'none', width: '100%', background: '#f5f5f5' }} readOnly />
-                  </div>
-                  <div className="form-group">
-                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)' }}>Phone</label>
-                    <input type="tel" id="tch-profile-phone" style={{ padding: '0.6rem 0.8rem', fontSize: '0.85rem', border: '1.5px solid var(--glass-border)', borderRadius: '8px', outline: 'none', width: '100%' }} />
-                  </div>
-                  <div className="form-group">
-                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)' }}>Education</label>
-                    <input type="text" id="tch-profile-education" style={{ padding: '0.6rem 0.8rem', fontSize: '0.85rem', border: '1.5px solid var(--glass-border)', borderRadius: '8px', outline: 'none', width: '100%' }} />
-                  </div>
-                  <div className="form-group">
-                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)' }}>Subjects</label>
-                    <input type="text" id="tch-profile-subjects" placeholder="Comma separated" style={{ padding: '0.6rem 0.8rem', fontSize: '0.85rem', border: '1.5px solid var(--glass-border)', borderRadius: '8px', outline: 'none', width: '100%' }} />
-                  </div>
-                  <div className="form-group">
-                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)' }}>Languages</label>
-                    <input type="text" id="tch-profile-languages" placeholder="Comma separated" style={{ padding: '0.6rem 0.8rem', fontSize: '0.85rem', border: '1.5px solid var(--glass-border)', borderRadius: '8px', outline: 'none', width: '100%' }} />
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '1rem', marginTop: '1.25rem' }}>
-                  <button className="btn-submit" style={{ padding: '0.5rem 1.5rem', fontSize: '0.85rem' }} onClick={() => (window as any).saveTeacherProfile()}>Save Changes</button>
-                  <button className="btn-submit" style={{ padding: '0.5rem 1.5rem', fontSize: '0.85rem', background: 'var(--text-muted)' }} onClick={() => { document.getElementById('tch-profile-password-section')!.style.display = document.getElementById('tch-profile-password-section')!.style.display === 'none' ? 'block' : 'none'; }}>Change Password</button>
-                </div>
-                <div id="tch-profile-password-section" style={{ display: 'none', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--glass-border)' }}>
-                  <h4 style={{ fontSize: '0.9rem', marginBottom: '1rem', color: 'var(--text)' }}>Change Password</h4>
-                  <div className="form-group" style={{ marginBottom: '0.75rem' }}>
-                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)' }}>Current Password</label>
-                    <input type="password" id="tch-current-pass" placeholder="Enter current password" style={{ padding: '0.6rem 0.8rem', fontSize: '0.85rem', border: '1.5px solid var(--glass-border)', borderRadius: '8px', outline: 'none', width: '100%' }} />
-                  </div>
-                  <div className="form-group" style={{ marginBottom: '0.75rem' }}>
-                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)' }}>New Password</label>
-                    <input type="password" id="tch-new-pass" placeholder="Enter new password" style={{ padding: '0.6rem 0.8rem', fontSize: '0.85rem', border: '1.5px solid var(--glass-border)', borderRadius: '8px', outline: 'none', width: '100%' }} />
-                  </div>
-                  <button className="btn-submit" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }} onClick={() => (window as any).changeTeacherPassword()}>Update Password</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* ========== ADMIN PORTAL ========== */}
       <div id="admin-portal" className="page">
         <div className="portal-header">
@@ -4344,7 +4116,6 @@ export default function App() {
           </div>
           <div className="modal-tabs">
             <button className="modal-tab active" onClick={(e) => (window as any).switchTab('volunteer-tab', e)}>Volunteer</button>
-            <button className="modal-tab" onClick={(e) => (window as any).switchTab('teacher-tab', e)}>Teacher</button>
             <button className="modal-tab" onClick={(e) => (window as any).switchTab('admin-tab', e)}>Admin</button>
           </div>
           {/* Volunteer Login */}
@@ -4352,12 +4123,6 @@ export default function App() {
             <div className="form-group"><label>Email</label><input type="email" id="vol-login-email" placeholder="your@email.com" /></div>
             <div className="form-group"><label>Password</label><input type="password" id="vol-login-pass" placeholder="••••••••" /></div>
             <button className="btn-submit" onClick={() => (window as any).loginUser('volunteer')}>Login</button>
-          </div>
-          {/* Teacher Login */}
-          <div className="modal-form" id="teacher-tab">
-            <div className="form-group"><label>Email</label><input type="email" id="tch-login-email" placeholder="your@email.com" /></div>
-            <div className="form-group"><label>Password</label><input type="password" id="tch-login-pass" placeholder="••••••••" /></div>
-            <button className="btn-submit" onClick={() => (window as any).loginUser('teacher')} style={{ background: 'linear-gradient(135deg,var(--success),var(--primary))' }}>Login as Teacher</button>
           </div>
           {/* Admin Login */}
           <div className="modal-form" id="admin-tab">
@@ -4514,41 +4279,6 @@ export default function App() {
             </form>
           </div>
         </section>
-      </div>
-
-      {/* ========== UNIFIED PORTAL LOGIN PAGE ========== */}
-      <div id="portal-login" className="page" style={{ paddingTop: '100px', minHeight: '100vh', background: 'var(--darker)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '100px 1rem 4rem' }}>
-        <div style={{ width: '100%', maxWidth: '440px', background: 'var(--glass)', borderRadius: '20px', border: '1px solid var(--glass-border)', boxShadow: '0 20px 60px rgba(12,22,40,0.1)', overflow: 'hidden' }}>
-          
-          <div style={{ background: 'linear-gradient(135deg, #0c1628 0%, #1e3a5f 100%)', padding: '2.5rem 2rem 2rem', textAlign: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-            <img src={logoImg} alt="IncuXAI Education Trust" style={{ height: '54px', width: 'auto', borderRadius: '10px', objectFit: 'contain', margin: '0 auto 14px', display: 'block' }} />
-            <h2 style={{ margin: 0, color: '#ffffff', fontSize: '1.4rem', fontWeight: 700, fontFamily: 'var(--font-display)' }}>Portal Sign In</h2>
-            <p style={{ margin: '8px 0 0', color: 'rgba(255,255,255,0.75)', fontSize: '0.88rem' }}>Access Teacher, Volunteer, or Admin Portal</p>
-          </div>
-
-          <form onSubmit={(e) => (window as any).unifiedPortalLogin(e)} style={{ padding: '2rem' }}>
-            <div style={{ marginBottom: '1.2rem' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text)' }}>Email Address</label>
-              <input type="email" id="portal-login-email" required placeholder="Enter your login email" style={{ width: '100%', padding: '12px 16px', border: '1.5px solid var(--glass-border)', borderRadius: '10px', fontSize: '0.92rem', outline: 'none', background: '#f8f7f3', color: '#0c1628', boxSizing: 'border-box' }} />
-            </div>
-
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text)' }}>Password</label>
-              <input type="password" id="portal-login-pass" required placeholder="Enter your password" style={{ width: '100%', padding: '12px 16px', border: '1.5px solid var(--glass-border)', borderRadius: '10px', fontSize: '0.92rem', outline: 'none', background: '#f8f7f3', color: '#0c1628', boxSizing: 'border-box' }} />
-            </div>
-
-            <button type="submit" style={{ width: '100%', padding: '13px', background: 'linear-gradient(135deg, #9B7A3E, #7D6334)', color: '#ffffff', border: 'none', borderRadius: '99px', fontSize: '0.95rem', fontWeight: 700, cursor: 'pointer', boxShadow: '0 6px 20px -4px rgba(155, 122, 62, 0.35)', transition: 'all 0.2s' }}>
-              Sign In to Portal
-            </button>
-
-            <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
-              <button type="button" onClick={() => (window as any).showPage('home')} style={{ background: 'none', border: 'none', color: '#9B7A3E', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', textDecoration: 'underline' }}>
-                ← Back to Home Page
-              </button>
-            </div>
-          </form>
-
-        </div>
       </div>
 
       {/* ========== DONATE PAGE ========== */}

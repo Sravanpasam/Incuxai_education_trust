@@ -1,13 +1,17 @@
-import { useState, useEffect, useRef, type FormEvent } from 'react';
+import { useState, useEffect, useRef, useCallback, type FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import ietLogo from '../../../../picss/iet logo.png';
 import { validateWorkEmail } from '../../../auth/validation/emailValidation';
 import { validateCompanyEmail } from '../../../auth/validation/companyEmailValidation';
-import { sendOtp, verifyOtp, registerUser } from '../../../auth/services/authService';
+import { sendOtp, verifyOtp, registerUser, loginUser, resendOtpApi, sendPersonalOtpApi } from '../../../auth/services/authService';
+import { useLmsAuth } from '../context/LmsAuthContext';
+import { useAuth } from '../../../auth/context/AuthContext';
+import RegistrationSuccessPopup from '../../../auth/components/RegistrationSuccessPopup';
+import { HR_ROLES } from '../../../auth/constants/hrRoles';
 
-const ROLES = ['Executive', 'Manager', 'Developer', 'Consultant', 'HR Manager', 'Team Lead', 'Other'];
 const OTP_LENGTH = 6;
 const OTP_TIMER = 180;
+const RESEND_CD = 30;
 
 type Step = 'info' | 'otp';
 
@@ -47,7 +51,10 @@ function isPasswordStrong(pw: string): boolean {
 
 export default function LmsSignUpPage() {
   const navigate = useNavigate();
+  const { login: lmsLogin } = useLmsAuth();
+  const { login: mainLogin } = useAuth();
   const [step, setStep] = useState<Step>('info');
+  const [showPopup, setShowPopup] = useState(false);
 
   const handleBack = () => {
     if (step === 'otp') setStep('info');
@@ -58,7 +65,9 @@ export default function LmsSignUpPage() {
   const [workEmail, setWorkEmail] = useState('');
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(''));
   const [timer, setTimer] = useState(OTP_TIMER);
-  const [resendCd, setResendCd] = useState(60);
+  const [resendCd, setResendCd] = useState(RESEND_CD);
+  const [resendCount, setResendCount] = useState(0);
+  const [otpTarget, setOtpTarget] = useState<'work' | 'personal'>('work');
   const refs = useRef<(HTMLInputElement | null)[]>([]);
 
   const [form, setForm] = useState({
@@ -105,7 +114,7 @@ export default function LmsSignUpPage() {
     }
     if (!form.companyName.trim()) e.companyName = 'Company name is required.';
     if (!form.location.trim()) e.location = 'Location is required.';
-    if (!form.role) e.role = 'Please select a role.';
+    if (!form.role) e.role = 'Please select your HR role.';
     if (!form.password) {
       e.password = 'Password is required.';
     } else if (!isPasswordStrong(form.password)) {
@@ -125,33 +134,51 @@ export default function LmsSignUpPage() {
   };
 
   const handleSendOtp = async () => {
-    const { valid, error } = validateWorkEmail(workEmail);
-    if (!valid) {
-      showToast('error', error!);
-      return;
+    if (otpTarget === 'work') {
+      const { valid, error } = validateWorkEmail(workEmail);
+      if (!valid) {
+        showToast('error', error!);
+        return;
+      }
+      const companyCheck = validateCompanyEmail(workEmail, form.companyName);
+      if (!companyCheck.valid) {
+        showToast('error', companyCheck.error!);
+        return;
+      }
     }
-    const companyCheck = validateCompanyEmail(workEmail, form.companyName);
-    if (!companyCheck.valid) {
-      showToast('error', companyCheck.error!);
-      return;
-    }
+    const targetEmail = otpTarget === 'work' ? workEmail.trim().toLowerCase() : form.personalEmail.trim().toLowerCase();
     setLoading(true);
     try {
-      const res = await sendOtp(workEmail.trim().toLowerCase());
+      let res;
+      if (otpTarget === 'personal') {
+        res = await sendPersonalOtpApi(
+          workEmail.trim().toLowerCase(),
+          form.personalEmail.trim().toLowerCase(),
+          form.fullName,
+        );
+      } else {
+        res = await sendOtp(workEmail.trim().toLowerCase(), {
+          name: form.fullName.trim(),
+          personalEmail: form.personalEmail.trim().toLowerCase(),
+          phone: form.phone.trim(),
+          company: form.companyName.trim(),
+          role: form.role,
+          workEmail: workEmail.trim().toLowerCase(),
+          password: form.password,
+        });
+      }
       if (res.success) {
         showToast('success', res.message || 'OTP sent successfully!');
         setTimer(OTP_TIMER);
-        setResendCd(60);
+        setResendCd(RESEND_CD);
         setOtp(Array(OTP_LENGTH).fill(''));
+        setResendCount((res as any).resendCount ?? 1);
       } else {
         showToast('error', res.message);
       }
     } catch (err: any) {
-      if (err?.name === 'TypeError' && err?.message?.includes('Failed to fetch')) {
-        showToast('error', 'Cannot reach the authentication server. Make sure the server is running (npm run dev:server).');
-      } else {
-        showToast('error', 'Network error. Please check your connection and try again.');
-      }
+      console.error('[LmsSignUp] sendOtp error:', err);
+      showToast('error', err?.message || 'Network error. Please check your connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -164,51 +191,59 @@ export default function LmsSignUpPage() {
       showToast('error', 'Please enter the complete 6-digit code.');
       return;
     }
+    const verifyEmail = otpTarget === 'work' ? workEmail.trim().toLowerCase() : form.personalEmail.trim().toLowerCase();
     setLoading(true);
     try {
-      const otpRes = await verifyOtp(workEmail.trim().toLowerCase(), code);
-      if (!otpRes.success) {
-        showToast('error', otpRes.message);
-        setLoading(false);
-        return;
-      }
-      const regRes = await registerUser({
-        fullName: form.fullName,
-        personalEmail: form.personalEmail,
-        phone: form.phone,
-        workEmail: workEmail.trim().toLowerCase(),
-        companyName: form.companyName,
-        location: form.location,
+      const res = await verifyOtp(verifyEmail, code, {
+        name: form.fullName.trim(),
+        personalEmail: form.personalEmail.trim().toLowerCase(),
+        phone: form.phone.trim(),
+        company: form.companyName.trim(),
         role: form.role,
+        workEmail: workEmail.trim().toLowerCase(),
         password: form.password,
       });
-      if (regRes.success) {
-        showToast('success', 'Account created. Please sign in to continue.');
-        setTimeout(() => navigate('/lms/sign-in'), 1500);
+
+      if (res.success && res.token && res.user?.name && res.user?.email) {
+        lmsLogin(res.token, res.user.email, res.user.name, res.user.id);
+        mainLogin(res.token, res.user.email, res.user.name, res.user.id);
+        setShowPopup(true);
       } else {
-        showToast('error', regRes.message || 'Failed to create account. Please try again.');
+        showToast('error', res.message || 'Failed to create account. Please try again.');
       }
     } catch (err: any) {
-      if (err?.name === 'TypeError' && err?.message?.includes('Failed to fetch')) {
-        showToast('error', 'Cannot reach the authentication server. Make sure the server is running (npm run dev:server).');
-      } else {
-        showToast('error', 'Network error. Please try again.');
-      }
+      console.error('[LmsSignUp] verifyOtp error:', err);
+      showToast('error', err?.message || 'Network error. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleResend = async () => {
-    setResendCd(60);
+    if (loading || resendCd > 0) return;
+    setResendCd(RESEND_CD);
     setTimer(OTP_TIMER);
     setOtp(Array(OTP_LENGTH).fill(''));
     try {
-      const res = await sendOtp(workEmail.trim().toLowerCase());
-      if (res.success) showToast('success', `New code sent to ${workEmail}`);
-      else showToast('error', res.message);
-    } catch {
-      showToast('error', 'Failed to resend code.');
+      const res = await resendOtpApi(
+        workEmail.trim().toLowerCase(),
+        form.personalEmail.trim().toLowerCase(),
+        resendCount + 1,
+        form.fullName,
+      );
+      if (res.success) {
+        setResendCount((res as any).resendCount ?? resendCount + 1);
+        if ((res as any).recipient === 'personal') {
+          setOtpTarget('personal');
+        }
+        const recipient = (res as any).recipient === 'personal' ? 'Personal Email' : 'Work Email';
+        showToast('success', res.message || `OTP resent to your ${recipient}.`);
+      } else {
+        showToast('error', res.message);
+      }
+    } catch (err: any) {
+      console.error('[LmsSignUp] resend error:', err);
+      showToast('error', err?.message || 'Failed to resend code.');
     }
   };
 
@@ -251,6 +286,12 @@ export default function LmsSignUpPage() {
     { key: 'special', label: 'One special character (!@#$%^&*...)' },
   ];
 
+  const handlePopupComplete = useCallback(() => {
+    setShowPopup(false);
+    window.history.replaceState(null, '', '/course-dashboard');
+    navigate('/course-dashboard', { replace: true });
+  }, [navigate]);
+
   return (
     <div style={s.page}>
       <style>{`
@@ -269,7 +310,9 @@ export default function LmsSignUpPage() {
           <p style={s.subtitle}>
             {step === 'info'
               ? 'Step 1 of 2 \u2014 Enter your personal details'
-              : 'Step 2 of 2 \u2014 Verify your work email'
+              : otpTarget === 'work'
+                ? 'Step 2 of 2 \u2014 Verify your work email'
+                : 'Step 2 of 2 \u2014 Verify your personal email'
             }
           </p>
         </div>
@@ -314,8 +357,8 @@ export default function LmsSignUpPage() {
               <div style={s.field}>
                 <label style={s.label}>Role *</label>
                 <select value={form.role} onChange={(e) => update('role', e.target.value)} style={s.input}>
-                  <option value="">Select your role</option>
-                  {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+                  <option value="">Select Your HR Role</option>
+                  {HR_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
                 </select>
                 {errors.role && <span style={s.error}>{errors.role}</span>}
               </div>
@@ -366,28 +409,56 @@ export default function LmsSignUpPage() {
 
         {step === 'otp' && (
           <form onSubmit={handleVerifyOtp} style={s.form}>
-            <label style={s.label}>Work Email Address *</label>
-            <input
-              type="email"
-              value={workEmail}
-              onChange={(e) => setWorkEmail(e.target.value)}
-              placeholder="you@company.com"
-              style={s.input}
-              autoFocus
-              disabled={loading}
-            />
-            <p style={s.hint}>
-              Only work/business emails are accepted. Your work email must match your company: <strong style={{ color: '#C5A059' }}>{form.companyName}</strong>
-            </p>
-            <button type="button" onClick={handleSendOtp}
-              style={{ ...s.btn, opacity: loading || !workEmail.trim() ? 0.6 : 1, marginTop: '1rem' }}
-              disabled={loading || !workEmail.trim()}>
-              {loading ? (
-                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                  <span style={s.spin} /> Sending...
-                </span>
-              ) : 'Send OTP'}
-            </button>
+            {otpTarget === 'work' ? (
+              <>
+                <label style={s.label}>Work Email Address *</label>
+                <input
+                  type="email"
+                  value={workEmail}
+                  onChange={(e) => setWorkEmail(e.target.value)}
+                  placeholder="you@company.com"
+                  style={s.input}
+                  autoFocus
+                  disabled={loading}
+                />
+                <p style={s.hint}>
+                  Only work/business emails are accepted. Your work email must match your company: <strong style={{ color: '#C5A059' }}>{form.companyName}</strong>
+                </p>
+                <button type="button" onClick={handleSendOtp}
+                  style={{ ...s.btn, opacity: loading || !workEmail.trim() ? 0.6 : 1, marginTop: '1rem' }}
+                  disabled={loading || !workEmail.trim()}>
+                  {loading ? (
+                    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                      <span style={s.spin} /> Sending...
+                    </span>
+                  ) : 'Send OTP'}
+                </button>
+              </>
+            ) : (
+              <>
+                <div style={{ background: 'rgba(201,162,39,0.1)', border: '1px solid rgba(201,162,39,0.3)', borderRadius: '10px', padding: '12px 16px', marginBottom: '12px' }}>
+                  <p style={{ margin: 0, fontSize: '0.82rem', color: '#C5A059', fontWeight: 600 }}>
+                    Work email not receiving OTP. Sending to your personal email instead.
+                  </p>
+                </div>
+                <label style={s.label}>Personal Email Address</label>
+                <input
+                  type="email"
+                  value={form.personalEmail}
+                  style={s.input}
+                  disabled
+                />
+                <button type="button" onClick={handleSendOtp}
+                  style={{ ...s.btn, opacity: loading ? 0.6 : 1, marginTop: '1rem' }}
+                  disabled={loading}>
+                  {loading ? (
+                    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                      <span style={s.spin} /> Sending...
+                    </span>
+                  ) : 'Send OTP to Personal Email'}
+                </button>
+              </>
+            )}
             <div style={{ marginTop: '1.5rem' }}>
               <label style={s.label}>Enter 6-digit OTP</label>
               <div style={s.otpRow}>
@@ -446,6 +517,11 @@ export default function LmsSignUpPage() {
           </span>
         </div>
       )}
+
+      <RegistrationSuccessPopup
+        visible={showPopup}
+        onComplete={handlePopupComplete}
+      />
     </div>
   );
 }

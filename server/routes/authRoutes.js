@@ -1,14 +1,30 @@
 import { Router } from 'express';
-import { sendOtp, verifyOtp, register, login, resetPassword, getMe, setupDb } from '../controllers/authController.js';
-import { validateWorkEmail } from '../middleware/validateWorkEmail.js';
+import { sendOtp, verifyOtp, register, login, resetPassword, getMe, setupDb, resendOtp, sendPersonalOtp } from '../controllers/authController.js';
 import { verifyToken } from '../utils/jwt.js';
 
 const router = Router();
 
 /**
  * POST /api/auth/send-otp
+ * Sends OTP using dual-email logic (work first, personal fallback).
+ * No validateWorkEmail middleware — personal emails are valid here.
  */
-router.post('/send-otp', validateWorkEmail, sendOtp);
+router.post('/send-otp', sendOtp);
+
+/**
+ * POST /api/auth/resend-otp
+ * Dedicated resend endpoint for dual-email verification.
+ * No validateWorkEmail middleware — personal emails are valid here.
+ */
+router.post('/resend-otp', resendOtp);
+
+/**
+ * POST /api/auth/send-personal-otp
+ * Sends a brand-new OTP to the personal email.
+ * Completely independent from the work email resend flow.
+ * No validateWorkEmail middleware — personal emails are valid here.
+ */
+router.post('/send-personal-otp', sendPersonalOtp);
 
 /**
  * POST /api/auth/verify-otp
@@ -23,7 +39,7 @@ router.post('/register', register);
 
 /**
  * POST /api/auth/login
- * Authenticates with work email + password.
+ * Authenticates with personal email + password.
  */
 router.post('/login', login);
 

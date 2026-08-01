@@ -234,16 +234,19 @@ nav a.nav-highlight-btn:hover {
   box-shadow: 0 4px 12px rgba(155, 122, 62, 0.3) !important;
 }
 
-/* Transparent top state links adjustments (excluding highlighted button) */
-header:not(.scrolled) nav a:not(.nav-highlight-btn) {
+/* Transparent top state links adjustments (excluding highlighted button & dropdown links) */
+header:not(.scrolled) nav > a:not(.nav-highlight-btn),
+header:not(.scrolled) nav > .nav-item > a:not(.nav-highlight-btn) {
   color: rgba(255, 255, 255, 0.85);
   background: transparent;
   border: none;
   box-shadow: none;
 }
 
-header:not(.scrolled) nav a:not(.nav-highlight-btn):hover, 
-header:not(.scrolled) nav a:not(.nav-highlight-btn).active {
+header:not(.scrolled) nav > a:not(.nav-highlight-btn):hover, 
+header:not(.scrolled) nav > a:not(.nav-highlight-btn).active,
+header:not(.scrolled) nav > .nav-item > a:not(.nav-highlight-btn):hover, 
+header:not(.scrolled) nav > .nav-item > a:not(.nav-highlight-btn).active {
   color: #ffffff !important;
   background: transparent;
 }
@@ -281,17 +284,16 @@ header.portal-mode #signup-btn { display: none !important; }
   display: none;
   position: absolute;
   top: calc(100% + 4px);
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
   background: #0c1628 !important;
-  border: 1px solid rgba(155, 122, 62, 0.35);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(155, 122, 62, 0.35) !important;
   border-radius: 14px;
-  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.45) !important;
   min-width: 220px;
   padding: 8px;
   z-index: 10000;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
 }
 
 /* Invisible bridge so mouse hover is never lost when moving from link to dropdown */
@@ -314,7 +316,8 @@ header nav .nav-item:focus-within .dropdown {
 }
 
 header nav .nav-item .dropdown a,
-header:not(.scrolled) nav .nav-item .dropdown a {
+header:not(.scrolled) nav .nav-item .dropdown a,
+header.scrolled nav .nav-item .dropdown a {
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
@@ -329,12 +332,15 @@ header:not(.scrolled) nav .nav-item .dropdown a {
   text-decoration: none !important;
   cursor: pointer !important;
   transition: all 0.2s ease !important;
+  text-align: left !important;
 }
 
 header nav .nav-item .dropdown a:hover,
-header:not(.scrolled) nav .nav-item .dropdown a:hover {
+header:not(.scrolled) nav .nav-item .dropdown a:hover,
+header.scrolled nav .nav-item .dropdown a:hover {
   background: linear-gradient(135deg, rgba(155, 122, 62, 0.25), rgba(125, 99, 52, 0.25)) !important;
-  color: #C5A059 !important;
+  color: #E5C158 !important;
+  transform: translateX(4px) !important;
 }
 
 .header-right {

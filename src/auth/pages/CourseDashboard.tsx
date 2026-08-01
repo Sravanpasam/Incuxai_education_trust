@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HR_COURSE, type Lesson, type Chapter, type QuizQuestion } from '../../data/hrCourseData';
+import { TrendingUp, Flame, Clock, Award, Play, RotateCcw, SkipForward, Download, Target, BarChart3, Trophy, Star, Zap, Crown, Sparkles, Flag, CalendarDays, Calendar, User, BookOpen, ChevronRight, CheckCircle2, Timer, Brain, Medal, Bookmark } from 'lucide-react';
 import { useLmsAuth } from '../../lms/auth/context/LmsAuthContext';
+import { useAuth } from '../context/AuthContext';
 import ietLogo from '../../../picss/iet logo.png';
 
 const PROGRESS_KEY = 'lms_hr_progress';
@@ -53,6 +55,7 @@ function getAllLessons(): { lesson: Lesson; chapter: Chapter; globalIndex: numbe
 
 function parseDuration(d: string): number { const parts = d.split(':').map(Number); return (parts[0] || 0) * 60 + (parts[1] || 0); }
 function formatTimeLeft(s: number): string { const h = Math.floor(s / 3600); const m = Math.round((s % 3600) / 60); return h > 0 ? `${h}h ${m}m` : `${m}m`; }
+function formatTimestamp(ts: number): string { const diff = Date.now() - ts; const mins = Math.floor(diff / 60000); if (mins < 1) return 'Just now'; if (mins < 60) return `${mins}m ago`; const hrs = Math.floor(mins / 60); if (hrs < 24) return `${hrs}h ago`; const days = Math.floor(hrs / 24); return `${days}d ago`; }
 
 interface UserProfile {
   name: string;
@@ -65,10 +68,110 @@ interface UserProfile {
 }
 
 const PROFILE_KEY = 'lms_user_profile';
+const BOOKMARKS_KEY = 'lms_bookmarks';
+
+interface Bookmark {
+  userId: string;
+  courseId: string;
+  moduleId: string;
+  lessonId: string;
+  lessonTitle: string;
+  courseName: string;
+  moduleName: string;
+  lessonType: string;
+  duration?: string;
+  bookmarkedAt: number;
+}
+
+function loadBookmarks(userEmail?: string): Bookmark[] {
+  try {
+    const key = getUserStorageKey(BOOKMARKS_KEY, userEmail);
+    const raw = localStorage.getItem(key) || localStorage.getItem(BOOKMARKS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {}
+  return [];
+}
+
+function saveBookmarks(bookmarks: Bookmark[], userEmail?: string) {
+  const key = getUserStorageKey(BOOKMARKS_KEY, userEmail);
+  localStorage.setItem(key, JSON.stringify(bookmarks));
+}
+
+interface LearningSchedule {
+  modulesPerDay: number;
+  startDate: string;
+  reminderTime: string;
+  active: boolean;
+}
+
+interface ScheduleDay {
+  date: string;
+  dayLabel: string;
+  modules: { chapterId: string; chapterTitle: string; chapterIndex: number }[];
+  completed: boolean;
+}
+
+const SCHEDULE_KEY = 'lms_learning_schedule';
+
+function loadSchedule(userEmail?: string): LearningSchedule | null {
+  try {
+    const key = getUserStorageKey(SCHEDULE_KEY, userEmail);
+    const raw = localStorage.getItem(key);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+}
+
+function saveSchedule(schedule: LearningSchedule | null, userEmail?: string) {
+  const key = getUserStorageKey(SCHEDULE_KEY, userEmail);
+  if (schedule) {
+    localStorage.setItem(key, JSON.stringify(schedule));
+  } else {
+    localStorage.removeItem(key);
+  }
+}
+
+function generateSchedulePlan(schedule: LearningSchedule, totalChapters: number, completedLessons: string[]): ScheduleDay[] {
+  const days: ScheduleDay[] = [];
+  const start = new Date(schedule.startDate);
+  let chapterIdx = 0;
+
+  while (chapterIdx < totalChapters) {
+    const dayDate = new Date(start);
+    dayDate.setDate(start.getDate() + days.length);
+
+    const modulesForDay: ScheduleDay['modules'] = [];
+    for (let i = 0; i < schedule.modulesPerDay && chapterIdx < totalChapters; i++, chapterIdx++) {
+      const ch = HR_COURSE.chapters[chapterIdx];
+      modulesForDay.push({ chapterId: ch.id, chapterTitle: ch.title, chapterIndex: chapterIdx });
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dayNoTime = new Date(dayDate);
+    dayNoTime.setHours(0, 0, 0, 0);
+    const isCompleted = dayNoTime <= today && modulesForDay.every((m) => {
+      const ch = HR_COURSE.chapters[m.chapterIndex];
+      return ch.lessons.every((l) => completedLessons.includes(l.id));
+    });
+
+    days.push({
+      date: dayDate.toISOString(),
+      dayLabel: `Day ${days.length + 1}`,
+      modules: modulesForDay,
+      completed: isCompleted,
+    });
+  }
+  return days;
+}
 
 export default function CourseDashboard() {
   const navigate = useNavigate();
-  const { user, logout } = useLmsAuth();
+  const { user, logout: lmsLogout } = useLmsAuth();
+  const { logout: mainLogout } = useAuth();
   const [progress, setProgress] = useState<CourseProgress>(() => loadProgress(user?.email));
   const [expandedChapters, setExpandedChapters] = useState<Record<string, boolean>>(() => { const m: Record<string, boolean> = {}; HR_COURSE.chapters.forEach((ch) => { m[ch.id] = true; }); return m; });
   const [activeLessonId, setActiveLessonId] = useState(progress.currentLessonId);
@@ -81,7 +184,7 @@ export default function CourseDashboard() {
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
   const [editNote, setEditNote] = useState('');
   const [isEditingNote, setIsEditingNote] = useState(false);
-  const [currentPage, setCurrentPage] = useState<'dashboard' | 'course' | 'profile' | 'certificate'>('dashboard');
+  const [currentPage, setCurrentPage] = useState<'dashboard' | 'course' | 'profile' | 'certificate' | 'bookmarks'>('dashboard');
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const [rightPanelTab, setRightPanelTab] = useState<'notes' | 'transcript' | 'resources'>('notes');
   const lessonRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -116,6 +219,19 @@ export default function CourseDashboard() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editForm, setEditForm] = useState<UserProfile>(userProfile);
   const [toastMsg, setToastMsg] = useState('');
+  const [logoutToast, setLogoutToast] = useState(false);
+
+  const [schedule, setSchedule] = useState<LearningSchedule | null>(() => loadSchedule(user?.email));
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+  const [scheduleForm, setScheduleForm] = useState<LearningSchedule>({
+    modulesPerDay: 1,
+    startDate: new Date().toISOString().split('T')[0],
+    reminderTime: '09:00',
+    active: true,
+  });
+  const [bookmarks, setBookmarks] = useState<Bookmark[]>(() => loadBookmarks(user?.email));
+  const [bookmarkAnimating, setBookmarkAnimating] = useState(false);
+  const [showBookmarkTooltip, setShowBookmarkTooltip] = useState(false);
 
   useEffect(() => {
     localStorage.removeItem(PROFILE_KEY);
@@ -205,6 +321,75 @@ export default function CourseDashboard() {
 
   const resetProgress = useCallback(() => { localStorage.removeItem(PROGRESS_KEY); setProgress(loadProgress()); setActiveLessonId(HR_COURSE.chapters[0].lessons[0].id); }, []);
 
+  const handleLogout = useCallback(() => {
+    lmsLogout();
+    mainLogout();
+    setLogoutToast(true);
+    setTimeout(() => setLogoutToast(false), 2500);
+    window.history.replaceState(null, '', '/sign-in');
+    navigate('/sign-in', { replace: true });
+  }, [lmsLogout, mainLogout, navigate]);
+
+  const isLessonBookmarked = useMemo(() => bookmarks.some((b) => b.lessonId === activeLessonId), [bookmarks, activeLessonId]);
+
+  const toggleBookmark = useCallback(() => {
+    const userId = user?.email || 'anonymous';
+    setBookmarks((prev) => {
+      const existing = prev.find((b) => b.lessonId === activeLessonId);
+      let next: Bookmark[];
+      if (existing) {
+        next = prev.filter((b) => b.lessonId !== activeLessonId);
+      } else {
+        const newBookmark: Bookmark = {
+          userId,
+          courseId: 'hr-course',
+          moduleId: activeChapter.id,
+          lessonId: activeLesson.id,
+          lessonTitle: activeLesson.title,
+          courseName: 'AI for HR Professionals',
+          moduleName: activeChapter.title,
+          lessonType: activeLesson.type,
+          duration: activeLesson.duration,
+          bookmarkedAt: Date.now(),
+        };
+        next = [...prev, newBookmark];
+        setBookmarkAnimating(true);
+        setTimeout(() => setBookmarkAnimating(false), 600);
+      }
+      saveBookmarks(next, user?.email);
+      return next;
+    });
+  }, [user?.email, activeLessonId, activeLesson, activeChapter]);
+
+  const removeBookmark = useCallback((lessonId: string) => {
+    setBookmarks((prev) => {
+      const next = prev.filter((b) => b.lessonId !== lessonId);
+      saveBookmarks(next, user?.email);
+      return next;
+    });
+  }, [user?.email]);
+
+  const schedulePlan = useMemo(() => {
+    if (!schedule?.active) return [];
+    return generateSchedulePlan(schedule, HR_COURSE.chapters.length, progress.completedLessons);
+  }, [schedule, progress.completedLessons]);
+
+  const saveLearningSchedule = useCallback(() => {
+    const updated = { ...scheduleForm, active: true };
+    setSchedule(updated);
+    saveSchedule(updated, user?.email);
+    setScheduleModalOpen(false);
+    setToastMsg('Learning schedule saved!');
+    setTimeout(() => setToastMsg(''), 2500);
+  }, [scheduleForm, user?.email]);
+
+  const clearLearningSchedule = useCallback(() => {
+    setSchedule(null);
+    saveSchedule(null, user?.email);
+    setToastMsg('Schedule removed');
+    setTimeout(() => setToastMsg(''), 2500);
+  }, [user?.email]);
+
   const submitQuiz = useCallback(() => {
     if (!activeLesson.quizQuestions) return;
     let correct = 0;
@@ -225,6 +410,103 @@ export default function CourseDashboard() {
   const videoProgressPercent = useMemo(() => { const dur = parseDuration(activeLesson.duration); if (!dur) return 0; const pos = currentLessonProgress?.lastPosition || 0; return Math.min(100, Math.round((pos / dur) * 100)); }, [activeLesson.duration, currentLessonProgress]);
   const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2];
   const userInitial = (user?.name || user?.email || 'U')[0].toUpperCase();
+
+  const currentStreak = useMemo(() => {
+    const dates = new Set(
+      Object.values(progress.lessonProgress)
+        .filter(lp => lp.watchPercent >= WATCH_THRESHOLD || lp.completed)
+        .map(lp => { const d = new Date(lp.timestamp); return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; })
+    );
+    let streak = 0;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    for (let i = 0; i < 365; i++) {
+      const check = new Date(today); check.setDate(check.getDate() - i);
+      const key = `${check.getFullYear()}-${check.getMonth()}-${check.getDate()}`;
+      if (dates.has(key)) streak++; else if (i > 0) break;
+    }
+    return streak;
+  }, [progress.lessonProgress]);
+
+  const weeklyData = useMemo(() => {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const now = new Date();
+    return Array.from({ length: 7 }, (_, i) => {
+      const date = new Date(now); date.setDate(date.getDate() - (6 - i));
+      const dateStr = date.toDateString();
+      const count = Object.values(progress.lessonProgress)
+        .filter(lp => new Date(lp.timestamp).toDateString() === dateStr && (lp.completed || lp.watchPercent >= WATCH_THRESHOLD)).length;
+      return { day: days[date.getDay()], count, isToday: i === 6 };
+    });
+  }, [progress.lessonProgress]);
+  const maxWeeklyCount = useMemo(() => Math.max(1, ...weeklyData.map(d => d.count)), [weeklyData]);
+
+  const recentActivity = useMemo(() => {
+    return Object.entries(progress.lessonProgress)
+      .map(([id, lp]) => ({ id, ...lp }))
+      .sort((a, b) => b.timestamp - a.timestamp).slice(0, 5);
+  }, [progress.lessonProgress]);
+
+  const achievements = useMemo(() => {
+    const ms = [
+      { icon: 'star', title: 'First Step', desc: 'Complete your first lesson', t: 1 },
+      { icon: 'flame', title: 'Quarter Way', desc: 'Complete 25% of the course', t: 0.25 },
+      { icon: 'zap', title: 'Halfway Hero', desc: 'Complete 50% of the course', t: 0.5 },
+      { icon: 'trophy', title: 'Almost There', desc: 'Complete 75% of the course', t: 0.75 },
+      { icon: 'crown', title: 'Course Master', desc: 'Complete all modules', t: 1 },
+    ];
+    return ms.map(m => ({
+      ...m, unlocked: completedCount >= Math.ceil(totalLessons * m.t)
+    }));
+  }, [completedCount, totalLessons]);
+  const unlockedCount = useMemo(() => achievements.filter(a => a.unlocked).length, [achievements]);
+
+  const todayGoalTarget = useMemo(() => {
+    const rem = totalLessons - completedCount;
+    return rem <= 0 ? 0 : Math.min(rem, Math.max(1, Math.ceil(rem * 0.1)));
+  }, [totalLessons, completedCount]);
+  const todayGoalDone = useMemo(() => {
+    const todayStr = new Date().toDateString();
+    return Object.values(progress.lessonProgress)
+      .filter(lp => new Date(lp.timestamp).toDateString() === todayStr && (lp.completed || lp.watchPercent >= WATCH_THRESHOLD)).length;
+  }, [progress.lessonProgress]);
+  const todayGoalMessage = useMemo(() => {
+    if (todayGoalTarget === 0) return 'Congratulations! Course complete!';
+    if (todayGoalDone >= todayGoalTarget) return 'Goal reached! Keep up the great work!';
+    const left = todayGoalTarget - todayGoalDone;
+    return `${left} more lesson${left !== 1 ? 's' : ''} to hit today's goal`;
+  }, [todayGoalTarget, todayGoalDone]);
+
+  const nextMilestone = useMemo(() => {
+    for (const m of [25, 50, 75, 100]) {
+      if (progressPercent < m) {
+        const needed = Math.ceil(totalLessons * m / 100) - completedCount;
+        return { percent: m, needed, message: `${needed} lesson${needed !== 1 ? 's' : ''} to reach ${m}%` };
+      }
+    }
+    return null;
+  }, [progressPercent, completedCount, totalLessons]);
+
+  const calInfo = useMemo(() => {
+    const now = new Date();
+    const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const y = now.getFullYear(), mo = now.getMonth();
+    return {
+      month: months[mo], year: y, monthNum: mo,
+      firstDay: new Date(y, mo, 1).getDay(),
+      daysInMonth: new Date(y, mo + 1, 0).getDate(),
+      today: now.getDate(),
+      accessed: new Set(Object.values(progress.lessonProgress).map(lp => new Date(lp.timestamp).toDateString()))
+    };
+  }, [progress.lessonProgress]);
+
+  const motivationalMessage = useMemo(() => {
+    if (progressPercent >= 100) return "You've mastered the course! Time to apply your knowledge.";
+    if (progressPercent >= 75) return "You're in the final stretch. Finish strong!";
+    if (progressPercent >= 50) return "You're halfway there! The best is yet to come.";
+    if (progressPercent >= 25) return "Great progress! You're building real momentum.";
+    if (completedCount >= 1) return "You've started! That's the hardest part. Keep going!";
+    return "Welcome to your learning journey. Let's begin!";
+  }, [progressPercent, completedCount]);
 
   const lessonTypeIcon = (type: string, size = 14) => {
     if (type === 'quiz') return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>;
@@ -288,7 +570,7 @@ export default function CourseDashboard() {
             )}
           </div>
 
-          <button className="lms-logout-btn" onClick={() => { logout(); navigate('/'); }} title="Sign Out">
+          <button className="lms-logout-btn" onClick={handleLogout} title="Sign Out">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
           </button>
         </div>
@@ -297,121 +579,130 @@ export default function CourseDashboard() {
       {currentPage === 'dashboard' && (
         <div className="lms-page-content">
           <div className="lms-dash">
-            {/* Hero Welcome Banner */}
-            <div className="lms-dash-welcome">
-              <div className="lms-dash-welcome-left">
-                <span className="lms-dash-pill">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                  IncuXAI Learning Hub
-                </span>
-                <h1>Welcome back, <span className="lms-dash-name">{user?.name || 'Student'}</span> 👋</h1>
-                <p>Track your progress, resume your course, and master AI skills step-by-step.</p>
-                <div className="lms-dash-welcome-actions">
-                  <button className="lms-dash-primary-btn" onClick={() => setCurrentPage('course')}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                    Resume Current Lesson
-                  </button>
-                  <button className="lms-dash-secondary-btn" onClick={() => setCurrentPage('profile')}>
-                    View Achievements
-                  </button>
+            {/* Hero Learning Card */}
+            <div className="lms-hero-card">
+              <div className="lms-hero-content">
+                <div className="lms-hero-text">
+                  <div className="lms-hero-badge">
+                    <BookOpen size={14} />
+                    <span>IncuXAI Learning Hub</span>
+                  </div>
+                  <h1 className="lms-hero-name">Welcome back, {user?.name || 'Student'}</h1>
+                  <p style={{ fontSize: '0.92rem', color: 'rgba(255,255,255,0.75)', margin: '0 0 22px', lineHeight: 1.6 }}>
+                    Track your progress, resume your course, and master HR skills step-by-step.
+                  </p>
+                  <div className="lms-hero-actions">
+                    <button className="lms-hero-resume-btn" onClick={() => setCurrentPage('course')}>
+                      <Play size={16} />
+                      Resume Current Module
+                    </button>
+                    <button className="lms-hero-view-btn" onClick={() => setCurrentPage('profile')}>
+                      View Profile
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <div className="lms-dash-welcome-right">
-                <div className="lms-dash-stat-ring">
-                  <svg viewBox="0 0 120 120">
-                    <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="9"/>
-                    <circle cx="60" cy="60" r="52" fill="none" stroke="url(#grad)" strokeWidth="9" strokeLinecap="round" strokeDasharray={`${progressPercent * 3.267} 326.7`} transform="rotate(-90 60 60)"/>
-                    <defs>
-                      <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#F59E0B"/>
-                        <stop offset="50%" stopColor="#6366F1"/>
-                        <stop offset="100%" stopColor="#10B981"/>
-                      </linearGradient>
-                    </defs>
-                  </svg>
-                  <div className="lms-dash-ring-content">
-                    <span className="lms-dash-stat-pct">{progressPercent}%</span>
-                    <span className="lms-dash-ring-sub">Done</span>
+                <div className="lms-hero-ring-wrap">
+                  <div className="lms-hero-ring">
+                    <svg viewBox="0 0 120 120">
+                      <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="8"/>
+                      <circle cx="60" cy="60" r="52" fill="none" stroke="url(#heroGrad)" strokeWidth="8" strokeLinecap="round" strokeDasharray={`${progressPercent * 3.267} 326.7`} transform="rotate(-90 60 60)"/>
+                      <defs>
+                        <linearGradient id="heroGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#F59E0B"/>
+                          <stop offset="50%" stopColor="#C5A059"/>
+                          <stop offset="100%" stopColor="#10B981"/>
+                        </linearGradient>
+                      </defs>
+                    </svg>
+                    <div className="lms-hero-ring-inner">
+                      <span className="lms-hero-pct">{progressPercent}%</span>
+                      <span className="lms-hero-pct-label">Complete</span>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Quick Stat Cards */}
-            <div className="lms-dash-grid">
-              <div className="lms-dash-card lms-dash-continue-card" onClick={() => setCurrentPage('course')}>
-                <div className="lms-dash-card-header">
-                  <span className="lms-dash-card-badge">Current Lesson</span>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+            {/* Quick Actions */}
+            <div className="lms-quick-actions">
+              <button className="lms-qa-card" onClick={() => setCurrentPage('course')}>
+                <div className="lms-qa-icon" style={{ background: 'linear-gradient(135deg, #9B7A3E, #7D6334)' }}>
+                  <Play size={22} style={{ color: '#ffffff' }} />
                 </div>
-                <h3>{activeLesson.title}</h3>
-                <p>{activeChapter.title} &middot; {activeLesson.duration}</p>
-                <div className="lms-dash-card-bar"><div style={{ width: `${progressPercent}%` }} /></div>
-                <div className="lms-dash-card-footer">
-                  <span className="lms-dash-card-cta">Resume Module &rarr;</span>
-                  <span className="lms-dash-card-meta">{completedCount}/{totalLessons} done</span>
+                <div className="lms-qa-info">
+                  <span className="lms-qa-title">Resume Course</span>
+                  <span className="lms-qa-sub">Continue where you left off</span>
                 </div>
-              </div>
-
-              <div className="lms-dash-card">
-                <div className="lms-dash-card-icon icon-amber">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2.2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              </button>
+              <button className="lms-qa-card" onClick={() => { if (nextLesson) { selectLesson(nextLesson.lesson.id); setCurrentPage('course'); } }}>
+                <div className="lms-qa-icon" style={{ background: 'linear-gradient(135deg, #10B981, #059669)' }}>
+                  <SkipForward size={22} style={{ color: '#ffffff' }} />
                 </div>
-                <span className="lms-dash-card-num">{completedCount}</span>
-                <span className="lms-dash-card-label">Lessons Completed</span>
-              </div>
-
-              <div className="lms-dash-card">
-                <div className="lms-dash-card-icon icon-indigo">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6366F1" strokeWidth="2.2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <div className="lms-qa-info">
+                  <span className="lms-qa-title">Next Chapter</span>
+                  <span className="lms-qa-sub">{nextLesson ? nextLesson.lesson.title : 'All done!'}</span>
                 </div>
-                <span className="lms-dash-card-num">{totalTimeRemaining}</span>
-                <span className="lms-dash-card-label">Est. Time Remaining</span>
-              </div>
-
-              <div className="lms-dash-card">
-                <div className="lms-dash-card-icon icon-emerald">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              </button>
+              <button className="lms-qa-card" onClick={() => { if (prevLesson) { selectLesson(prevLesson.lesson.id); setCurrentPage('course'); } }}>
+                <div className="lms-qa-icon" style={{ background: 'linear-gradient(135deg, #6366F1, #4F46E5)' }}>
+                  <SkipForward size={22} style={{ color: '#ffffff', transform: 'scaleX(-1)' }} />
                 </div>
-                <span className="lms-dash-card-num">{totalLessons - completedCount}</span>
-                <span className="lms-dash-card-label">Lessons Left</span>
-              </div>
+                <div className="lms-qa-info">
+                  <span className="lms-qa-title">Previous Chapter</span>
+                  <span className="lms-qa-sub">{prevLesson ? prevLesson.lesson.title : 'Start of course'}</span>
+                </div>
+              </button>
+              <button className="lms-qa-card" onClick={() => setCurrentPage('bookmarks')}>
+                <div className="lms-qa-icon" style={{ background: 'linear-gradient(135deg, #F59E0B, #D97706)' }}>
+                  <Bookmark size={22} style={{ color: '#ffffff' }} />
+                </div>
+                <div className="lms-qa-info">
+                  <span className="lms-qa-title">Saved Modules</span>
+                  <span className="lms-qa-sub">{bookmarks.length === 0 ? 'No bookmarks yet' : `${bookmarks.length} bookmarked`}</span>
+                </div>
+              </button>
             </div>
 
-            {/* Course Overview Section */}
-            <div className="lms-dash-section">
-              <div className="lms-section-header">
-                <h2>Enrolled Course Overview</h2>
-                <button className="lms-section-link" onClick={() => setCurrentPage('course')}>Go to Course &rarr;</button>
+            {/* Course Overview */}
+            <div className="lms-section-card">
+              <h3 className="lms-section-title">
+                <BookOpen size={18} style={{ color: '#9B7A3E' }} />
+                Course Overview
+              </h3>
+              <div className="lms-overview-header">
+                <div>
+                  <h4 className="lms-overview-course-name">{HR_COURSE.title}</h4>
+                  <p className="lms-overview-course-sub">{HR_COURSE.subtitle}</p>
+                </div>
+                <div className="lms-overview-stats">
+                  <div className="lms-overview-stat">
+                    <span className="lms-overview-stat-val">{HR_COURSE.chapters.length}</span>
+                    <span className="lms-overview-stat-label">Modules</span>
+                  </div>
+                  <div className="lms-overview-stat">
+                    <span className="lms-overview-stat-val">{totalLessons}</span>
+                    <span className="lms-overview-stat-label">Learning Path</span>
+                  </div>
+                  <div className="lms-overview-stat">
+                    <span className="lms-overview-stat-val">{progressPercent}%</span>
+                    <span className="lms-overview-stat-label">Complete</span>
+                  </div>
+                </div>
               </div>
-              <div className="lms-dash-course-card" onClick={() => setCurrentPage('course')}>
-                <div className="lms-dash-course-icon">
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
-                </div>
-                <div className="lms-dash-course-info">
-                  <h3>{HR_COURSE.title}</h3>
-                  <p>{HR_COURSE.instructor} &middot; {totalLessons} lessons &middot; {HR_COURSE.chapters.length} Modules &middot; Updated {HR_COURSE.lastUpdated}</p>
-                  <div className="lms-dash-course-bar"><div style={{ width: `${progressPercent}%` }} /></div>
-                </div>
-                <div className="lms-dash-course-pct-box">
-                  <span className="lms-dash-course-pct">{progressPercent}%</span>
-                  <span className="lms-dash-course-sub">{progressPercent >= 100 ? 'Completed' : 'In Progress'}</span>
-                </div>
-              </div>
-
-              {/* Modules Breakdown Grid */}
-              <div className="lms-modules-grid">
-                {HR_COURSE.chapters.map((ch, idx) => {
-                  const cp = getChapterProgress(ch);
+              <div className="lms-overview-modules">
+                {HR_COURSE.chapters.map((chapter, ci) => {
+                  const cp = getChapterProgress(chapter);
                   return (
-                    <div key={ch.id} className="lms-module-card" onClick={() => { selectLesson(ch.lessons[0].id); setCurrentPage('course'); }}>
-                      <div className="lms-module-top">
-                        <span className="lms-module-badge">Module {idx + 1}</span>
-                        <span className="lms-module-stat">{cp.done}/{cp.total} Done</span>
+                    <div key={chapter.id} className="lms-overview-module" onClick={() => { selectLesson(chapter.lessons[0].id); setCurrentPage('course'); }}>
+                      <div className="lms-overview-module-header">
+                        <span className="lms-overview-module-num">Module {ci + 1}</span>
+                        <span className="lms-overview-module-count">{cp.done}/{cp.total} modules</span>
                       </div>
-                      <h4>{ch.title}</h4>
-                      <p>{ch.lessons.length} structured lessons</p>
-                      <div className="lms-module-bar"><div style={{ width: `${cp.percent}%` }} /></div>
+                      <h5 className="lms-overview-module-title">{chapter.title}</h5>
+                      <div className="lms-overview-module-bar">
+                        <div className="lms-overview-module-fill" style={{ width: `${cp.percent}%` }} />
+                      </div>
+                      <span className="lms-overview-module-pct">{cp.percent}%</span>
                     </div>
                   );
                 })}
@@ -425,7 +716,7 @@ export default function CourseDashboard() {
         <div className="lms-body">
           <aside className={`lms-sidebar ${sidebarOpen ? 'open' : 'closed'} ${mobileSidebar ? 'mobile-open' : ''}`}>
             <div className="lms-sidebar-header">
-              <h2 className="lms-sidebar-title">Course Content</h2>
+              <h2 className="lms-sidebar-title">Learning Path</h2>
               <span className="lms-sidebar-meta">{completedCount}/{totalLessons}</span>
             </div>
             <div className="lms-sidebar-scroll">
@@ -497,6 +788,20 @@ export default function CourseDashboard() {
                 <div className="lms-video-meta-actions">
                   <button className="lms-panel-toggle" onClick={() => setRightPanelOpen(!rightPanelOpen)} title="Toggle panel">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+                  </button>
+                  <button
+                    className={`lms-bookmark-btn ${isLessonBookmarked ? 'bookmarked' : ''} ${bookmarkAnimating ? 'bookmark-pop' : ''}`}
+                    onClick={toggleBookmark}
+                    onMouseEnter={() => setShowBookmarkTooltip(true)}
+                    onMouseLeave={() => setShowBookmarkTooltip(false)}
+                    aria-label="Bookmark lesson"
+                    aria-pressed={isLessonBookmarked}
+                    title={isLessonBookmarked ? 'Saved to Bookmarks' : 'Save lesson'}
+                  >
+                    <Bookmark size={16} fill={isLessonBookmarked ? '#9B7A3E' : 'none'} stroke={isLessonBookmarked ? '#9B7A3E' : 'currentColor'} />
+                    {showBookmarkTooltip && (
+                      <span className="lms-bookmark-tooltip">{isLessonBookmarked ? 'Saved to Bookmarks' : 'Save lesson'}</span>
+                    )}
                   </button>
                   <button className={`lms-done-btn ${isCurrentCompleted ? 'done' : ''}`} onClick={toggleComplete}>
                     {isCurrentCompleted ? <><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg> Completed</> : <><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/></svg> Mark Complete</>}
@@ -590,7 +895,7 @@ export default function CourseDashboard() {
             <div className="lms-tab-content">
               {activeTab === 'overview' && (
                 <div className="lms-overview">
-                  <div className="lms-overview-card"><h3>About This Lesson</h3><p>{activeLesson.description}</p></div>
+                  <div className="lms-overview-card"><h3>About This Module</h3><p>{activeLesson.description}</p></div>
                   <div className="lms-overview-grid">
                     <div className="lms-ov-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C9A227" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><div><span className="lms-ov-label">Duration</span><span className="lms-ov-val">{activeLesson.duration}</span></div></div>
                     <div className="lms-ov-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C9A227" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><div><span className="lms-ov-label">Last Updated</span><span className="lms-ov-val">{HR_COURSE.lastUpdated}</span></div></div>
@@ -610,17 +915,17 @@ export default function CourseDashboard() {
                     <h3>Your Notes</h3>
                     {!isEditingNote ? (<button className="lms-note-edit-btn" onClick={() => { setEditNote(currentLessonProgress?.notes || activeLesson.notes || ''); setIsEditingNote(true); }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Edit</button>) : (<div className="lms-note-actions"><button className="lms-note-save" onClick={() => { saveLessonProgress(activeLessonId, { notes: editNote }); setIsEditingNote(false); }}>Save</button><button className="lms-note-cancel" onClick={() => setIsEditingNote(false)}>Cancel</button></div>)}
                   </div>
-                  {isEditingNote ? (<textarea className="lms-note-textarea" value={editNote} onChange={(e) => setEditNote(e.target.value)} placeholder="Write your notes for this lesson..." />) : (<div className="lms-note-content">{(currentLessonProgress?.notes || activeLesson.notes) ? ((currentLessonProgress?.notes || activeLesson.notes || '').split('\n').map((line: string, i: number) => <p key={i}>{line || '\u00A0'}</p>)) : <p className="lms-note-empty">No notes yet. Click Edit to add notes.</p>}</div>)}
+                  {isEditingNote ? (<textarea className="lms-note-textarea" value={editNote} onChange={(e) => setEditNote(e.target.value)} placeholder="Write your notes for this module..." />) : (<div className="lms-note-content">{(currentLessonProgress?.notes || activeLesson.notes) ? ((currentLessonProgress?.notes || activeLesson.notes || '').split('\n').map((line: string, i: number) => <p key={i}>{line || '\u00A0'}</p>)) : <p className="lms-note-empty">No notes yet. Click Edit to add notes.</p>}</div>)}
                 </div>
               )}
               {activeTab === 'transcript' && (
                 <div className="lms-transcript">
-                  {activeLesson.transcript ? (<div className="lms-transcript-content">{activeLesson.transcript.split('. ').reduce((acc: string[], sentence: string, i: number) => { if (i % 3 === 0) acc.push(sentence); else acc[acc.length - 1] += '. ' + sentence; return acc; }, []).map((para: string, i: number) => <p key={i}>{para}{para.endsWith('.') ? '' : '.'}</p>)}</div>) : <p className="lms-note-empty">Transcript not available for this lesson.</p>}
+                  {activeLesson.transcript ? (<div className="lms-transcript-content">{activeLesson.transcript.split('. ').reduce((acc: string[], sentence: string, i: number) => { if (i % 3 === 0) acc.push(sentence); else acc[acc.length - 1] += '. ' + sentence; return acc; }, []).map((para: string, i: number) => <p key={i}>{para}{para.endsWith('.') ? '' : '.'}</p>)}</div>) : <p className="lms-note-empty">Transcript not available for this module.</p>}
                 </div>
               )}
               {activeTab === 'resources' && (
                 <div className="lms-resources">
-                  {activeLesson.resources && activeLesson.resources.length > 0 ? (<div className="lms-resources-list">{activeLesson.resources.map((r, i) => (<a key={i} href={r.url} target="_blank" rel="noopener noreferrer" className="lms-resource-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C9A227" strokeWidth="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg><span>{r.title}</span></a>))}</div>) : <p className="lms-note-empty">No additional resources for this lesson.</p>}
+                  {activeLesson.resources && activeLesson.resources.length > 0 ? (<div className="lms-resources-list">{activeLesson.resources.map((r, i) => (<a key={i} href={r.url} target="_blank" rel="noopener noreferrer" className="lms-resource-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C9A227" strokeWidth="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg><span>{r.title}</span></a>))}</div>) : <p className="lms-note-empty">No additional resources for this module.</p>}
                 </div>
               )}
             </div>
@@ -636,7 +941,7 @@ export default function CourseDashboard() {
                 {(['notes', 'transcript', 'resources'] as const).map((t) => <button key={t} className={`lms-rp-tab ${rightPanelTab === t ? 'active' : ''}`} onClick={() => setRightPanelTab(t)}>{t.charAt(0).toUpperCase() + t.slice(1)}</button>)}
               </div>
               <div className="lms-rp-content">
-                {rightPanelTab === 'notes' && (<div className="lms-rp-notes">{(currentLessonProgress?.notes || activeLesson.notes) ? ((currentLessonProgress?.notes || activeLesson.notes || '').split('\n').map((line: string, i: number) => <p key={i}>{line || '\u00A0'}</p>)) : <p className="lms-note-empty">No notes for this lesson.</p>}</div>)}
+                {rightPanelTab === 'notes' && (<div className="lms-rp-notes">{(currentLessonProgress?.notes || activeLesson.notes) ? ((currentLessonProgress?.notes || activeLesson.notes || '').split('\n').map((line: string, i: number) => <p key={i}>{line || '\u00A0'}</p>)) : <p className="lms-note-empty">No notes for this module.</p>}</div>)}
                 {rightPanelTab === 'transcript' && (<div className="lms-rp-transcript">{activeLesson.transcript ? activeLesson.transcript.split('. ').reduce((acc: string[], s: string, i: number) => { if (i % 3 === 0) acc.push(s); else acc[acc.length - 1] += '. ' + s; return acc; }, []).map((p: string, i: number) => <p key={i}>{p}{p.endsWith('.') ? '' : '.'}</p>) : <p className="lms-note-empty">No transcript available.</p>}</div>)}
                 {rightPanelTab === 'resources' && (<div className="lms-rp-resources">{activeLesson.resources && activeLesson.resources.length > 0 ? activeLesson.resources.map((r, i) => <a key={i} href={r.url} target="_blank" rel="noopener noreferrer" className="lms-resource-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C9A227" strokeWidth="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg><span>{r.title}</span></a>) : <p className="lms-note-empty">No resources available.</p>}</div>)}
               </div>
@@ -683,7 +988,7 @@ export default function CourseDashboard() {
 
                 <div className="lms-profile-card lms-danger-zone">
                   <h3>Account Controls</h3>
-                  <p>Resetting progress will clear all completed lesson states and quiz scores.</p>
+                  <p>Resetting progress will clear all completed module states and quiz scores.</p>
                   <button className="lms-reset-progress-btn" onClick={() => { if (confirm('Are you sure you want to reset all course progress?')) resetProgress(); }}>
                     Reset All Progress
                   </button>
@@ -703,7 +1008,7 @@ export default function CourseDashboard() {
                     </div>
                     <div>
                       <p className="lms-profile-course-title">{HR_COURSE.title}</p>
-                      <p className="lms-profile-course-meta">{HR_COURSE.instructor} &middot; {totalLessons} lessons &middot; Updated {HR_COURSE.lastUpdated}</p>
+                      <p className="lms-profile-course-meta">{HR_COURSE.instructor} &middot; {totalLessons} modules &middot; Updated {HR_COURSE.lastUpdated}</p>
                     </div>
                   </div>
                   <div className="lms-profile-prog-block">
@@ -715,47 +1020,106 @@ export default function CourseDashboard() {
                   </div>
                 </div>
 
-                {/* Achievements Showcase */}
-                <div className="lms-profile-card">
+                {/* Scheduled Learning Card */}
+                <div className="lms-profile-card lms-schedule-card">
                   <div className="lms-card-head">
-                    <h3>Achievement Badges</h3>
-                    <span className="lms-card-sub-tag">Milestones</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Calendar size={18} style={{ color: '#9B7A3E' }} />
+                      <h3>Scheduled Learning</h3>
+                    </div>
+                    {schedule?.active ? (
+                      <span className="lms-badge-green">Active</span>
+                    ) : (
+                      <span className="lms-card-sub-tag">Not set</span>
+                    )}
                   </div>
-                  <div className="lms-badges-grid">
-                    <div className={`lms-badge-item ${completedCount >= 1 ? 'unlocked' : 'locked'}`}>
-                      <div className="lms-badge-icon">🚀</div>
-                      <div className="lms-badge-info">
-                        <h4>First Step</h4>
-                        <p>Completed first lesson</p>
+
+                  {schedule?.active && schedulePlan.length > 0 ? (
+                    <>
+                      <div className="lms-schedule-summary">
+                        <div className="lms-schedule-stat">
+                          <span className="lms-schedule-stat-val">{schedule.modulesPerDay}</span>
+                          <span className="lms-schedule-stat-label">Modules/Day</span>
+                        </div>
+                        <div className="lms-schedule-stat">
+                          <span className="lms-schedule-stat-val">{schedulePlan.length}</span>
+                          <span className="lms-schedule-stat-label">Total Days</span>
+                        </div>
+                        <div className="lms-schedule-stat">
+                          <span className="lms-schedule-stat-val">{schedule.reminderTime}</span>
+                          <span className="lms-schedule-stat-label">Reminder</span>
+                        </div>
                       </div>
-                      <span className="lms-badge-status">{completedCount >= 1 ? 'Unlocked' : 'Locked'}</span>
-                    </div>
-                    <div className={`lms-badge-item ${progressPercent >= 50 ? 'unlocked' : 'locked'}`}>
-                      <div className="lms-badge-icon">📈</div>
-                      <div className="lms-badge-info">
-                        <h4>Halfway Hero</h4>
-                        <p>Completed 50% of course</p>
+
+                      <div className="lms-schedule-timeline">
+                        {schedulePlan.map((day, di) => {
+                          const dayDate = new Date(day.date);
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          const dayNoTime = new Date(dayDate);
+                          dayNoTime.setHours(0, 0, 0, 0);
+                          const isToday = dayNoTime.getTime() === today.getTime();
+                          const isPast = dayNoTime < today;
+                          const allDone = day.modules.every((m) => {
+                            const ch = HR_COURSE.chapters[m.chapterIndex];
+                            return ch.lessons.every((l) => progress.completedLessons.includes(l.id));
+                          });
+
+                          return (
+                            <div key={di} className={`lms-schedule-day ${isToday ? 'today' : ''} ${allDone ? 'done' : ''} ${isPast && !allDone ? 'missed' : ''}`}>
+                              <div className="lms-schedule-day-left">
+                                <div className={`lms-schedule-day-dot ${allDone ? 'done' : isToday ? 'current' : isPast ? 'missed' : ''}`}>
+                                  {allDone ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg> : null}
+                                </div>
+                                {di < schedulePlan.length - 1 && <div className={`lms-schedule-day-line ${allDone ? 'done' : ''}`} />}
+                              </div>
+                              <div className="lms-schedule-day-content">
+                                <div className="lms-schedule-day-head">
+                                  <span className={`lms-schedule-day-label ${isToday ? 'today' : ''}`}>{day.dayLabel}{isToday ? ' (Today)' : ''}</span>
+                                  <span className="lms-schedule-day-date">{dayDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                                </div>
+                                {day.modules.map((m, mi) => {
+                                  const chDone = HR_COURSE.chapters[m.chapterIndex].lessons.every((l) => progress.completedLessons.includes(l.id));
+                                  return (
+                                    <div key={mi} className="lms-schedule-day-module" onClick={() => { selectLesson(HR_COURSE.chapters[m.chapterIndex].lessons[0].id); setCurrentPage('course'); }}>
+                                      <div className={`lms-schedule-module-dot ${chDone ? 'done' : ''}`}>
+                                        {chDone ? <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg> : <span>{m.chapterIndex + 1}</span>}
+                                      </div>
+                                      <span className="lms-schedule-module-name">{m.chapterTitle}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                      <span className="lms-badge-status">{progressPercent >= 50 ? 'Unlocked' : 'Locked'}</span>
-                    </div>
-                    <div className={`lms-badge-item ${Object.values(progress.lessonProgress).some(lp => (lp.quizScore || 0) >= 80) ? 'unlocked' : 'locked'}`}>
-                      <div className="lms-badge-icon">🧠</div>
-                      <div className="lms-badge-info">
-                        <h4>Quiz Master</h4>
-                        <p>Scored 80%+ on a quiz</p>
+
+                      <div className="lms-schedule-actions">
+                        <button className="lms-schedule-edit-btn" onClick={() => { setScheduleForm(schedule); setScheduleModalOpen(true); }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                          Edit Schedule
+                        </button>
+                        <button className="lms-schedule-clear-btn" onClick={clearLearningSchedule}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                          Remove
+                        </button>
                       </div>
-                      <span className="lms-badge-status">{Object.values(progress.lessonProgress).some(lp => (lp.quizScore || 0) >= 80) ? 'Unlocked' : 'Locked'}</span>
-                    </div>
-                    <div className={`lms-badge-item ${progressPercent >= 100 ? 'unlocked' : 'locked'}`}>
-                      <div className="lms-badge-icon">🎓</div>
-                      <div className="lms-badge-info">
-                        <h4>Certified Graduate</h4>
-                        <p>Earn official certificate</p>
+                    </>
+                  ) : (
+                    <div className="lms-schedule-empty">
+                      <div className="lms-schedule-empty-icon">
+                        <Calendar size={32} style={{ color: '#9B7A3E' }} />
                       </div>
-                      <span className="lms-badge-status">{progressPercent >= 100 ? 'Unlocked' : 'Locked'}</span>
+                      <p className="lms-schedule-empty-text">Set a learning pace and we'll build a day-by-day plan to help you finish the course on time.</p>
+                      <button className="lms-schedule-setup-btn" onClick={() => { setScheduleForm({ modulesPerDay: 1, startDate: new Date().toISOString().split('T')[0], reminderTime: '09:00', active: true }); setScheduleModalOpen(true); }}>
+                        <Calendar size={16} />
+                        Create Schedule
+                      </button>
                     </div>
-                  </div>
+                  )}
                 </div>
+
               </div>
             </div>
           </div>
@@ -786,9 +1150,9 @@ export default function CourseDashboard() {
               <div className="lms-cert-locked">
                 <div className="lms-cert-lock-icon"><svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#C9A227" strokeWidth="1.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div>
                 <h2>Complete the Course to Earn Your Certificate</h2>
-                <p>You are <strong>{progressPercent}%</strong> done. Complete all {totalLessons} lessons to unlock your certificate.</p>
+                <p>You are <strong>{progressPercent}%</strong> done. Complete all {totalLessons} modules to unlock your certificate.</p>
                 <div className="lms-cert-progress-bar"><div className="lms-cert-progress-fill" style={{ width: `${progressPercent}%` }} /></div>
-                <p className="lms-cert-remaining">{totalLessons - completedCount} lessons remaining</p>
+                <p className="lms-cert-remaining">{totalLessons - completedCount} modules remaining</p>
                 <button className="lms-cert-cta" onClick={() => setCurrentPage('course')}>Continue Learning</button>
               </div>
             )}
@@ -799,6 +1163,13 @@ export default function CourseDashboard() {
       {toastMsg && (
         <div style={{ position: 'fixed', bottom: '2rem', left: '50%', transform: 'translateX(-50%)', padding: '12px 24px', background: '#0c1628', color: '#ffffff', border: '1px solid rgba(155,122,62,0.5)', borderRadius: '99px', boxShadow: '0 10px 30px rgba(0,0,0,0.3)', zIndex: 9999, fontWeight: 600, fontSize: '0.88rem' }}>
           {toastMsg}
+        </div>
+      )}
+
+      {/* Logout Toast Notification */}
+      {logoutToast && (
+        <div style={{ position: 'fixed', bottom: '2rem', left: '50%', transform: 'translateX(-50%)', padding: '12px 24px', background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', borderRadius: '99px', boxShadow: '0 10px 30px rgba(0,0,0,0.15)', zIndex: 10000, fontWeight: 600, fontSize: '0.88rem', animation: 'fadeIn 0.3s ease' }}>
+          \u2705 Logged out successfully.
         </div>
       )}
 
@@ -871,6 +1242,147 @@ export default function CourseDashboard() {
               <button type="button" className="lms-modal-cancel" onClick={() => setEditModalOpen(false)}>Cancel</button>
               <button type="button" className="lms-modal-save" onClick={() => handleSaveProfile(editForm)}>Save Profile Changes</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Learning Schedule Modal */}
+      {scheduleModalOpen && (
+        <div className="lms-modal-overlay" onClick={() => setScheduleModalOpen(false)}>
+          <div className="lms-modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+            <div className="lms-modal-header">
+              <h2 className="lms-modal-title">
+                <Calendar size={20} style={{ color: '#9B7A3E', marginRight: '8px' }} />
+                Set Learning Schedule
+              </h2>
+              <button className="lms-modal-close" onClick={() => setScheduleModalOpen(false)}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div className="lms-form-group">
+                <label className="lms-form-label">Modules per Day</label>
+                <div className="lms-schedule-speed-grid">
+                  {[1, 2, 3, 4].map((num) => (
+                    <button
+                      key={num}
+                      className={`lms-schedule-speed-btn ${scheduleForm.modulesPerDay === num ? 'active' : ''}`}
+                      onClick={() => setScheduleForm({ ...scheduleForm, modulesPerDay: num })}
+                    >
+                      <span className="lms-schedule-speed-num">{num}</span>
+                      <span className="lms-schedule-speed-label">
+                        {num === 1 ? 'module' : 'modules'}/day
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                <p style={{ fontSize: '0.78rem', color: '#64748b', margin: '8px 0 0', lineHeight: 1.5 }}>
+                  {scheduleForm.modulesPerDay === 1 && `You'll finish the course in ${HR_COURSE.chapters.length} days.`}
+                  {scheduleForm.modulesPerDay === 2 && `You'll finish the course in ${Math.ceil(HR_COURSE.chapters.length / 2)} days.`}
+                  {scheduleForm.modulesPerDay === 3 && `You'll finish the course in ${Math.ceil(HR_COURSE.chapters.length / 3)} days.`}
+                  {scheduleForm.modulesPerDay === 4 && `You'll finish the course in ${Math.ceil(HR_COURSE.chapters.length / 4)} days.`}
+                </p>
+              </div>
+
+              <div className="lms-form-grid">
+                <div className="lms-form-group">
+                  <label className="lms-form-label">Start Date</label>
+                  <input
+                    type="date"
+                    className="lms-form-input"
+                    value={scheduleForm.startDate}
+                    min={new Date().toISOString().split('T')[0]}
+                    onChange={(e) => setScheduleForm({ ...scheduleForm, startDate: e.target.value })}
+                  />
+                </div>
+                <div className="lms-form-group">
+                  <label className="lms-form-label">Daily Reminder</label>
+                  <input
+                    type="time"
+                    className="lms-form-input"
+                    value={scheduleForm.reminderTime}
+                    onChange={(e) => setScheduleForm({ ...scheduleForm, reminderTime: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="lms-modal-footer">
+              <button type="button" className="lms-modal-cancel" onClick={() => setScheduleModalOpen(false)}>Cancel</button>
+              <button type="button" className="lms-modal-save" onClick={saveLearningSchedule}>
+                <Calendar size={15} style={{ marginRight: '6px' }} />
+                Save Schedule
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Saved Lessons Page */}
+      {currentPage === 'bookmarks' && (
+        <div className="lms-page-content">
+          <div style={{ maxWidth: '840px', margin: '0 auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+              <div>
+                <h2 style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontSize: '1.5rem', fontWeight: 700, color: '#0c1628', margin: 0 }}>Saved Modules</h2>
+                <p style={{ fontSize: '0.88rem', color: '#64748b', margin: '4px 0 0' }}>{bookmarks.length} bookmarked lesson{bookmarks.length !== 1 ? 's' : ''}</p>
+              </div>
+              <button onClick={() => setCurrentPage('dashboard')} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 18px', background: '#ffffff', border: '1px solid rgba(12,22,40,0.12)', borderRadius: '99px', color: '#0c1628', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+                Back to Dashboard
+              </button>
+            </div>
+
+            {bookmarks.length === 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '64px 24px', background: '#ffffff', borderRadius: '18px', border: '1px solid rgba(12,22,40,0.08)', boxShadow: '0 8px 30px rgba(12,22,40,0.04)' }}>
+                <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(155,122,62,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Bookmark size={28} style={{ color: '#9B7A3E' }} />
+                </div>
+                <h3 style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontSize: '1.1rem', fontWeight: 700, color: '#0c1628', margin: 0 }}>No saved modules yet</h3>
+                <p style={{ fontSize: '0.88rem', color: '#64748b', margin: 0, textAlign: 'center', maxWidth: '360px', lineHeight: 1.6 }}>
+                  Bookmark modules while learning and they'll appear here.
+                </p>
+                <button onClick={() => setCurrentPage('course')} style={{ marginTop: '8px', padding: '10px 24px', background: 'linear-gradient(135deg, #9B7A3E, #7D6334)', color: '#fff', border: 'none', borderRadius: '99px', fontSize: '0.88rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 4px 16px rgba(155,122,62,0.3)' }}>
+                  Start Learning
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {bookmarks.map((bm) => (
+                  <div key={bm.lessonId} className="lms-bookmark-card" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px', background: '#ffffff', borderRadius: '14px', border: '1px solid rgba(12,22,40,0.08)', boxShadow: '0 4px 16px rgba(12,22,40,0.03)', transition: 'all 0.2s' }}>
+                    <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: bm.lessonType === 'quiz' ? 'rgba(99,102,241,0.12)' : bm.lessonType === 'assignment' ? 'rgba(236,72,153,0.12)' : 'rgba(155,122,62,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {lessonTypeIcon(bm.lessonType, 20)}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontSize: '0.92rem', fontWeight: 700, color: '#0c1628', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', margin: 0 }}>{bm.lessonTitle}</div>
+                      <div style={{ fontSize: '0.78rem', color: '#64748b', margin: '3px 0 0', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <span>{bm.courseName}</span>
+                        <span>&middot;</span>
+                        <span>{bm.moduleName}</span>
+                        {bm.duration && <><span>&middot;</span><span>{bm.duration}</span></>}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                      <button
+                        onClick={() => { selectLesson(bm.lessonId); setCurrentPage('course'); }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 18px', background: 'linear-gradient(135deg, #9B7A3E, #7D6334)', color: '#fff', border: 'none', borderRadius: '99px', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', transition: 'all 0.2s' }}
+                      >
+                        <Play size={14} />
+                        View Lesson
+                      </button>
+                      <button
+                        onClick={() => removeBookmark(bm.lessonId)}
+                        title="Remove bookmark"
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.15)', borderRadius: '10px', color: '#dc2626', cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1226,16 +1738,56 @@ header.lms-header, .lms-header{position:sticky !important;top:0 !important;left:
 
 .lms-profile-stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 
-.lms-badges-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.lms-badge-item{display:flex;align-items:center;gap:12px;padding:16px;background:#f8f7f3;border:1px solid rgba(12,22,40,0.06);border-radius:14px;transition:all 0.2s}
-.lms-badge-item.unlocked{border-color:rgba(155,122,62,0.3);background:rgba(155,122,62,0.08)}
-.lms-badge-item.locked{opacity:0.55}
-.lms-badge-icon{font-size:1.6rem;flex-shrink:0}
-.lms-badge-info{flex:1;min-width:0}
-.lms-badge-info h4{font-family:'Plus Jakarta Sans',sans-serif;font-size:0.85rem;font-weight:700;color:#0c1628;margin:0 0 2px}
-.lms-badge-info p{font-size:0.72rem;color:#64748b;margin:0}
-.lms-badge-status{font-size:0.65rem;font-weight:700;text-transform:uppercase;padding:2px 6px;border-radius:4px;background:rgba(12,22,40,0.08);color:#64748b;flex-shrink:0}
-.lms-badge-item.unlocked .lms-badge-status{background:#9B7A3E;color:#ffffff}
+/* Schedule Learning */
+.lms-schedule-card{overflow:hidden}
+.lms-schedule-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px;padding:14px;background:#f8f7f3;border-radius:12px;border:1px solid rgba(12,22,40,0.06)}
+.lms-schedule-stat{display:flex;flex-direction:column;align-items:center}
+.lms-schedule-stat-val{font-family:'Plus Jakarta Sans',sans-serif;font-size:1.15rem;font-weight:800;color:#9B7A3E;line-height:1}
+.lms-schedule-stat-label{font-size:0.68rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;margin-top:3px}
+.lms-schedule-timeline{display:flex;flex-direction:column;gap:0;max-height:320px;overflow-y:auto;margin-bottom:16px;padding-right:4px}
+.lms-schedule-timeline::-webkit-scrollbar{width:4px}
+.lms-schedule-timeline::-webkit-scrollbar-track{background:transparent}
+.lms-schedule-timeline::-webkit-scrollbar-thumb{background:rgba(12,22,40,0.1);border-radius:100px}
+.lms-schedule-day{display:flex;gap:14px;min-height:40px}
+.lms-schedule-day-left{display:flex;flex-direction:column;align-items:center;width:20px;flex-shrink:0}
+.lms-schedule-day-dot{width:20px;height:20px;border-radius:50%;border:2px solid rgba(12,22,40,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;background:#ffffff;z-index:1;transition:all 0.2s}
+.lms-schedule-day-dot.done{background:#10B981;border-color:#10B981}
+.lms-schedule-day-dot.done svg{color:#ffffff}
+.lms-schedule-day-dot.current{background:#9B7A3E;border-color:#9B7A3E;box-shadow:0 0 0 4px rgba(155,122,62,0.2)}
+.lms-schedule-day-dot.missed{background:#fee2e2;border-color:#fca5a5}
+.lms-schedule-day-line{width:2px;flex:1;min-height:12px;background:rgba(12,22,40,0.08);margin:2px 0}
+.lms-schedule-day-line.done{background:#10B981}
+.lms-schedule-day-content{flex:1;padding-bottom:14px}
+.lms-schedule-day-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.lms-schedule-day-label{font-size:0.78rem;font-weight:700;color:#64748b}
+.lms-schedule-day-label.today{color:#9B7A3E;font-weight:800}
+.lms-schedule-day-date{font-size:0.72rem;color:#94a3b8}
+.lms-schedule-day-module{display:flex;align-items:center;gap:8px;padding:6px 10px;margin:3px 0;border-radius:8px;cursor:pointer;transition:all 0.15s}
+.lms-schedule-day-module:hover{background:#f8f7f3}
+.lms-schedule-module-dot{width:20px;height:20px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:700;color:#64748b;background:rgba(12,22,40,0.05);flex-shrink:0;transition:all 0.2s}
+.lms-schedule-module-dot.done{background:#10B981;color:#ffffff}
+.lms-schedule-module-dot.done svg{color:#ffffff}
+.lms-schedule-module-name{font-size:0.8rem;color:#334155;font-weight:500}
+.lms-schedule-day.done .lms-schedule-module-name{color:#64748b}
+.lms-schedule-day.missed .lms-schedule-module-name{color:#94a3b8}
+.lms-schedule-actions{display:flex;gap:10px}
+.lms-schedule-edit-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 16px;border:1px solid rgba(155,122,62,0.25);border-radius:10px;background:#ffffff;color:#9B7A3E;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.2s}
+.lms-schedule-edit-btn:hover{background:#f8f7f3;border-color:rgba(155,122,62,0.4)}
+.lms-schedule-clear-btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 16px;border:1px solid rgba(220,38,38,0.15);border-radius:10px;background:#ffffff;color:#dc2626;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.2s}
+.lms-schedule-clear-btn:hover{background:#fef2f2;border-color:rgba(220,38,38,0.3)}
+.lms-schedule-empty{display:flex;flex-direction:column;align-items:center;gap:12px;padding:28px 20px;text-align:center}
+.lms-schedule-empty-icon{width:56px;height:56px;border-radius:16px;background:rgba(155,122,62,0.1);display:flex;align-items:center;justify-content:center}
+.lms-schedule-empty-text{font-size:0.84rem;color:#64748b;margin:0;line-height:1.6;max-width:320px}
+.lms-schedule-setup-btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 24px;background:linear-gradient(135deg,#9B7A3E,#7D6334);color:#ffffff;border:none;border-radius:99px;font-size:0.88rem;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 16px rgba(155,122,62,0.3);transition:all 0.3s ease;margin-top:4px}
+.lms-schedule-setup-btn:hover{box-shadow:0 8px 24px rgba(155,122,62,0.4);transform:translateY(-1px)}
+.lms-schedule-speed-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.lms-schedule-speed-btn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px 8px;border:2px solid rgba(12,22,40,0.08);border-radius:12px;background:#ffffff;cursor:pointer;font-family:inherit;transition:all 0.2s}
+.lms-schedule-speed-btn:hover{border-color:rgba(155,122,62,0.3)}
+.lms-schedule-speed-btn.active{border-color:#9B7A3E;background:rgba(155,122,62,0.06)}
+.lms-schedule-speed-num{font-family:'Plus Jakarta Sans',sans-serif;font-size:1.3rem;font-weight:800;color:#0c1628;line-height:1}
+.lms-schedule-speed-btn.active .lms-schedule-speed-num{color:#9B7A3E}
+.lms-schedule-speed-label{font-size:0.7rem;color:#64748b;font-weight:500}
+.lms-schedule-speed-btn.active .lms-schedule-speed-label{color:#9B7A3E}
 
 /* Certificate View */
 .lms-certificate-page{max-width:840px;margin:0 auto}
@@ -1271,6 +1823,143 @@ header.lms-header, .lms-header{position:sticky !important;top:0 !important;left:
 .lms-cert-cta{padding:14px 36px;border:none;border-radius:99px;background:linear-gradient(135deg,#9B7A3E,#7D6334);color:#ffffff;font-size:0.92rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all 0.3s ease;box-shadow:0 6px 20px -4px rgba(155,122,62,0.35);margin-top:8px}
 .lms-cert-cta:hover{box-shadow:0 12px 28px -4px rgba(155,122,62,0.45);transform:translateY(-1px);background:#B89047}
 
+/* Dashboard Premium Styles */
+.lms-hero-card{background:linear-gradient(135deg,#0c1628 0%,#1e3a5f 100%);border-radius:20px;padding:36px;margin-bottom:24px;border:1px solid rgba(255,255,255,0.1);box-shadow:0 16px 48px rgba(12,22,40,0.3);position:relative;overflow:hidden}
+.lms-hero-card::before{content:'';position:absolute;top:-50%;right:-20%;width:400px;height:400px;background:radial-gradient(circle,rgba(155,122,62,0.12) 0%,transparent 70%);pointer-events:none}
+.lms-hero-content{display:flex;align-items:center;justify-content:space-between;gap:32px;position:relative;z-index:1}
+.lms-hero-text{flex:1;min-width:0}
+.lms-hero-badge{display:inline-flex;align-items:center;gap:6px;font-size:0.72rem;font-weight:700;color:#C5A059;background:rgba(155,122,62,0.15);padding:5px 14px;border-radius:99px;border:1px solid rgba(155,122,62,0.3);margin-bottom:16px;text-transform:uppercase;letter-spacing:0.5px}
+.lms-hero-name{font-family:'Plus Jakarta Sans',sans-serif;font-size:1.75rem;font-weight:800;color:#ffffff;margin:0 0 8px;line-height:1.25;letter-spacing:-0.02em}
+.lms-hero-actions{display:flex;align-items:center;gap:12px;margin-top:8px}
+.lms-hero-resume-btn{display:inline-flex;align-items:center;gap:8px;padding:12px 28px;border:none;border-radius:99px;background:linear-gradient(135deg,#9B7A3E,#7D6334);color:#ffffff;font-size:0.88rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all 0.3s cubic-bezier(0.16,1,0.3,1);box-shadow:0 6px 24px -4px rgba(155,122,62,0.4)}
+.lms-hero-resume-btn:hover{transform:translateY(-2px);box-shadow:0 12px 32px -4px rgba(155,122,62,0.5);background:#B89047}
+.lms-hero-view-btn{display:inline-flex;align-items:center;padding:12px 22px;border:1.5px solid rgba(255,255,255,0.25);border-radius:99px;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.9);font-size:0.88rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.3s ease;backdrop-filter:blur(8px)}
+.lms-hero-view-btn:hover{background:rgba(255,255,255,0.18);border-color:rgba(255,255,255,0.5);color:#ffffff}
+.lms-hero-ring-wrap{flex-shrink:0}
+.lms-hero-ring{position:relative;width:140px;height:140px}
+.lms-hero-ring svg{width:100%;height:100%}
+.lms-hero-ring-inner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.lms-hero-pct{font-family:'Plus Jakarta Sans',sans-serif;font-size:2rem;font-weight:800;color:#ffffff;line-height:1}
+.lms-hero-pct-label{font-size:0.72rem;color:#C5A059;font-weight:600;text-transform:uppercase;margin-top:2px;letter-spacing:0.5px}
+
+.lms-insights-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.lms-insight-card{background:#ffffff;border:1px solid rgba(12,22,40,0.08);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px;transition:all 0.25s cubic-bezier(0.4,0,0.2,1);box-shadow:0 8px 30px rgba(12,22,40,0.04)}
+.lms-insight-card:hover{border-color:rgba(155,122,62,0.3);transform:translateY(-2px);box-shadow:0 12px 32px rgba(12,22,40,0.08)}
+.lms-insight-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center}
+.lms-insight-data{display:flex;flex-direction:column}
+.lms-insight-value{font-family:'Plus Jakarta Sans',sans-serif;font-size:1.4rem;font-weight:800;color:#0c1628;line-height:1}
+.lms-insight-label{font-size:0.72rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;margin-top:2px}
+.lms-insight-bar{height:4px;background:rgba(12,22,40,0.06);border-radius:100px;overflow:hidden}
+.lms-insight-bar div{height:100%;border-radius:100px;transition:width 0.5s}
+
+.lms-quick-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.lms-qa-card{display:flex;align-items:center;gap:16px;padding:20px 22px;background:#ffffff;border:1px solid rgba(12,22,40,0.08);border-radius:16px;cursor:pointer;font-family:inherit;transition:all 0.25s cubic-bezier(0.4,0,0.2,1);box-shadow:0 8px 30px rgba(12,22,40,0.04);text-align:left}
+.lms-qa-card:hover{border-color:rgba(155,122,62,0.3);transform:translateY(-2px);box-shadow:0 12px 32px rgba(12,22,40,0.08)}
+.lms-qa-icon{width:50px;height:50px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform 0.3s cubic-bezier(0.16,1,0.3,1)}
+.lms-qa-card:hover .lms-qa-icon{transform:scale(1.08)}
+.lms-qa-info{display:flex;flex-direction:column;gap:3px}
+.lms-qa-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:0.92rem;color:#0c1628}
+.lms-qa-sub{font-size:0.78rem;color:#64748b;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px}
+
+.lms-section-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:1.05rem;color:#0c1628;margin:0 0 18px;display:flex;align-items:center;gap:8px}
+
+.lms-overview-header{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:22px;padding:18px 20px;background:#f8f7f3;border-radius:14px;border:1px solid rgba(12,22,40,0.06)}
+.lms-overview-course-name{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.1rem;color:#0c1628;margin:0 0 4px}
+.lms-overview-course-sub{font-size:0.82rem;color:#64748b;margin:0;line-height:1.4}
+.lms-overview-stats{display:flex;gap:24px;flex-shrink:0}
+.lms-overview-stat{display:flex;flex-direction:column;align-items:center}
+.lms-overview-stat-val{font-family:'Plus Jakarta Sans',sans-serif;font-size:1.2rem;font-weight:800;color:#9B7A3E;line-height:1}
+.lms-overview-stat-label{font-size:0.68rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;margin-top:3px}
+
+.lms-overview-modules{display:flex;flex-direction:column;gap:12px}
+.lms-overview-module{padding:16px 18px;border:1px solid rgba(12,22,40,0.06);border-radius:12px;cursor:pointer;transition:all 0.2s;background:#ffffff}
+.lms-overview-module:hover{border-color:rgba(155,122,62,0.25);box-shadow:0 4px 16px rgba(12,22,40,0.06);transform:translateY(-1px)}
+.lms-overview-module-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.lms-overview-module-num{font-size:0.72rem;font-weight:700;color:#9B7A3E;text-transform:uppercase;letter-spacing:0.3px}
+.lms-overview-module-count{font-size:0.72rem;color:#64748b;font-weight:500}
+.lms-overview-module-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:0.88rem;color:#0c1628;margin:0 0 10px}
+.lms-overview-module-bar{height:6px;background:rgba(12,22,40,0.06);border-radius:100px;overflow:hidden;margin-bottom:4px}
+.lms-overview-module-fill{height:100%;border-radius:100px;background:linear-gradient(90deg,#9B7A3E,#C5A059);transition:width 0.5s cubic-bezier(0.4,0,0.2,1)}
+.lms-overview-module-pct{font-size:0.72rem;font-weight:600;color:#64748b}
+
+.lms-actions-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.lms-action-card{display:flex;flex-direction:column;align-items:center;gap:10px;padding:18px 12px;border:1px solid rgba(12,22,40,0.06);border-radius:14px;background:#f8f7f3;cursor:pointer;font-family:inherit;transition:all 0.25s cubic-bezier(0.4,0,0.2,1)}
+.lms-action-card:hover{border-color:rgba(155,122,62,0.3);transform:translateY(-3px);box-shadow:0 8px 24px rgba(12,22,40,0.08)}
+.lms-action-icon{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:transform 0.3s cubic-bezier(0.16,1,0.3,1)}
+.lms-action-card:hover .lms-action-icon{transform:scale(1.1)}
+.lms-action-label{font-size:0.78rem;font-weight:600;color:#0c1628}
+
+.lms-timeline{display:flex;flex-direction:column;gap:0}
+.lms-timeline-item{display:flex;align-items:center;gap:14px;padding:12px 14px;border-radius:12px;cursor:pointer;transition:all 0.2s;border-left:3px solid transparent}
+.lms-timeline-item:hover{background:#f8f7f3}
+.lms-timeline-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;transition:all 0.2s}
+.lms-timeline-dot.completed{background:#10B981;box-shadow:0 0 8px rgba(16,185,129,0.4)}
+.lms-timeline-dot.progress{background:#94a3b8;box-shadow:0 0 8px rgba(148,163,184,0.3)}
+.lms-timeline-content{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.lms-timeline-title{font-size:0.85rem;font-weight:600;color:#0c1628;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lms-timeline-meta{font-size:0.72rem;color:#64748b;font-weight:500}
+
+.lms-empty-state{display:flex;flex-direction:column;align-items:center;gap:10px;padding:32px 16px;color:#94a3b8}
+.lms-empty-state p{font-size:0.85rem;font-weight:500}
+
+.lms-mini-calendar{padding:4px 0}
+.lms-cal-header{text-align:center;margin-bottom:14px}
+.lms-cal-header span{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:0.95rem;color:#0c1628}
+.lms-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.lms-cal-day-name{text-align:center;font-size:0.68rem;font-weight:700;color:#94a3b8;text-transform:uppercase;padding:6px 0}
+.lms-cal-day{text-align:center;padding:8px 4px;font-size:0.78rem;font-weight:500;color:#64748b;border-radius:8px;transition:all 0.2s}
+.lms-cal-day.accessed{background:rgba(155,122,62,0.15);color:#7D6334;font-weight:700}
+.lms-cal-day.today{background:#9B7A3E;color:#ffffff;font-weight:700;box-shadow:0 2px 8px rgba(155,122,62,0.3)}
+.lms-cal-day.empty{background:transparent}
+
+.lms-goal-card{overflow:visible}
+.lms-goal-header{display:flex;align-items:center;gap:8px}
+.lms-goal-ring-wrap{flex-shrink:0}
+.lms-goal-ring{position:relative;width:72px;height:72px}
+.lms-goal-ring svg{width:100%;height:100%}
+.lms-goal-ring-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:1px}
+.lms-goal-done{font-family:'Plus Jakarta Sans',sans-serif;font-size:1.1rem;font-weight:800;color:#0c1628}
+.lms-goal-sep{font-size:0.8rem;color:#94a3b8}
+.lms-goal-target{font-size:0.8rem;color:#64748b;font-weight:600}
+.lms-goal-message{font-size:0.85rem;color:#64748b;line-height:1.5;margin:0;flex:1}
+
+.lms-weekly-chart{display:flex;align-items:flex-end;gap:8px;height:120px;padding:8px 0}
+.lms-weekly-bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%}
+.lms-weekly-bar-track{flex:1;width:100%;background:rgba(12,22,40,0.04);border-radius:8px;display:flex;align-items:flex-end;overflow:hidden}
+.lms-weekly-bar-fill{width:100%;border-radius:8px;transition:height 0.5s cubic-bezier(0.4,0,0.2,1);min-height:4px}
+.lms-weekly-day{font-size:0.68rem;font-weight:600;color:#94a3b8}
+.lms-weekly-day.today{color:#9B7A3E;font-weight:700}
+
+.lms-achievements-grid{display:flex;gap:12px}
+.lms-ach-badge{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 8px;border-radius:14px;background:rgba(12,22,40,0.04);border:1px solid rgba(12,22,40,0.06);transition:all 0.25s;opacity:0.5}
+.lms-ach-badge.unlocked{background:linear-gradient(135deg,rgba(155,122,62,0.12),rgba(155,122,62,0.06));border-color:rgba(155,122,62,0.25);opacity:1}
+.lms-ach-badge.unlocked:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(155,122,62,0.15)}
+.lms-ach-icon{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(12,22,40,0.08);color:#94a3b8}
+.lms-ach-badge.unlocked .lms-ach-icon{background:linear-gradient(135deg,#9B7A3E,#7D6334);color:#ffffff;box-shadow:0 4px 12px rgba(155,122,62,0.3)}
+.lms-ach-title{font-size:0.65rem;font-weight:700;color:#64748b;text-align:center;line-height:1.2}
+.lms-ach-badge.unlocked .lms-ach-title{color:#0c1628}
+
+.lms-motivation-card{display:flex;align-items:center;gap:16px;padding:20px 24px;background:linear-gradient(135deg,rgba(245,158,11,0.06),rgba(99,102,241,0.04));border-color:rgba(245,158,11,0.15)}
+.lms-motivation-icon{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(245,158,11,0.08));display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.lms-motivation-text{font-size:0.9rem;color:#334155;line-height:1.6;margin:0;font-weight:500}
+
+.lms-milestone-card{padding:20px 24px}
+.lms-milestone-progress{margin:12px 0 10px}
+.lms-milestone-bar{height:8px;background:rgba(12,22,40,0.06);border-radius:100px;overflow:hidden}
+.lms-milestone-labels{display:flex;justify-content:space-between;margin-top:8px}
+.lms-milestone-labels span{font-size:0.72rem;font-weight:700;color:#64748b}
+.lms-milestone-text{font-size:0.82rem;color:#64748b;margin:0;line-height:1.5}
+
+/* Bookmark Button Styles */
+.lms-bookmark-btn{position:relative;display:flex;align-items:center;justify-content:center;width:34px;height:34px;border:1px solid rgba(12,22,40,0.08);border-radius:8px;background:#ffffff;color:#64748b;cursor:pointer;transition:all 0.2s}
+.lms-bookmark-btn:hover{border-color:#9B7A3E;color:#9B7A3E}
+.lms-bookmark-btn.bookmarked{background:rgba(155,122,62,0.08);border-color:rgba(155,122,62,0.3);color:#9B7A3E}
+.lms-bookmark-btn.bookmark-pop{animation:bookmarkPop 0.6s cubic-bezier(0.16,1,0.3,1)}
+@keyframes bookmarkPop{0%{transform:scale(1)}30%{transform:scale(1.25)}60%{transform:scale(0.95)}100%{transform:scale(1)}}
+.lms-bookmark-tooltip{position:absolute;bottom:-32px;left:50%;transform:translateX(-50%);padding:4px 10px;background:#0c1628;color:#ffffff;font-size:0.7rem;font-weight:600;border-radius:6px;white-space:nowrap;pointer-events:none;z-index:100;box-shadow:0 4px 12px rgba(0,0,0,0.2)}
+.lms-bookmark-tooltip::before{content:'';position:absolute;top:-4px;left:50%;transform:translateX(-50%);border-left:4px solid transparent;border-right:4px solid transparent;border-bottom:4px solid #0c1628}
+.lms-bookmark-card:hover{border-color:rgba(155,122,62,0.25);transform:translateY(-1px);box-shadow:0 8px 24px rgba(12,22,40,0.06)}
+
 /* Media Queries */
 @media(max-width:1200px){
   .lms-dash-grid{grid-template-columns:1fr 1fr}
@@ -1278,6 +1967,8 @@ header.lms-header, .lms-header{position:sticky !important;top:0 !important;left:
   .lms-modules-grid{grid-template-columns:1fr 1fr}
   .lms-profile-layout{grid-template-columns:1fr}
   .lms-right-panel{width:280px;min-width:280px}
+  .lms-insights-grid{grid-template-columns:1fr 1fr}
+  .lms-dash-two-col{grid-template-columns:1fr}
 }
 @media(max-width:1024px){
   .lms-header-nav{gap:2px}
@@ -1305,8 +1996,14 @@ header.lms-header, .lms-header{position:sticky !important;top:0 !important;left:
   .lms-dash-grid{grid-template-columns:1fr}
   .lms-dash-course-card{flex-direction:column;text-align:center}
   .lms-modules-grid{grid-template-columns:1fr}
-  .lms-badges-grid{grid-template-columns:1fr}
   .lms-profile-stats-grid{grid-template-columns:1fr 1fr}
+  .lms-insights-grid{grid-template-columns:1fr}
+  .lms-actions-grid{grid-template-columns:repeat(2,1fr)}
+  .lms-hero-card{padding:24px}
+  .lms-quick-actions{grid-template-columns:repeat(2,1fr)}
+  .lms-overview-header{flex-direction:column;text-align:center}
+  .lms-overview-stats{justify-content:center}
+  .lms-schedule-speed-grid{grid-template-columns:repeat(2,1fr)}
 }
 @media(max-width:480px){
   .lms-header{padding:0 12px;height:64px}
@@ -1316,5 +2013,8 @@ header.lms-header, .lms-header{position:sticky !important;top:0 !important;left:
   .lms-video-section{padding:16px 14px 0}
   .lms-page-content{padding:20px 14px}
   .lms-profile-stats-grid{grid-template-columns:1fr}
+  .lms-actions-grid{grid-template-columns:1fr}
+  .lms-quick-actions{grid-template-columns:1fr}
+  .lms-achievements-grid{flex-wrap:wrap}
 }
 `;

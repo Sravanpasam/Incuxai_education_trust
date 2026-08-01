@@ -1,4 +1,4 @@
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import supabase from '../config/supabase.js';
 import { generateOTP } from '../utils/generateOTP.js';
 
@@ -7,62 +7,61 @@ const MAX_ATTEMPTS = 5;
 const MAX_RESEND_PER_EMAIL = 5;
 const BCRYPT_ROUNDS = 10;
 
-/**
- * Hash an OTP string using bcrypt.
- */
 async function hashOTP(otp) {
   return bcrypt.hash(otp, BCRYPT_ROUNDS);
 }
 
-/**
- * Compare a plain OTP against a bcrypt hash.
- */
 async function compareOTP(plain, hash) {
   return bcrypt.compare(plain, hash);
 }
 
 /**
  * Generate, hash, and store an OTP for the given email.
- * Previous unverified OTPs for this email are replaced.
- * @returns {{ otp: string, error: string|null }}
+ * Previous OTPs for this email are deleted (no dependency on `verified` column).
  */
 export async function createAndStoreOTP(email) {
   try {
-    // Rate-limit: check how many unexpired OTPs exist recently for this email
+    console.log(`[OTPService] createAndStoreOTP — email: ${email}`);
+
     const { count } = await supabase
       .from('otp_verifications')
       .select('id', { count: 'exact', head: true })
       .eq('email', email)
-      .eq('verified', false)
       .gt('created_at', new Date(Date.now() - OTP_EXPIRY_MINUTES * 60 * 1000).toISOString());
 
+    console.log(`[OTPService] recent OTP count for ${email}: ${count}`);
+
     if (count && count >= MAX_RESEND_PER_EMAIL) {
+      console.log(`[OTPService] RATE LIMITED — ${email} has ${count} recent OTPs`);
       return { otp: null, error: 'Too many OTP requests. Please try again later.' };
     }
 
-    // Invalidate any previous unverified OTPs for this email
-    await supabase
+    const { error: delError, count: delCount } = await supabase
       .from('otp_verifications')
-      .update({ verified: true })
-      .eq('email', email)
-      .eq('verified', false);
+      .delete()
+      .eq('email', email);
 
-    // Generate and hash
+    if (delError) {
+      console.error('[OTPService] Delete previous OTPs error:', delError.message);
+    } else {
+      console.log(`[OTPService] Deleted previous OTPs for ${email}`);
+    }
+
     const otp = generateOTP();
     const otp_hash = await hashOTP(otp);
     const expires_at = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000).toISOString();
 
-    // Store in Supabase
-    const { error } = await supabase.from('otp_verifications').insert({
+    console.log(`[OTPService] OTP generated for ${email}: ${otp}, expires: ${expires_at}`);
+
+    const { error: insError } = await supabase.from('otp_verifications').insert({
       email,
       otp_hash,
       expires_at,
-      verified: false,
       attempts: 0,
     });
 
-    if (error) {
-      console.error('[OTPService] Insert error:', error.message);
+    if (insError) {
+      console.error('[OTPService] Insert error:', insError.message);
       return { otp: null, error: 'Failed to generate OTP. Please try again.' };
     }
 
@@ -74,7 +73,7 @@ export async function createAndStoreOTP(email) {
 }
 
 /**
- * Find the latest unverified OTP record for an email.
+ * Find the latest OTP record for an email (order by created_at DESC).
  * Returns null if none found.
  */
 export async function getLatestOTP(email) {
@@ -82,7 +81,6 @@ export async function getLatestOTP(email) {
     .from('otp_verifications')
     .select('*')
     .eq('email', email)
-    .eq('verified', false)
     .order('created_at', { ascending: false })
     .limit(1)
     .single();
@@ -93,7 +91,7 @@ export async function getLatestOTP(email) {
 
 /**
  * Verify a plain OTP against the stored hash.
- * @returns {{ valid: boolean, reason: string }}
+ * On success, delete the OTP record. On max attempts, delete it too.
  */
 export async function verifyOTP(email, otp) {
   const record = await getLatestOTP(email);
@@ -102,28 +100,21 @@ export async function verifyOTP(email, otp) {
     return { valid: false, reason: 'No active OTP found. Please request a new code.' };
   }
 
-  // Check expiry
   if (new Date(record.expires_at) < new Date()) {
+    await supabase.from('otp_verifications').delete().eq('id', record.id);
     return { valid: false, reason: 'OTP has expired. Please request a new code.' };
   }
 
-  // Check max attempts
   if (record.attempts >= MAX_ATTEMPTS) {
-    // Mark as verified so it cannot be reused
-    await supabase
-      .from('otp_verifications')
-      .update({ verified: true })
-      .eq('id', record.id);
+    await supabase.from('otp_verifications').delete().eq('id', record.id);
     return { valid: false, reason: 'Maximum verification attempts reached. Please request a new code.' };
   }
 
-  // Increment attempts
   await supabase
     .from('otp_verifications')
     .update({ attempts: record.attempts + 1 })
     .eq('id', record.id);
 
-  // Compare
   const match = await compareOTP(otp, record.otp_hash);
 
   if (!match) {
@@ -136,17 +127,13 @@ export async function verifyOTP(email, otp) {
     };
   }
 
-  // Mark verified and delete
-  await supabase
-    .from('otp_verifications')
-    .delete()
-    .eq('id', record.id);
+  await supabase.from('otp_verifications').delete().eq('id', record.id);
 
   return { valid: true, reason: 'OTP verified successfully.' };
 }
 
 /**
- * Delete all expired OTP records (cleanup utility).
+ * Delete all expired OTP records.
  */
 export async function cleanupExpiredOTPs() {
   const { error } = await supabase
