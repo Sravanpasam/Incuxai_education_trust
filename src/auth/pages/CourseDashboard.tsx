@@ -326,8 +326,8 @@ export default function CourseDashboard() {
     mainLogout();
     setLogoutToast(true);
     setTimeout(() => setLogoutToast(false), 2500);
-    window.history.replaceState(null, '', '/lms/sign-in');
-    navigate('/lms/sign-in', { replace: true });
+    window.history.replaceState(null, '', '/sign-in');
+    navigate('/sign-in', { replace: true });
   }, [lmsLogout, mainLogout, navigate]);
 
   const isLessonBookmarked = useMemo(() => bookmarks.some((b) => b.lessonId === activeLessonId), [bookmarks, activeLessonId]);
@@ -452,7 +452,7 @@ export default function CourseDashboard() {
       { icon: 'flame', title: 'Quarter Way', desc: 'Complete 25% of the course', t: 0.25 },
       { icon: 'zap', title: 'Halfway Hero', desc: 'Complete 50% of the course', t: 0.5 },
       { icon: 'trophy', title: 'Almost There', desc: 'Complete 75% of the course', t: 0.75 },
-      { icon: 'crown', title: 'Course Master', desc: 'Complete all lessons', t: 1 },
+      { icon: 'crown', title: 'Course Master', desc: 'Complete all modules', t: 1 },
     ];
     return ms.map(m => ({
       ...m, unlocked: completedCount >= Math.ceil(totalLessons * m.t)
@@ -657,7 +657,7 @@ export default function CourseDashboard() {
                   <Bookmark size={22} style={{ color: '#ffffff' }} />
                 </div>
                 <div className="lms-qa-info">
-                  <span className="lms-qa-title">Saved Lessons</span>
+                  <span className="lms-qa-title">Saved Modules</span>
                   <span className="lms-qa-sub">{bookmarks.length === 0 ? 'No bookmarks yet' : `${bookmarks.length} bookmarked`}</span>
                 </div>
               </button>
@@ -681,7 +681,7 @@ export default function CourseDashboard() {
                   </div>
                   <div className="lms-overview-stat">
                     <span className="lms-overview-stat-val">{totalLessons}</span>
-                    <span className="lms-overview-stat-label">Lessons</span>
+                    <span className="lms-overview-stat-label">Learning Path</span>
                   </div>
                   <div className="lms-overview-stat">
                     <span className="lms-overview-stat-val">{progressPercent}%</span>
@@ -696,7 +696,7 @@ export default function CourseDashboard() {
                     <div key={chapter.id} className="lms-overview-module" onClick={() => { selectLesson(chapter.lessons[0].id); setCurrentPage('course'); }}>
                       <div className="lms-overview-module-header">
                         <span className="lms-overview-module-num">Module {ci + 1}</span>
-                        <span className="lms-overview-module-count">{cp.done}/{cp.total} lessons</span>
+                        <span className="lms-overview-module-count">{cp.done}/{cp.total} modules</span>
                       </div>
                       <h5 className="lms-overview-module-title">{chapter.title}</h5>
                       <div className="lms-overview-module-bar">
@@ -1325,7 +1325,7 @@ export default function CourseDashboard() {
           <div style={{ maxWidth: '840px', margin: '0 auto' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
               <div>
-                <h2 style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontSize: '1.5rem', fontWeight: 700, color: '#0c1628', margin: 0 }}>Saved Lessons</h2>
+                <h2 style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontSize: '1.5rem', fontWeight: 700, color: '#0c1628', margin: 0 }}>Saved Modules</h2>
                 <p style={{ fontSize: '0.88rem', color: '#64748b', margin: '4px 0 0' }}>{bookmarks.length} bookmarked lesson{bookmarks.length !== 1 ? 's' : ''}</p>
               </div>
               <button onClick={() => setCurrentPage('dashboard')} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 18px', background: '#ffffff', border: '1px solid rgba(12,22,40,0.12)', borderRadius: '99px', color: '#0c1628', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s' }}>
@@ -1339,9 +1339,9 @@ export default function CourseDashboard() {
                 <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(155,122,62,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Bookmark size={28} style={{ color: '#9B7A3E' }} />
                 </div>
-                <h3 style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontSize: '1.1rem', fontWeight: 700, color: '#0c1628', margin: 0 }}>No saved lessons yet</h3>
+                <h3 style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', fontSize: '1.1rem', fontWeight: 700, color: '#0c1628', margin: 0 }}>No saved modules yet</h3>
                 <p style={{ fontSize: '0.88rem', color: '#64748b', margin: 0, textAlign: 'center', maxWidth: '360px', lineHeight: 1.6 }}>
-                  Bookmark lessons while learning and they'll appear here.
+                  Bookmark modules while learning and they'll appear here.
                 </p>
                 <button onClick={() => setCurrentPage('course')} style={{ marginTop: '8px', padding: '10px 24px', background: 'linear-gradient(135deg, #9B7A3E, #7D6334)', color: '#fff', border: 'none', borderRadius: '99px', fontSize: '0.88rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', boxShadow: '0 4px 16px rgba(155,122,62,0.3)' }}>
                   Start Learning

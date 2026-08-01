@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import ietLogo from '../../../../picss/iet logo.png';
 import { validateWorkEmail } from '../../../auth/validation/emailValidation';
 import { validateCompanyEmail } from '../../../auth/validation/companyEmailValidation';
-import { sendOtp, verifyOtp, registerUser, loginUser } from '../../../auth/services/authService';
+import { sendOtp, verifyOtp, registerUser, loginUser, resendOtpApi, sendPersonalOtpApi } from '../../../auth/services/authService';
 import { useLmsAuth } from '../context/LmsAuthContext';
 import { useAuth } from '../../../auth/context/AuthContext';
 import RegistrationSuccessPopup from '../../../auth/components/RegistrationSuccessPopup';
@@ -149,21 +149,36 @@ export default function LmsSignUpPage() {
     const targetEmail = otpTarget === 'work' ? workEmail.trim().toLowerCase() : form.personalEmail.trim().toLowerCase();
     setLoading(true);
     try {
-      const res = await sendOtp(targetEmail, form.fullName);
+      let res;
+      if (otpTarget === 'personal') {
+        res = await sendPersonalOtpApi(
+          workEmail.trim().toLowerCase(),
+          form.personalEmail.trim().toLowerCase(),
+          form.fullName,
+        );
+      } else {
+        res = await sendOtp(workEmail.trim().toLowerCase(), {
+          name: form.fullName.trim(),
+          personalEmail: form.personalEmail.trim().toLowerCase(),
+          phone: form.phone.trim(),
+          company: form.companyName.trim(),
+          role: form.role,
+          workEmail: workEmail.trim().toLowerCase(),
+          password: form.password,
+        });
+      }
       if (res.success) {
         showToast('success', res.message || 'OTP sent successfully!');
         setTimer(OTP_TIMER);
         setResendCd(RESEND_CD);
         setOtp(Array(OTP_LENGTH).fill(''));
+        setResendCount((res as any).resendCount ?? 1);
       } else {
         showToast('error', res.message);
       }
     } catch (err: any) {
-      if (err?.name === 'TypeError' && err?.message?.includes('Failed to fetch')) {
-        showToast('error', 'Cannot reach the authentication server. Make sure the server is running (npm run dev:server).');
-      } else {
-        showToast('error', 'Network error. Please check your connection and try again.');
-      }
+      console.error('[LmsSignUp] sendOtp error:', err);
+      showToast('error', err?.message || 'Network error. Please check your connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -179,63 +194,55 @@ export default function LmsSignUpPage() {
     const verifyEmail = otpTarget === 'work' ? workEmail.trim().toLowerCase() : form.personalEmail.trim().toLowerCase();
     setLoading(true);
     try {
-      const otpRes = await verifyOtp(verifyEmail, code);
-      if (!otpRes.success) {
-        showToast('error', otpRes.message);
-        setLoading(false);
-        return;
-      }
-      const regRes = await registerUser({
-        fullName: form.fullName,
-        personalEmail: form.personalEmail,
-        phone: form.phone,
-        workEmail: workEmail.trim().toLowerCase(),
-        companyName: form.companyName,
-        location: form.location,
+      const res = await verifyOtp(verifyEmail, code, {
+        name: form.fullName.trim(),
+        personalEmail: form.personalEmail.trim().toLowerCase(),
+        phone: form.phone.trim(),
+        company: form.companyName.trim(),
         role: form.role,
+        workEmail: workEmail.trim().toLowerCase(),
         password: form.password,
       });
-      if (regRes.success) {
-        const loginRes = await loginUser(workEmail.trim().toLowerCase(), form.password);
-        if (loginRes.success && loginRes.token && loginRes.user) {
-          lmsLogin(loginRes.token, loginRes.user.email, loginRes.user.name, loginRes.user.id);
-          mainLogin(loginRes.token, loginRes.user.email, loginRes.user.name, loginRes.user.id);
-        }
+
+      if (res.success && res.token && res.user?.name && res.user?.email) {
+        lmsLogin(res.token, res.user.email, res.user.name, res.user.id);
+        mainLogin(res.token, res.user.email, res.user.name, res.user.id);
         setShowPopup(true);
       } else {
-        showToast('error', regRes.message || 'Failed to create account. Please try again.');
+        showToast('error', res.message || 'Failed to create account. Please try again.');
       }
     } catch (err: any) {
-      if (err?.name === 'TypeError' && err?.message?.includes('Failed to fetch')) {
-        showToast('error', 'Cannot reach the authentication server. Make sure the server is running (npm run dev:server).');
-      } else {
-        showToast('error', 'Network error. Please try again.');
-      }
+      console.error('[LmsSignUp] verifyOtp error:', err);
+      showToast('error', err?.message || 'Network error. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleResend = async () => {
-    const newCount = resendCount + 1;
-    setResendCount(newCount);
-    if (newCount >= 2 && otpTarget === 'work') {
-      setOtpTarget('personal');
-      showToast('error', 'Work email not receiving OTP? Switching to your personal email.');
-    }
-    const targetEmail = (newCount >= 2 && otpTarget === 'work')
-      ? form.personalEmail.trim().toLowerCase()
-      : otpTarget === 'personal'
-        ? form.personalEmail.trim().toLowerCase()
-        : workEmail.trim().toLowerCase();
+    if (loading || resendCd > 0) return;
     setResendCd(RESEND_CD);
     setTimer(OTP_TIMER);
     setOtp(Array(OTP_LENGTH).fill(''));
     try {
-      const res = await sendOtp(targetEmail, form.fullName);
-      if (res.success) showToast('success', `New code sent to ${targetEmail}`);
-      else showToast('error', res.message);
+      const res = await resendOtpApi(
+        workEmail.trim().toLowerCase(),
+        form.personalEmail.trim().toLowerCase(),
+        resendCount + 1,
+        form.fullName,
+      );
+      if (res.success) {
+        setResendCount((res as any).resendCount ?? resendCount + 1);
+        if ((res as any).recipient === 'personal') {
+          setOtpTarget('personal');
+        }
+        const recipient = (res as any).recipient === 'personal' ? 'Personal Email' : 'Work Email';
+        showToast('success', res.message || `OTP resent to your ${recipient}.`);
+      } else {
+        showToast('error', res.message);
+      }
     } catch (err: any) {
+      console.error('[LmsSignUp] resend error:', err);
       showToast('error', err?.message || 'Failed to resend code.');
     }
   };

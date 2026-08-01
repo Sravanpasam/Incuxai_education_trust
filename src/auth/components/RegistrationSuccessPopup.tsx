@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 
 interface Props {
   visible: boolean;
@@ -89,7 +89,20 @@ export default function RegistrationSuccessPopup({ visible, onComplete }: Props)
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, [visible]);
 
+  const autoTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  // Auto-dismiss after 3 seconds
+  useEffect(() => {
+    if (!visible) return;
+    autoTimer.current = setTimeout(() => {
+      setPhase('exiting');
+      setTimeout(onComplete, 450);
+    }, 3000);
+    return () => { if (autoTimer.current) clearTimeout(autoTimer.current); };
+  }, [visible, onComplete]);
+
   const handleButton = useCallback(() => {
+    if (autoTimer.current) clearTimeout(autoTimer.current);
     setPhase('exiting');
     setTimeout(onComplete, 450);
   }, [onComplete]);

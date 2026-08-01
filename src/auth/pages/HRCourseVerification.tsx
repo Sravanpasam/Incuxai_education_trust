@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { validateWorkEmail } from '../validation/emailValidation';
 import { validateCompanyEmail } from '../validation/companyEmailValidation';
-import { sendOtp, verifyOtp, registerUser } from '../services/authService';
+import { sendOtp, verifyOtp } from '../services/authService';
 import { useAuth } from '../context/AuthContext';
 
 const OTP_LENGTH = 6;
@@ -103,15 +103,6 @@ export default function HRCourseVerification() {
     }
     setLoading(true);
     try {
-      // Step 1: Verify OTP
-      const otpRes = await verifyOtp(email.trim().toLowerCase(), code);
-      if (!otpRes.success) {
-        showToast('error', otpRes.message);
-        setLoading(false);
-        return;
-      }
-
-      // Step 2: Register user account
       const raw = localStorage.getItem('pending_corp_registration');
       if (!raw) {
         showToast('error', 'Registration data not found. Please start over.');
@@ -120,20 +111,18 @@ export default function HRCourseVerification() {
       }
       const reg = JSON.parse(raw);
 
-      const regRes = await registerUser({
-        fullName: reg.fullName,
+      const res = await verifyOtp(email.trim().toLowerCase(), code, {
+        name: reg.fullName,
         personalEmail: reg.personalEmail,
         phone: reg.phone,
-        workEmail: email.trim().toLowerCase(),
-        companyName: reg.companyName,
-        location: reg.location,
+        company: reg.companyName,
         role: reg.role,
+        workEmail: email.trim().toLowerCase(),
         password: reg.password,
       });
 
-      if (regRes.success && regRes.token && regRes.user) {
-        // Step 3: Auto-login
-        login(regRes.token, regRes.user.email, regRes.user.name, regRes.user.id);
+      if (res.success && res.token && res.user?.name && res.user?.email) {
+        login(res.token, res.user.email, res.user.name, res.user.id);
 
         // Save corporate registration record
         const record = {
@@ -159,7 +148,7 @@ export default function HRCourseVerification() {
         showToast('success', 'Account created! Redirecting to course...');
         setTimeout(() => navigate('/'), 1500);
       } else {
-        showToast('error', regRes.message || 'Failed to create account. Please try again.');
+        showToast('error', res.message || 'Failed to create account. Please try again.');
       }
     } catch {
       showToast('error', 'Network error. Please try again.');
