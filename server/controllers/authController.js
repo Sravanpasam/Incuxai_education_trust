@@ -14,7 +14,7 @@ import { ensureUsersTable } from '../migration/ensureUsersTable.js';
  *  - forcePersonal=true → always sends to personal email (dedicated button)
  *
  * OTP is ALWAYS stored against the personal email so verification is consistent.
- * The email is sent to the destination email (work or personal).
+ * The email  is sent to the destination email (work or personal).
  */
 export async function sendOtp(req, res) {
   try {
