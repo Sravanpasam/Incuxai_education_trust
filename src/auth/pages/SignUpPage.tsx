@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, type FormEvent } from 'react'
 import { useNavigate, Link } from 'react-router-dom';
 import { validateWorkEmail } from '../validation/emailValidation';
 import { validateCompanyEmail } from '../validation/companyEmailValidation';
-import { sendOtp, sendPersonalOtpApi, verifyOtp, registerUser, loginUser } from '../services/authService';
+import { sendOtp, verifyOtp, registerUser, loginUser } from '../services/authService';
 import { useAuth } from '../context/AuthContext';
 import { useLmsAuth } from '../../lms/auth/context/LmsAuthContext';
 import RegistrationSuccessPopup from '../components/RegistrationSuccessPopup';
@@ -150,16 +150,7 @@ export default function SignUpPage() {
     const targetEmail = otpTarget === 'work' ? workEmail.trim().toLowerCase() : form.personalEmail.trim().toLowerCase();
     setLoading(true);
     try {
-      let res;
-      if (otpTarget === 'personal') {
-        res = await sendPersonalOtpApi(
-          workEmail.trim().toLowerCase(),
-          form.personalEmail.trim().toLowerCase(),
-          form.fullName,
-        );
-      } else {
-        res = await sendOtp(targetEmail, form.fullName);
-      }
+      const res = await sendOtp(targetEmail, form.fullName);
       if (res.success) {
         showToast('success', res.message || 'OTP sent successfully!');
         setTimer(OTP_TIMER);
@@ -250,8 +241,8 @@ export default function SignUpPage() {
       const res = await sendOtp(targetEmail, form.fullName);
       if (res.success) showToast('success', `New code sent to ${targetEmail}`);
       else showToast('error', res.message);
-    } catch {
-      showToast('error', 'Failed to resend code.');
+    } catch (err: any) {
+      showToast('error', err?.message || 'Failed to resend code.');
     }
   };
 

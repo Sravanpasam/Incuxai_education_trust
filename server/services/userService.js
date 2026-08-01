@@ -1,4 +1,4 @@
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import supabase from '../config/supabase.js';
 
 const BCRYPT_ROUNDS = 10;
@@ -42,31 +42,17 @@ export async function createUser({ fullName, personalEmail, phone, workEmail, pa
 }
 
 /**
- * Find a user by work email or personal email.
- * Work email match takes priority over personal email.
+ * Find a user by work email.
  */
-export async function findUserByEmail(email) {
-  const normalizedEmail = email.toLowerCase();
-
-  // Try work email first
-  const { data: workMatch, error: workError } = await supabase
+export async function findUserByEmail(workEmail) {
+  const { data, error } = await supabase
     .from('users')
     .select('*')
-    .eq('work_email', normalizedEmail)
+    .eq('work_email', workEmail.toLowerCase())
     .single();
 
-  if (!workError && workMatch) return workMatch;
-
-  // Fall back to personal email
-  const { data: personalMatch, error: personalError } = await supabase
-    .from('users')
-    .select('*')
-    .eq('personal_email', normalizedEmail)
-    .single();
-
-  if (!personalError && personalMatch) return personalMatch;
-
-  return null;
+  if (error || !data) return null;
+  return data;
 }
 
 /**
