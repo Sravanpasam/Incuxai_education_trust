@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { useAuth } from './auth/context/AuthContext';
+import { useLmsAuth } from './lms/auth/context/LmsAuthContext';
 import logoImg from '../picss/iet logo.png';
 import whoWeAreImg from './assets/about_who_we_are.jpg';
 import iit1Img from '../picss/iit1.png';
@@ -175,6 +176,25 @@ const quizBank = [
 export default function App() {
   const navigate = useNavigate();
   const { user: authUser, isAuthenticated, logout: authLogout } = useAuth();
+  const { logout: lmsLogout } = useLmsAuth();
+
+  const handleSignOut = () => {
+    let ok = true;
+    try {
+      const mainOk = authLogout();
+      const lmsOk = lmsLogout();
+      ok = mainOk && lmsOk;
+    } catch (err) {
+      console.error('[App] Sign out error:', err);
+      ok = false;
+    }
+    if (!ok) {
+      (window as any).showToast?.('Sign out failed. Please try again.');
+      return;
+    }
+    window.history.replaceState(null, '', '/');
+    navigate('/', { replace: true });
+  };
   const [isIitPaymentFlow, setIsIitPaymentFlow] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
 
@@ -2653,7 +2673,7 @@ export default function App() {
               <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.7)', fontWeight: '600', marginRight: '0.5rem' }}>
                 {authUser?.name || authUser?.email}
               </span>
-              <button className="btn-login" onClick={() => { authLogout(); window.history.replaceState(null, '', '/course-dashboard'); navigate('/course-dashboard', { replace: true }); }} style={{ background: 'rgba(220,38,38,0.8)', border: 'none' }}>
+              <button className="btn-login" onClick={handleSignOut} style={{ background: 'rgba(220,38,38,0.8)', border: 'none' }}>
                 Sign Out
               </button>
             </>
@@ -2769,9 +2789,9 @@ export default function App() {
             </div>
             <div className="about-text">
               <h3>Who We Are</h3>
-              <p>IncuXai Education Trust was founded by a group of technologists, educators, and social workers who saw a growing digital divide between those who understand AI and those who do not.</p>
-              <p>We operate across 22 states in India, with a network of over 5,000 trained volunteers delivering AI literacy programs in local languages — Hindi, Telugu, Tamil, Kannada, Marathi, Bengali, and more.</p>
-              <p>Our programs have reached over 2 lakh learners including farmers who now use AI for crop disease detection, teachers who use AI tools to personalize education, and small business owners who use AI to grow their enterprises.</p>
+              <p>IncuXAI Education Trust is a non-profit educational initiative committed to making Artificial Intelligence, digital skills, and emerging technologies accessible to people from every section of society. We believe that technology becomes truly meaningful when everyone has the opportunity to understand it, use it, and benefit from it.</p>
+              <p>Through our AI 4 ALL initiative, educational programs, workshops, volunteer-led activities, and community partnerships, we bring practical AI learning to students, teachers, farmers, entrepreneurs, small businesses, children, and communities across India. Our approach focuses on practical learning rather than technology alone — we simplify complex concepts, encourage learning in regional languages, and demonstrate how AI can be used to solve real-world problems and create new opportunities.</p>
+              <p>Beyond AI education, we support initiatives in student development, leadership, innovation, entrepreneurship, career awareness, digital literacy, and community empowerment. Our goal is simple: education that reaches everyone, technology that empowers everyone, and opportunities that leave no one behind.</p>
             </div>
           </div>
 
@@ -2789,8 +2809,8 @@ export default function App() {
                 <div className="cube-face cube-front">
                   <div className="about-detail-matter">
                     <h4 className="tab-title">Democratizing AI Education</h4>
-                    <p>To make AI knowledge accessible, affordable, and actionable for every Indian citizen regardless of their education, age, or economic background.</p>
-                    <p>We believe that artificial intelligence should not be a privilege for the few, but a fundamental tool for the many. By breaking down language barriers and simplifying complex concepts, our mission is to empower rural communities, local businesses, and students to actively shape the future of technology rather than just consuming it.</p>
+                    <p>Our mission is to democratize Artificial Intelligence and digital education by making knowledge accessible, practical, inclusive, and meaningful for everyone. We work to bridge the gap between rapidly advancing technology and the communities that can benefit from it most, equipping individuals with the skills and confidence to participate in an AI-powered world through free learning opportunities, practical training, regional-language education, workshops, mentorship, and community-driven programs.</p>
+                    <p>We are committed to reaching beyond traditional classrooms, bringing technology education to students, educators, farmers, entrepreneurs, small businesses, working communities, and individuals who may otherwise have limited access to emerging technologies. Our mission is not simply to teach people about AI — it is to help them use technology to learn better, work smarter, solve real problems, create opportunities, and improve their communities.</p>
                   </div>
                   <div className="about-detail-photo">
                     <img src={ourMissionImg} alt="Our Mission" />
@@ -2802,8 +2822,8 @@ export default function App() {
                 <div className="cube-face cube-right">
                   <div className="about-detail-matter">
                     <h4 className="tab-title">A Digitally Empowered India</h4>
-                    <p>To create a future where every Indian has the knowledge and tools to harness AI for personal and community growth.</p>
-                    <p>We envision a nationwide ecosystem where farmers optimize their yields using predictive AI, teachers personalize learning for every student, and small businesses scale efficiently. By fostering a culture of innovation and digital literacy, we aim to position India as a global leader in inclusive AI adoption.</p>
+                    <p>Our vision is to build a digitally empowered and technologically inclusive India where every individual has the knowledge, confidence, and opportunity to benefit from Artificial Intelligence and emerging technologies.</p>
+                    <p>We envision a future where a farmer can use AI to make informed agricultural decisions, a teacher can create more engaging learning experiences, a student can explore new possibilities regardless of their background, and a small business owner can use technology to grow and compete. By promoting AI literacy, innovation, responsible technology use, and community participation, we aim to contribute to an India where people are not merely users of technological change — they are active participants, creators, innovators, and leaders of it.</p>
                   </div>
                   <div className="about-detail-photo">
                     <img src={ourVisionImg} alt="Our Vision" />
@@ -2814,9 +2834,12 @@ export default function App() {
                 <div className="cube-face cube-back">
                   <div className="about-detail-matter">
                     <h4 className="tab-title">What Drives Us Every Day</h4>
-                    <p><strong>Inclusivity:</strong> We design our programs for every person, breaking through barriers of language, caste, and geography.</p>
-                    <p><strong>Open Access:</strong> Education should be free forever. We enforce no paywalls and no hidden barriers.</p>
-                    <p><strong>Community-First:</strong> We build a supportive ecosystem of learners who teach and uplift one another, measuring our success by the tangible impact we create in real lives.</p>
+                    <p><strong>Inclusivity — Education for Everyone:</strong> We believe knowledge should never be restricted by a person's location, language, age, educational background, or economic circumstances, and we strive to create learning opportunities that welcome everyone.</p>
+                    <p><strong>Accessibility — Knowledge Without Barriers:</strong> We work to simplify complex technologies and provide practical learning opportunities that can reach communities beyond traditional educational environments.</p>
+                    <p><strong>Empowerment — Turning Knowledge into Opportunity:</strong> Our programs help people apply what they learn to education, careers, businesses, agriculture, innovation, and everyday challenges.</p>
+                    <p><strong>Innovation — Learning for the Future:</strong> We encourage curiosity, experimentation, creativity, problem-solving, and responsible exploration of emerging technologies.</p>
+                    <p><strong>Community — Growing Together:</strong> Volunteers, educators, learners, institutions, professionals, and communities are at the heart of our work — knowledge becomes more powerful when people share it.</p>
+                    <p><strong>Integrity — Technology with Responsibility:</strong> As we promote Artificial Intelligence and digital technologies, we encourage their ethical, responsible, and thoughtful use, building trust through transparency, accountability, and a commitment to positive social impact.</p>
                   </div>
                   <div className="about-detail-photo">
                     <img src={ourValuesImg} alt="Our Values" />
@@ -2828,8 +2851,8 @@ export default function App() {
                 <div className="cube-face cube-left">
                   <div className="about-detail-matter">
                     <h4 className="tab-title">From Concept to Movement</h4>
-                    <p>Starting with a handful of volunteers in a single district, our journey began with a simple idea: tech literacy is a fundamental right. Over the years, we've expanded our reach to 22 states, translating complex AI concepts into regional languages.</p>
-                    <p>Today, with a strong network of over 5,000 passionate volunteers, we have transformed from a small local initiative into a nationwide movement that has already impacted hundreds of thousands of lives.</p>
+                    <p>Every meaningful movement begins with a simple belief. For IncuXAI Education Trust, that belief was that the benefits of technology should belong to everyone. As Artificial Intelligence began transforming the world, we recognized that while technology was advancing rapidly, access to the knowledge required to understand and use it was not reaching everyone equally.</p>
+                    <p>What began as an effort to bridge this gap grew into a broader mission of education, empowerment, and community impact — evolving into AI 4 ALL, an initiative designed to take practical AI education to people from different walks of life. Through workshops, student initiatives, hackathons, mentorship, community partnerships, and a growing volunteer network, what started as an idea is becoming a movement driven by people who believe knowledge should be shared and technology should create opportunity. Our journey is only beginning.</p>
                   </div>
                   <div className="about-detail-photo">
                     <img src={ourJourneyImg} alt="Our Journey" />

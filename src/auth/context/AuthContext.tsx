@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { clearAuthStorage } from '../utils/clearAuthState';
 
 interface AuthUser {
   id?: string;
@@ -14,7 +15,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isPremium: boolean;
   login: (token: string, email: string, name: string, id?: string, isPremium?: boolean) => void;
-  logout: () => void;
+  logout: () => boolean;
   setPremium: (value: boolean) => void;
 }
 
@@ -44,8 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
     } catch {
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(USER_KEY);
+      clearAuthStorage();
     }
     setIsLoading(false);
   }, []);
@@ -63,15 +63,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('corp_otp_verified', 'true');
   };
 
-  const logout = () => {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
-    localStorage.removeItem(PREMIUM_KEY);
-    localStorage.removeItem('corp_otp_verified');
-    localStorage.removeItem('pending_corp_registration');
-    localStorage.removeItem('pending_auth_email');
+  const logout = (): boolean => {
+    const ok = clearAuthStorage();
     setUser(null);
     setIsPremium(false);
+    return ok;
   };
 
   const setPremium = (value: boolean) => {

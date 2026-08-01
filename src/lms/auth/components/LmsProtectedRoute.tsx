@@ -13,7 +13,7 @@ export default function LmsProtectedRoute({ children }: { children: React.ReactN
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/sign-in" replace />;
+    return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;

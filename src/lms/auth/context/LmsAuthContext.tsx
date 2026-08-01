@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { clearAuthStorage } from '../../../auth/utils/clearAuthState';
 
 interface LmsUser {
   id?: string;
@@ -14,7 +15,7 @@ interface LmsAuthContextType {
   isAuthenticated: boolean;
   isPremium: boolean;
   login: (token: string, email: string, name: string, id?: string, isPremium?: boolean) => void;
-  logout: () => void;
+  logout: () => boolean;
   setPremium: (value: boolean) => void;
 }
 
@@ -61,13 +62,14 @@ export function LmsAuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem(LMS_TOKEN_KEY);
-    localStorage.removeItem(LMS_USER_KEY);
-    localStorage.removeItem(LMS_PREMIUM_KEY);
-    localStorage.removeItem('lms_hr_progress');
+  const logout = (): boolean => {
+    const ok = clearAuthStorage();
+    try {
+      localStorage.removeItem('lms_hr_progress');
+    } catch {}
     setUser(null);
     setIsPremium(false);
+    return ok;
   };
 
   const setPremium = (value: boolean) => {

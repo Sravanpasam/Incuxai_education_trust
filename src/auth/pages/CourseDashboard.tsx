@@ -170,7 +170,7 @@ function generateSchedulePlan(schedule: LearningSchedule, totalChapters: number,
 
 export default function CourseDashboard() {
   const navigate = useNavigate();
-  const { user, isAuthenticated, isLoading: lmsLoading, logout: lmsLogout } = useLmsAuth();
+  const { user, logout: lmsLogout } = useLmsAuth();
   const { logout: mainLogout } = useAuth();
   const [progress, setProgress] = useState<CourseProgress>(() => loadProgress(user?.email));
   const [expandedChapters, setExpandedChapters] = useState<Record<string, boolean>>(() => { const m: Record<string, boolean> = {}; HR_COURSE.chapters.forEach((ch) => { m[ch.id] = true; }); return m; });
@@ -322,12 +322,23 @@ export default function CourseDashboard() {
   const resetProgress = useCallback(() => { localStorage.removeItem(PROGRESS_KEY); setProgress(loadProgress()); setActiveLessonId(HR_COURSE.chapters[0].lessons[0].id); }, []);
 
   const handleLogout = useCallback(() => {
-    lmsLogout();
-    mainLogout();
+    let ok = true;
+    try {
+      const lmsOk = lmsLogout();
+      const mainOk = mainLogout();
+      ok = lmsOk && mainOk;
+    } catch (err) {
+      console.error('[CourseDashboard] Logout error:', err);
+      ok = false;
+    }
+    if (!ok) {
+      setToastMsg('Sign out failed. Please try again.');
+      return;
+    }
     setLogoutToast(true);
     setTimeout(() => setLogoutToast(false), 2500);
-    window.history.replaceState(null, '', '/course-dashboard');
-    navigate('/course-dashboard', { replace: true });
+    window.history.replaceState(null, '', '/');
+    navigate('/', { replace: true });
   }, [lmsLogout, mainLogout, navigate]);
 
   const isLessonBookmarked = useMemo(() => bookmarks.some((b) => b.lessonId === activeLessonId), [bookmarks, activeLessonId]);
@@ -513,43 +524,6 @@ export default function CourseDashboard() {
     if (type === 'assignment') return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>;
     return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>;
   };
-
-  if (lmsLoading) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8f7f3', color: '#0c1628', fontFamily: 'Inter, sans-serif', fontSize: '0.9rem' }}>
-        Loading...
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <div style={s.gatePage}>
-        <button onClick={() => navigate('/')} style={s.gateBackBtn}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 18 9 12 15 6"/>
-          </svg>
-          Back to Home
-        </button>
-        <div style={s.gateCard}>
-          <div style={s.gateHeader}>
-            <img src={ietLogo} alt="IncuXAI Education Trust" style={{ height: '52px', width: 'auto', borderRadius: '10px', objectFit: 'contain', margin: '0 auto 12px', display: 'block' }} />
-            <h1 style={s.gateTitle}>IncuXAI Learning Hub</h1>
-            <p style={s.gateSubtitle}>Welcome back! Sign in to continue your course</p>
-          </div>
-          <div style={s.gateBody}>
-            <p style={s.gateMsg}>Sign in to access your courses, track your progress, and earn certificates.</p>
-            <button onClick={() => navigate('/sign-in')} style={s.gateBtnPrimary}>Sign In</button>
-            <button onClick={() => navigate('/lms/sign-up')} style={s.gateBtnSecondary}>Create Account</button>
-            <p style={s.gateFooter}>
-              Don't have an account?{' '}
-              <button onClick={() => navigate('/lms/sign-up')} style={s.gateLink}>Sign Up</button>
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="lms-root">
@@ -2055,94 +2029,3 @@ header.lms-header, .lms-header{position:sticky !important;top:0 !important;left:
   .lms-achievements-grid{flex-wrap:wrap}
 }
 `;
-
-const s: Record<string, React.CSSProperties> = {
-  gatePage: {
-    minHeight: '100vh',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: '#f8f7f3',
-    padding: '1rem',
-    fontFamily: 'Inter, system-ui, sans-serif',
-  },
-  gateBackBtn: {
-    position: 'fixed',
-    top: '1.5rem',
-    left: '1.5rem',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    padding: '8px 18px',
-    background: '#ffffff',
-    border: '1px solid rgba(12, 22, 40, 0.12)',
-    borderRadius: '99px',
-    color: '#0c1628',
-    fontSize: '0.85rem',
-    fontWeight: 600,
-    fontFamily: 'Inter, sans-serif',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-    boxShadow: '0 2px 10px rgba(12,22,40,0.05)',
-    zIndex: 10,
-  },
-  gateCard: {
-    width: '100%',
-    maxWidth: '420px',
-    background: '#ffffff',
-    borderRadius: '16px',
-    border: '1px solid rgba(12, 22, 40, 0.08)',
-    boxShadow: '0 12px 40px rgba(12, 22, 40, 0.08)',
-    overflow: 'hidden',
-  },
-  gateHeader: {
-    background: 'linear-gradient(135deg, #0c1628 0%, #1e3a5f 100%)',
-    padding: '2.5rem 2rem 2rem',
-    textAlign: 'center',
-    borderBottom: '1px solid rgba(255,255,255,0.1)',
-  },
-  gateTitle: { margin: 0, color: '#ffffff', fontSize: '1.35rem', fontWeight: 700, fontFamily: 'Plus Jakarta Sans, sans-serif' },
-  gateSubtitle: { margin: '8px 0 0', color: 'rgba(255,255,255,0.75)', fontSize: '0.85rem' },
-  gateBody: { padding: '1.8rem 2rem 2rem' },
-  gateMsg: { margin: 0, color: '#64748b', fontSize: '0.9rem', lineHeight: 1.6, textAlign: 'center' },
-  gateBtnPrimary: {
-    width: '100%',
-    marginTop: '1.5rem',
-    padding: '13px',
-    background: 'linear-gradient(135deg, #9B7A3E, #7D6334)',
-    color: '#ffffff',
-    border: 'none',
-    borderRadius: '99px',
-    fontSize: '0.95rem',
-    fontWeight: 700,
-    fontFamily: 'Inter, sans-serif',
-    cursor: 'pointer',
-    boxShadow: '0 6px 20px -4px rgba(155, 122, 62, 0.35)',
-  },
-  gateBtnSecondary: {
-    width: '100%',
-    marginTop: '0.8rem',
-    padding: '13px',
-    background: '#ffffff',
-    color: '#9B7A3E',
-    border: '1.5px solid rgba(155, 122, 62, 0.4)',
-    borderRadius: '99px',
-    fontSize: '0.95rem',
-    fontWeight: 700,
-    fontFamily: 'Inter, sans-serif',
-    cursor: 'pointer',
-  },
-  gateFooter: { textAlign: 'center', fontSize: '0.85rem', color: '#64748b', marginTop: '1.2rem' },
-  gateLink: {
-    background: 'none',
-    border: 'none',
-    padding: 0,
-    fontFamily: 'Inter, sans-serif',
-    color: '#9B7A3E',
-    fontWeight: 600,
-    fontSize: '0.85rem',
-    textDecoration: 'none',
-    cursor: 'pointer',
-  },
-};

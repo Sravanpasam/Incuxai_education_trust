@@ -2,10 +2,12 @@ import { useState, type FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { loginUser } from '../services/authService';
 import { useAuth } from '../context/AuthContext';
+import { useLmsAuth } from '../../lms/auth/context/LmsAuthContext';
 
 export default function SignInPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const { login: lmsLogin } = useLmsAuth();
   const [workEmail, setWorkEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -29,6 +31,7 @@ export default function SignInPage() {
       if (res.success && res.token && res.user) {
         showToast('success', 'Login successful!');
         login(res.token, res.user.email, res.user.name, res.user.id);
+        lmsLogin(res.token, res.user.email, res.user.name, res.user.id);
         setTimeout(() => navigate('/course-dashboard'), 800);
       } else {
         showToast('error', res.message || 'Invalid email or password.');

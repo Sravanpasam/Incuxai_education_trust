@@ -1,11 +1,30 @@
 import { useAuth } from '../context/AuthContext';
+import { useLmsAuth } from '../../lms/auth/context/LmsAuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 
 export default function DashboardPage() {
   const { user, logout } = useAuth();
+  const { logout: lmsLogout } = useLmsAuth();
   const nav = useNavigate();
+  const [logoutError, setLogoutError] = useState<string | null>(null);
 
-  const handleLogout = () => { logout(); nav('/course-dashboard'); };
+  const handleLogout = () => {
+    let ok = true;
+    try {
+      const mainOk = logout();
+      const lmsOk = lmsLogout();
+      ok = mainOk && lmsOk;
+    } catch (err) {
+      console.error('[DashboardPage] Logout error:', err);
+      ok = false;
+    }
+    if (!ok) {
+      setLogoutError('Sign out failed. Please try again.');
+      return;
+    }
+    nav('/', { replace: true });
+  };
 
   return (
     <div style={s.page}>
@@ -24,6 +43,7 @@ export default function DashboardPage() {
           <div style={s.row}><span style={s.lbl}>Session</span><span style={s.val}>Active (24h)</span></div>
         </div>
         <div style={{ padding: '0 2rem 2rem' }}>
+          {logoutError && <p style={{ color: '#dc2626', fontSize: '0.85rem', margin: '0 0 12px', textAlign: 'center' }}>{logoutError}</p>}
           <button onClick={handleLogout} style={s.logout}>Logout</button>
         </div>
       </div>
