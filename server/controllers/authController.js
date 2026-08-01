@@ -9,8 +9,8 @@ import { ensureUsersTable } from '../migration/ensureUsersTable.js';
  * Handles both initial send and resend with dual-email logic.
  *
  * Flow:
- *  - resendCount 0-1 → OTP sent to work email (if available) else personal email
- *  - resendCount >= 2 → auto-switch to personal email
+ *  - resendCount 0-2 → OTP sent to work email (if available) else personal email
+ *  - resendCount >= 3 → auto-switch to personal email
  *  - forcePersonal=true → always sends to personal email (dedicated button)
  *
  * OTP is ALWAYS stored against the personal email so verification is consistent.
@@ -35,8 +35,8 @@ export async function sendOtp(req, res) {
     console.log('[AuthController] sendOtp — personal:', personal, 'work:', work || '(none)', 'count:', count);
 
     // Determine destination email based on resend logic:
-    // - count 0-1 → work email (if available)
-    // - count >= 2 → auto-switch to personal email
+    // - count 0-2 → work email (if available)
+    // - count >= 3 → auto-switch to personal email
     // - forcePersonal → always personal
     let destinationEmail;
     let emailType;
@@ -45,12 +45,12 @@ export async function sendOtp(req, res) {
       destinationEmail = personal;
       emailType = 'personal';
       console.log('[AuthController] sendOtp — forcePersonal mode');
-    } else if (work && count < 2) {
+    } else if (work && count < 3) {
       destinationEmail = work;
       emailType = 'work';
       console.log('[AuthController] sendOtp — sending to work email (count:', count, ')');
     } else {
-      // No work email, or count >= 2 — send to personal
+      // No work email, or count >= 3 — send to personal
       destinationEmail = personal;
       emailType = 'personal';
       console.log('[AuthController] sendOtp — sending to personal email (work:', work || 'none', 'count:', count, ')');
@@ -121,13 +121,13 @@ export async function resendOtp(req, res) {
     let destinationEmail;
     let emailType;
 
-    if (count >= 2 && normalizedPersonal && normalizedPersonal !== normalizedWork) {
-      // count >= 2: send to personal email
+    if (count >= 3 && normalizedPersonal && normalizedPersonal !== normalizedWork) {
+      // count >= 3: send to personal email
       destinationEmail = normalizedPersonal;
       emailType = 'personal';
       console.log('[AuthController] resendOtp — sending to personal email (count:', count, ')');
     } else {
-      // count 0-1: send to work email
+      // count 0-2: send to work email
       destinationEmail = normalizedWork;
       emailType = 'work';
       console.log('[AuthController] resendOtp — sending to work email (count:', count, ')');
@@ -379,7 +379,7 @@ export async function login(req, res) {
     }
 
     console.log('[AuthController] login — searching for:', loginEmail);
-    const user = await findUserByEmail(loginEmail);
+    const user = await findUserByPersonalEmail(loginEmail);
     if (!user) {
       console.log('[AuthController] login — user NOT FOUND:', loginEmail);
       return res.status(401).json({ success: false, message: 'Invalid email or password.' });

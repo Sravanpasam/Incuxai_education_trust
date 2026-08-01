@@ -4,7 +4,6 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './auth/context/AuthContext';
 import { LmsAuthProvider } from './lms/auth/context/LmsAuthContext';
 import ProtectedRoute from './auth/components/ProtectedRoute';
-import LmsProtectedRoute from './lms/auth/components/LmsProtectedRoute';
 import WorkEmailVerification from './auth/pages/WorkEmailVerification';
 import VerifyOTP from './auth/pages/VerifyOTP';
 import DashboardPage from './auth/pages/DashboardPage';
@@ -46,7 +45,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="/lms/sign-in" element={<LmsSignInPage />} />
             <Route path="/lms/sign-up" element={<LmsSignUpPage />} />
             <Route path="/lms/forgot-password" element={<LmsForgotPasswordPage />} />
-            <Route path="/course-dashboard" element={<LmsProtectedRoute><CourseDashboard /></LmsProtectedRoute>} />
+            <Route path="/course-dashboard" element={<CourseDashboard />} />
 
             {/* Main site (no auth required) */}
             <Route path="*" element={<App />} />

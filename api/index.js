@@ -175,6 +175,8 @@ app.get('/api/auth/test-email', async (_req, res) => {
 });
 
 app.post('/api/auth/send-otp', authHandler('sendOtp'));
+app.post('/api/auth/resend-otp', authHandler('resendOtp'));
+app.post('/api/auth/send-personal-otp', authHandler('sendPersonalOtp'));
 app.post('/api/auth/verify-otp', authHandler('verifyOtp'));
 app.post('/api/auth/register', authHandler('register'));
 app.post('/api/auth/login', authHandler('login'));
