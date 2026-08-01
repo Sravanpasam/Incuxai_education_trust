@@ -227,7 +227,7 @@ export default function LmsSignUpPage() {
       const res = await resendOtpApi(
         workEmail.trim().toLowerCase(),
         form.personalEmail.trim().toLowerCase(),
-        resendCount + 1,
+        resendCount,
         form.fullName,
       );
       if (res.success) {
