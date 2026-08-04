@@ -8,14 +8,26 @@ import { errorHandler } from './middleware/errorHandler.js';
 const app = express();
 
 // ─── CORS ────────────────────────────────────────────────────────────────────
-const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',')
-  : ['http://localhost:3000', 'http://localhost:5173'];
+const defaultOrigins = ['https://www.incuxaieducationtrust.org', 'https://incuxaieducationtrust.org'];
+const envOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [];
+const allowedOrigins = [...new Set([...envOrigins, ...defaultOrigins])];
+
+function isAllowed(origin) {
+  if (allowedOrigins.includes(origin)) return true;
+  // Allow any localhost / 127.0.0.1 port for local dev (vite binds 0.0.0.0)
+  try {
+    const u = new URL(origin);
+    const host = u.hostname;
+    return host === 'localhost' || host === '127.0.0.1';
+  } catch {
+    return false;
+  }
+}
 
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (!origin || isAllowed(origin)) {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));

@@ -63,12 +63,13 @@ export async function loginUser(workEmail: string, password: string): Promise<Ap
       return await res.json();
     }
     const errData = await res.json().catch(() => null);
-    if (errData && errData.message && res.status < 500) {
+    if (errData && errData.message) {
       return errData;
     }
   } catch {}
 
-  // Fallback to local storage if server returned 500 or is unreachable
+  // Fallback to local storage only if the server could not be reached at all.
+  // Never fabricate a successful login for unknown users (security).
   const users = getLocalUsers();
   const found = users.find((u) => u.workEmail?.toLowerCase() === cleanEmail || u.personalEmail?.toLowerCase() === cleanEmail);
 
@@ -89,19 +90,7 @@ export async function loginUser(workEmail: string, password: string): Promise<Ap
     }
   }
 
-  // Fallback: allow new email sign in in client standalone mode
-  const fallbackUser = {
-    id: `usr_${Date.now()}`,
-    name: cleanEmail.split('@')[0],
-    email: cleanEmail,
-  };
-
-  return {
-    success: true,
-    token: `local_token_${Date.now()}`,
-    user: fallbackUser,
-    message: 'Login successful',
-  };
+  return { success: false, message: 'Cannot reach the authentication server. Please try again later.' };
 }
 
 /**
