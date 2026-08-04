@@ -6249,4 +6249,145 @@ footer {
   border-left: 3px solid #C5A059;
 }
 
+/* ============================================================
+   MOBILE-FRIENDLY OVERRIDES
+   These use !important to win over inline styles in App.tsx,
+   which otherwise keep portal/profile/form grids multi-column
+   and text oversized on small screens.
+   ============================================================ */
+@media (max-width: 767px) {
+  html {
+    font-size: 15px;
+  }
+  .portal-header {
+    margin-top: 66px;
+    padding: 1.5rem 1.25rem 1rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  .portal-header h2 {
+    font-size: 1.15rem !important;
+  }
+  .portal-user {
+    gap: 0.8rem;
+  }
+  .avatar {
+    width: 42px;
+    height: 42px;
+    font-size: 1rem;
+  }
+  .portal-nav {
+    margin: 1rem 1.25rem;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    justify-content: flex-start;
+    gap: 0.5rem;
+    scrollbar-width: thin;
+  }
+  .portal-nav-btn {
+    white-space: nowrap;
+    flex-shrink: 0;
+    padding: 0.55rem 1rem;
+    font-size: 0.82rem;
+  }
+  .portal-section {
+    padding: 1.5rem 1.25rem 3rem;
+  }
+  .portal-section h3 {
+    font-size: 0.95rem !important;
+  }
+
+  /* Collapse inline two/three-column grids to one column */
+  #vol-profile > div,
+  #tportal-profile > div,
+  #vol-profile .card > div,
+  #tportal-profile .card > div,
+  .contact-layout,
+  .form-row,
+  .pay-methods-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .dept-checkbox-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* Data tables scroll horizontally instead of overflowing */
+  .data-table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+    width: 100%;
+  }
+  .data-table th,
+  .data-table td {
+    padding: 0.8rem 1rem;
+    font-size: 0.8rem;
+  }
+
+  /* Shrink oversized numbers */
+  .hours-num,
+  .vol-stat-num {
+    font-size: 2rem;
+  }
+  .admin-metric-num {
+    font-size: 2rem;
+  }
+  .hours-display {
+    gap: 1rem;
+  }
+  .hours-box {
+    padding: 1.4rem 1rem;
+    min-width: 0;
+  }
+
+  /* Form cards breathe on mobile */
+  .form-card {
+    padding: 1.5rem !important;
+  }
+  .form-row {
+    gap: 0.5rem !important;
+  }
+
+  /* Vol/Admin inline metric rows */
+  .admin-metric {
+    padding: 1.4rem;
+  }
+  .admin-metric-num {
+    font-size: 1.7rem;
+  }
+}
+
+@media (max-width: 480px) {
+  html {
+    font-size: 14px;
+  }
+  .dept-checkbox-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .hours-display {
+    flex-direction: column;
+  }
+  .hours-box {
+    width: 100%;
+  }
+  .volunteer-stats {
+    gap: 1rem;
+  }
+  .vol-stat {
+    padding: 1rem;
+  }
+  .portal-nav {
+    margin: 0.75rem 1rem;
+  }
+  .portal-section {
+    padding: 1.25rem 1rem 2.5rem;
+  }
+  .portal-header {
+    padding: 1.25rem 1rem 0.75rem;
+  }
+}
+
 

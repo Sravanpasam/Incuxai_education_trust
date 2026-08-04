@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { useAuth } from './auth/context/AuthContext';
+import { patchStorageSync, syncFromServer, flushSync } from './dataSync';
 import logoImg from '../picss/iet logo.png';
 import whoWeAreImg from './assets/about_who_we_are.jpg';
 import iit1Img from '../picss/iit1.png';
@@ -442,20 +443,37 @@ export default function App() {
         }
     };
 
-    loadSpline();
     w.reinitSplineRobotOnDemand = loadSpline;
 
-    let checkAttempts = 0;
-    const checkInterval = setInterval(() => {
+    // Defer the 4.5MB 3D (three.js/Spline) bundle until the hero canvas is
+    // actually on screen — keeps initial page load fast. Falls back to an
+    // idle timer in case the observer is never satisfied.
+    const deferredSpline = () => {
       const canvas = document.getElementById('canvas3d');
-      if (canvas && canvas.getAttribute('data-spline-initialized') !== 'true') {
-        loadSpline();
-        clearInterval(checkInterval);
+      if (!canvas || canvas.getAttribute('data-spline-initialized') === 'true') return;
+      if ('IntersectionObserver' in window) {
+        const io = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                loadSpline();
+                io.disconnect();
+              }
+            });
+          },
+          { rootMargin: '400px' }
+        );
+        io.observe(canvas);
+        // Safety net: load even if the observer never fires (e.g. hero hidden).
+        setTimeout(() => {
+          io.disconnect();
+          loadSpline();
+        }, 6000);
+      } else {
+        setTimeout(loadSpline, 1000);
       }
-      if (++checkAttempts > 30) {
-        clearInterval(checkInterval);
-      }
-    }, 500);
+    };
+    deferredSpline();
 
     // Floating Particles Setup (Disabled per user request)
     const container = document.getElementById('particles');
@@ -733,6 +751,9 @@ export default function App() {
 
     // ===== PERSISTENT DATA LAYER & UI SYNC SYSTEM =====
     w.initData = async () => {
+      // Pull the shared server state into localStorage first (source of truth).
+      await syncFromServer();
+
       // Force clear stale mock data from localStorage for returning users
       try {
         const cachedVols = JSON.parse(localStorage.getItem('volunteers') || '[]');
@@ -2516,9 +2537,18 @@ export default function App() {
     };
 
     w.initData();
+    patchStorageSync();
     w.renderEvents();
     w.renderTasks();
     w.renderVolunteersAndLeaderboard();
+
+    // Flush pending local changes when the user leaves the page
+    const flushHandler = () => flushSync();
+    const visHandler = () => {
+      if (document.visibilityState === 'hidden') flushSync();
+    };
+    window.addEventListener('pagehide', flushHandler);
+    document.addEventListener('visibilitychange', visHandler);
 
     // Restore page from saved session
     if (currentUser) {
@@ -2560,6 +2590,8 @@ export default function App() {
       clearInterval(sliderInterval);
       clearInterval(labelInterval);
       window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('pagehide', flushHandler);
+      document.removeEventListener('visibilitychange', visHandler);
     };
   }, []);
 
@@ -4444,7 +4476,7 @@ export default function App() {
           {/* Payment Method */}
           <div style={{ background: 'var(--glass)', border: '1px solid var(--glass-border)', borderRadius: '20px', padding: '2rem', marginBottom: '1.5rem' }}>
             <h3 style={{ fontSize: '1.1rem', fontFamily: 'var(--font-display)', fontWeight: '700', color: 'var(--text)', marginBottom: '1.2rem' }}>Select Payment Method</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem' }}>
+            <div className="pay-methods-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem' }}>
               {[
                 { id: 'upi', label: 'UPI', icon: '📱', desc: 'Google Pay, PhonePe, Paytm' },
                 { id: 'card', label: 'Credit / Debit Card', icon: '💳', desc: 'Visa, Mastercard, Rupay' },
