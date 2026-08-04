@@ -326,8 +326,8 @@ export default function CourseDashboard() {
     mainLogout();
     setLogoutToast(true);
     setTimeout(() => setLogoutToast(false), 2500);
-    window.history.replaceState(null, '', '/course-dashboard');
-    navigate('/course-dashboard', { replace: true });
+    window.history.replaceState(null, '', '/');
+    navigate('/', { replace: true });
   }, [lmsLogout, mainLogout, navigate]);
 
   const isLessonBookmarked = useMemo(() => bookmarks.some((b) => b.lessonId === activeLessonId), [bookmarks, activeLessonId]);

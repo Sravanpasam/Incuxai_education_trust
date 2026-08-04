@@ -9,7 +9,7 @@ const BCRYPT_ROUNDS = 10;
  *   id, full_name, personal_email, phone_number, company_name, role,
  *   work_email, password_hash, work_email_verified, created_at, updated_at
  */
-export async function createUser({ name, personalEmail, phone, workEmail, password, company, role }) {
+export async function createUser({ name, personalEmail, phone, workEmail, password, company, role, workEmailVerified = true }) {
   console.log('[UserService] createUser — inserting:', JSON.stringify({
     name,
     personalEmail,
@@ -18,6 +18,7 @@ export async function createUser({ name, personalEmail, phone, workEmail, passwo
     hasPassword: !!password,
     company,
     role,
+    workEmailVerified,
   }));
 
   const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
@@ -27,7 +28,7 @@ export async function createUser({ name, personalEmail, phone, workEmail, passwo
     phone_number: phone,
     work_email: workEmail ? workEmail.toLowerCase() : null,
     password_hash: passwordHash,
-    work_email_verified: true,
+    work_email_verified: workEmailVerified,
     company_name: company || null,
     role: role || null,
   };

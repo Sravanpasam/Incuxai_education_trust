@@ -224,10 +224,10 @@ export async function sendPersonalOtp(req, res) {
  */
 export async function verifyOtp(req, res) {
   try {
-    const { email, otp, name, personalEmail, phone, company, role, workEmail, password } = req.body;
+    const { email, otp, name, personalEmail, phone, company, role, workEmail, password, emailType } = req.body;
 
     console.log('[AuthController] verifyOtp — request received:', JSON.stringify({
-      email, personalEmail, workEmail, name, company, role,
+      email, personalEmail, workEmail, name, company, role, emailType,
       hasOtp: !!otp, otpLength: otp?.length, hasPassword: !!password,
     }));
 
@@ -262,6 +262,7 @@ export async function verifyOtp(req, res) {
       password: password,
       company: company || null,
       role: role || null,
+      workEmailVerified: emailType === 'work',
     });
 
     if (error) {
@@ -387,9 +388,19 @@ export async function login(req, res) {
 
     console.log('[AuthController] login — user found:', user.id, '| verified:', user.work_email_verified, '| has password hash:', !!user.password_hash);
 
-    if (user.work_email_verified === false) {
-      console.log('[AuthController] login — REJECTED: email not verified');
-      return res.status(403).json({ success: false, message: 'Please verify your email before signing in.' });
+    // Enforce which email type can sign in based on how the account was verified:
+    //  - verified via work email  → sign in only with the WORK email
+    //  - verified via personal email (fallback) → sign in only with the PERSONAL email
+    if (user.work_email_verified === true && user.work_email) {
+      if (user.work_email.toLowerCase() !== loginEmail) {
+        console.log('[AuthController] login — REJECTED: account verified via work email, must sign in with work email');
+        return res.status(401).json({ success: false, message: 'Please sign in with your work email.' });
+      }
+    } else if (user.work_email_verified === false) {
+      if (user.personal_email.toLowerCase() !== loginEmail) {
+        console.log('[AuthController] login — REJECTED: account verified via personal email, must sign in with personal email');
+        return res.status(401).json({ success: false, message: 'Please sign in with your personal email.' });
+      }
     }
 
     const match = await verifyPassword(password, user.password_hash);

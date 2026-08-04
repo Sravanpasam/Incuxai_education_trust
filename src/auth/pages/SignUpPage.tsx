@@ -60,6 +60,7 @@ export default function SignUpPage() {
   const [resendCount, setResendCount] = useState(0);
   const [showPersonalBtn, setShowPersonalBtn] = useState(false);
   const [otpDestEmail, setOtpDestEmail] = useState('');
+  const [otpEmailType, setOtpEmailType] = useState<'work' | 'personal'>('work');
   const [timer, setTimer] = useState(OTP_TIMER);
   const [resendCd, setResendCd] = useState(0);
   const refs = useRef<(HTMLInputElement | null)[]>([]);
@@ -148,8 +149,10 @@ export default function SignUpPage() {
         password: form.password,
       }, { resendCount: 0 });
       if (res.success) {
-        const dest = (res as any).emailType === 'work' && form.workEmail
+        const emailType = (res as any).emailType === 'personal' ? 'personal' : 'work';
+        const dest = emailType === 'work' && form.workEmail
           ? form.workEmail.trim().toLowerCase() : email;
+        setOtpEmailType(emailType);
         setOtpDestEmail(dest);
         setOtpSent(true);
         setResendCount((res as any).resendCount ?? 1);
@@ -191,6 +194,7 @@ export default function SignUpPage() {
         role: form.role,
         workEmail: form.workEmail?.trim().toLowerCase() || undefined,
         password: form.password,
+        emailType: otpEmailType,
       });
 
       if (res.success && res.token && res.user?.name && res.user?.email) {
@@ -230,8 +234,10 @@ export default function SignUpPage() {
       if (res.success) {
         setOtp(Array(OTP_LENGTH).fill(''));
         setResendCount((res as any).resendCount ?? resendCount + 1);
-        const dest = (res as any).emailType === 'work' && form.workEmail
+        const emailType = (res as any).emailType === 'personal' ? 'personal' : 'work';
+        const dest = emailType === 'work' && form.workEmail
           ? form.workEmail.trim().toLowerCase() : email;
+        setOtpEmailType(emailType);
         setOtpDestEmail(dest);
         setTimer(OTP_TIMER);
         setResendCd(60);
@@ -270,6 +276,7 @@ export default function SignUpPage() {
         password: form.password,
       }, { forcePersonal: true, resendCount: 0 });
       if (res.success) {
+        setOtpEmailType('personal');
         setOtpDestEmail(email);
         setShowPersonalBtn(false);
         setResendCount(0);

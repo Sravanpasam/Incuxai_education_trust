@@ -5,7 +5,7 @@ export default function DashboardPage() {
   const { user, logout } = useAuth();
   const nav = useNavigate();
 
-  const handleLogout = () => { logout(); nav('/course-dashboard'); };
+  const handleLogout = () => { logout(); nav('/'); };
 
   return (
     <div style={s.page}>

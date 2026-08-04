@@ -152,6 +152,7 @@ export async function verifyOtp(
     role: string;
     workEmail?: string;
     password: string;
+    emailType?: 'work' | 'personal';
   }
 ): Promise<ApiResponse> {
   return post('/api/auth/verify-otp', {
@@ -164,6 +165,7 @@ export async function verifyOtp(
     role: signup?.role ?? '',
     workEmail: signup?.workEmail,
     password: signup?.password ?? '',
+    emailType: signup?.emailType ?? '',
   });
 }
 

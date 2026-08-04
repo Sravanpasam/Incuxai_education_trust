@@ -202,6 +202,7 @@ export default function LmsSignUpPage() {
         role: form.role,
         workEmail: workEmail.trim().toLowerCase(),
         password: form.password,
+        emailType: otpTarget,
       });
 
       if (res.success && res.token && res.user?.name && res.user?.email) {
