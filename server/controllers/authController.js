@@ -379,7 +379,7 @@ export async function login(req, res) {
     }
 
     console.log('[AuthController] login — searching for:', loginEmail);
-    const user = await findUserByPersonalEmail(loginEmail);
+    const user = await findUserByEmail(loginEmail);
     if (!user) {
       console.log('[AuthController] login — user NOT FOUND:', loginEmail);
       return res.status(401).json({ success: false, message: 'Invalid email or password.' });
