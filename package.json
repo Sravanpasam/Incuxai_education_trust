@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
     "dev:server": "node server/server.js",
-    "dev:all": "concurrently -n frontend,backend -c blue,green \"vite --port=3000 --host=0.0.0.0\" \"node server/server.js\"",
+    "dev:all": "concurrently -n payment,auth,frontend -c yellow,green,blue \"node api/index.js\" \"node server/server.js\" \"vite --port=3000 --host=0.0.0.0\"",
     "server": "node api/index.js",
     "start": "concurrently -n payment,auth,frontend -c yellow,green,blue \"node api/index.js\" \"node server/server.js\" \"vite --port=3000 --host=0.0.0.0\"",
     "build": "vite build",

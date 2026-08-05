@@ -6,6 +6,8 @@ const router = Router();
 
 /**
  * POST /api/auth/send-otp
+ * Sends OTP using dual-email logic (work first, personal fallback).
+ * No validateWorkEmail middleware — personal emails are valid here.
  */
 router.post('/send-otp', sendOtp);
 

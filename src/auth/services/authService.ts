@@ -51,6 +51,48 @@ interface SendOtpOptions {
   forcePersonal?: boolean;
 }
 
+export async function loginUser(workEmail: string, password: string): Promise<ApiResponse> {
+  const cleanEmail = workEmail.trim().toLowerCase();
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ personalEmail: cleanEmail, workEmail: cleanEmail, email: cleanEmail, password }),
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+    const errData = await res.json().catch(() => null);
+    if (errData && errData.message) {
+      return errData;
+    }
+  } catch {}
+
+  // Fallback to local storage only if the server could not be reached at all.
+  // Never fabricate a successful login for unknown users (security).
+  const users = getLocalUsers();
+  const found = users.find((u) => u.workEmail?.toLowerCase() === cleanEmail || u.personalEmail?.toLowerCase() === cleanEmail);
+
+  if (found) {
+    if (found.password === password) {
+      return {
+        success: true,
+        token: `local_token_${Date.now()}`,
+        user: {
+          id: found.id,
+          name: found.fullName || found.name,
+          email: found.workEmail || found.personalEmail,
+        },
+        message: 'Login successful',
+      };
+    } else {
+      return { success: false, message: 'Invalid email or password.' };
+    }
+  }
+
+  return { success: false, message: 'Cannot reach the authentication server. Please try again later.' };
+}
+
 /**
  * POST /api/auth/send-otp
  * Sends a 6-digit OTP to the appropriate email (work first, then personal).
@@ -99,6 +141,7 @@ export async function verifyOtp(
     role: string;
     workEmail?: string;
     password: string;
+    emailType?: 'work' | 'personal';
   }
 ): Promise<ApiResponse> {
   return post('/api/auth/verify-otp', {
@@ -111,16 +154,8 @@ export async function verifyOtp(
     role: signup?.role ?? '',
     workEmail: signup?.workEmail,
     password: signup?.password ?? '',
+    emailType: signup?.emailType ?? '',
   });
-}
-
-/**
- * POST /api/auth/login
- * Authenticates the user with personal email and password.
- * Returns a JWT token and user info.
- */
-export async function loginUser(personalEmail: string, password: string): Promise<ApiResponse> {
-  return post('/api/auth/login', { personalEmail, password });
 }
 
 /**
@@ -182,14 +217,11 @@ export async function registerUser(data: {
     });
     if (res.ok) return await res.json();
     const errData = await res.json().catch(() => null);
-    if (errData && errData.message && res.status < 500) return errData;
-  } catch {}
-  const users = getLocalUsers();
-  const existing = users.find((u) => u.workEmail?.toLowerCase() === data.workEmail.toLowerCase());
-  if (existing) return { success: false, message: 'An account with this work email already exists. Please sign in.' };
-  const newUser = { id: `usr_${Date.now()}`, ...data, workEmail: data.workEmail.toLowerCase(), createdAt: new Date().toISOString() };
-  saveLocalUser(newUser);
-  return { success: true, token: `local_token_${Date.now()}`, user: { id: newUser.id, name: newUser.fullName, email: newUser.workEmail }, message: 'Account created successfully' };
+    if (errData && errData.message) return errData;
+    return { success: false, message: `Registration failed (${res.status}). Please try again.` };
+  } catch {
+    return { success: false, message: 'Cannot reach the authentication server. Your account was not created. Please try again later.' };
+  }
 }
 
 export async function resetPassword(email: string, newPassword: string): Promise<ApiResponse> {

@@ -224,10 +224,10 @@ export async function sendPersonalOtp(req, res) {
  */
 export async function verifyOtp(req, res) {
   try {
-    const { email, otp, name, personalEmail, phone, company, role, workEmail, password } = req.body;
+    const { email, otp, name, personalEmail, phone, company, role, workEmail, password, emailType } = req.body;
 
     console.log('[AuthController] verifyOtp — request received:', JSON.stringify({
-      email, personalEmail, workEmail, name, company, role,
+      email, personalEmail, workEmail, name, company, role, emailType,
       hasOtp: !!otp, otpLength: otp?.length, hasPassword: !!password,
     }));
 
@@ -262,6 +262,7 @@ export async function verifyOtp(req, res) {
       password: password,
       company: company || null,
       role: role || null,
+      workEmailVerified: emailType === 'work',
     });
 
     if (error) {
@@ -308,7 +309,7 @@ export async function verifyOtp(req, res) {
  */
 export async function register(req, res) {
   try {
-    const { fullName, personalEmail, phone, workEmail, password, company, role } = req.body;
+    const { fullName, personalEmail, phone, workEmail, password, company, companyName, role, location } = req.body;
 
     if (!fullName || !personalEmail || !phone || !password) {
       return res.status(400).json({ success: false, message: 'All fields are required.' });
@@ -329,8 +330,9 @@ export async function register(req, res) {
       phone,
       workEmail,
       password,
-      company,
+      company: company || companyName,
       role,
+      location,
     });
 
     if (error) {
@@ -367,19 +369,19 @@ export async function register(req, res) {
 
 /**
  * POST /api/auth/login
- * Authenticates with personal email + password.
+ * Authenticates with personal email OR work email + password.
  */
 export async function login(req, res) {
   try {
-    const { personalEmail, email, password } = req.body;
-    const loginEmail = personalEmail || email;
+    const { workEmail, personalEmail, email, password } = req.body;
+    const loginEmail = (personalEmail || email || workEmail || '').trim().toLowerCase();
 
     if (!loginEmail || !password) {
       return res.status(400).json({ success: false, message: 'Email and password are required.' });
     }
 
     console.log('[AuthController] login — searching for:', loginEmail);
-    const user = await findUserByPersonalEmail(loginEmail);
+    const user = await findUserByEmail(loginEmail);
     if (!user) {
       console.log('[AuthController] login — user NOT FOUND:', loginEmail);
       return res.status(401).json({ success: false, message: 'Invalid email or password.' });
@@ -387,9 +389,19 @@ export async function login(req, res) {
 
     console.log('[AuthController] login — user found:', user.id, '| verified:', user.work_email_verified, '| has password hash:', !!user.password_hash);
 
-    if (user.work_email_verified === false) {
-      console.log('[AuthController] login — REJECTED: email not verified');
-      return res.status(403).json({ success: false, message: 'Please verify your email before signing in.' });
+    // Enforce which email type can sign in based on how the account was verified:
+    //  - verified via work email  → sign in only with the WORK email
+    //  - verified via personal email (fallback) → sign in only with the PERSONAL email
+    if (user.work_email_verified === true && user.work_email) {
+      if (user.work_email.toLowerCase() !== loginEmail) {
+        console.log('[AuthController] login — REJECTED: account verified via work email, must sign in with work email');
+        return res.status(401).json({ success: false, message: 'Please sign in with your work email.' });
+      }
+    } else if (user.work_email_verified === false) {
+      if (user.personal_email.toLowerCase() !== loginEmail) {
+        console.log('[AuthController] login — REJECTED: account verified via personal email, must sign in with personal email');
+        return res.status(401).json({ success: false, message: 'Please sign in with your personal email.' });
+      }
     }
 
     const match = await verifyPassword(password, user.password_hash);

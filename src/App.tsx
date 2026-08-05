@@ -8,6 +8,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { useAuth } from './auth/context/AuthContext';
 import { useLmsAuth } from './lms/auth/context/LmsAuthContext';
+import { patchStorageSync, syncFromServer, flushSync } from './dataSync';
 import logoImg from '../picss/iet logo.png';
 import whoWeAreImg from './assets/about_who_we_are.jpg';
 import iit1Img from '../picss/iit1.png';
@@ -204,6 +205,7 @@ export default function App() {
 
   // Show AI for HR popup after 1.5 seconds when the website is opened
   useEffect(() => {
+    if (window.location.pathname === '/courses/ai-for-hr') return;
     const timer = setTimeout(() => {
       const isVerified = localStorage.getItem('corp_otp_verified') === 'true';
       if (!isVerified) {
@@ -462,20 +464,37 @@ export default function App() {
         }
     };
 
-    loadSpline();
     w.reinitSplineRobotOnDemand = loadSpline;
 
-    let checkAttempts = 0;
-    const checkInterval = setInterval(() => {
+    // Defer the 4.5MB 3D (three.js/Spline) bundle until the hero canvas is
+    // actually on screen — keeps initial page load fast. Falls back to an
+    // idle timer in case the observer is never satisfied.
+    const deferredSpline = () => {
       const canvas = document.getElementById('canvas3d');
-      if (canvas && canvas.getAttribute('data-spline-initialized') !== 'true') {
-        loadSpline();
-        clearInterval(checkInterval);
+      if (!canvas || canvas.getAttribute('data-spline-initialized') === 'true') return;
+      if ('IntersectionObserver' in window) {
+        const io = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                loadSpline();
+                io.disconnect();
+              }
+            });
+          },
+          { rootMargin: '400px' }
+        );
+        io.observe(canvas);
+        // Safety net: load even if the observer never fires (e.g. hero hidden).
+        setTimeout(() => {
+          io.disconnect();
+          loadSpline();
+        }, 6000);
+      } else {
+        setTimeout(loadSpline, 1000);
       }
-      if (++checkAttempts > 30) {
-        clearInterval(checkInterval);
-      }
-    }, 500);
+    };
+    deferredSpline();
 
     // Floating Particles Setup (Disabled per user request)
     const container = document.getElementById('particles');
@@ -576,7 +595,7 @@ export default function App() {
       } else {
         if (header) header.classList.add('page-active');
       }
-      const portalPages = ['vol-portal', 'admin-portal'];
+      const portalPages = ['vol-portal', 'admin-portal', 'teacher-portal'];
       if (portalPages.includes(id)) {
         if (header) header.classList.add('portal-mode');
       } else {
@@ -593,7 +612,7 @@ export default function App() {
         return;
       }
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-      const footerHide = ['vol-portal', 'admin-portal'];
+      const footerHide = ['vol-portal', 'admin-portal', 'teacher-portal'];
       const targetPage = document.getElementById(id);
       if (targetPage) {
         targetPage.classList.add('active');
@@ -620,6 +639,11 @@ export default function App() {
       }
       window.scrollTo(0, 0);
     };
+
+    // Direct URL → AI for HR Professionals course page
+    if (window.location.pathname === '/courses/ai-for-hr') {
+      w.showPage('corporate-course');
+    }
 
     // Logins
     w.handleLoginBtn = () => {
@@ -652,13 +676,8 @@ export default function App() {
         (f as HTMLElement).style.display = '';
         f.classList.remove('active');
       });
-      const volTab = document.getElementById('volunteer-tab');
-      if (volTab) volTab.classList.add('active');
-      const tabElements = document.querySelectorAll('.modal-tab');
-      tabElements.forEach((t, i) => {
-        if (i === 0) t.classList.add('active');
-        else t.classList.remove('active');
-      });
+      const loginTab = document.getElementById('login-tab');
+      if (loginTab) loginTab.classList.add('active');
     };
 
     w.openSignUpModal = () => {
@@ -671,47 +690,43 @@ export default function App() {
       if (modal) modal.classList.remove('active');
     };
 
-    w.switchTab = (id: string, e: Event) => {
-      document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
-      if (e && e.currentTarget) {
-        (e.currentTarget as HTMLElement).classList.add('active');
-      }
-      document.querySelectorAll('#login-modal .modal-form').forEach(f => f.classList.remove('active'));
-      const targetForm = document.getElementById(id);
-      if (targetForm) targetForm.classList.add('active');
-    };
-
-    w.loginUser = (role: string) => {
+    w.loginUser = () => {
       const success = document.getElementById('modal-success');
       document.querySelectorAll('#login-modal .modal-form').forEach(f => {
         (f as HTMLElement).style.display = 'none';
       });
       if (success) success.style.display = 'block';
 
+      const email = (document.getElementById('login-email') as HTMLInputElement)?.value?.trim();
+      const pass = (document.getElementById('login-pass') as HTMLInputElement)?.value;
+      let role = '';
       let name = 'User';
-      if (role === 'volunteer') {
-        const email = (document.getElementById('vol-login-email') as HTMLInputElement)?.value;
-        const pass = (document.getElementById('vol-login-pass') as HTMLInputElement)?.value;
-        const volCreds = getSafeArray('volunteer_pass');
-        const found = volCreds.find((v: any) => v && v.email === email && v.password === pass);
-        if (!found) {
-          w.showToast('Invalid email or password');
-          document.querySelectorAll('#login-modal .modal-form').forEach(f => { (f as HTMLElement).style.display = ''; });
-          if (success) success.style.display = 'none';
-          return;
-        }
-        name = found.name || email.split('@')[0];
-        w.currentUserEmail = email;
-      } else {
-        const email = (document.getElementById('ad-login-email') as HTMLInputElement)?.value;
-        const pass = (document.getElementById('ad-login-pass') as HTMLInputElement)?.value;
-        if (email !== 'sravanpasam74@gmail.com' || pass !== 'admin123') {
-          w.showToast('Invalid admin credentials');
-          document.querySelectorAll('#login-modal .modal-form').forEach(f => { (f as HTMLElement).style.display = ''; });
-          if (success) success.style.display = 'none';
-          return;
-        }
+
+      // Admin
+      if (email === 'sravanpasam74@gmail.com' && pass === 'admin123') {
+        role = 'admin';
         name = 'Admin';
+      } else {
+        // Volunteer
+        const volCreds = getSafeArray('volunteer_pass');
+        const volFound = volCreds.find((v: any) => v && v.email === email && v.password === pass);
+        // Teacher
+        const tchCreds = getSafeArray('teachxai_teachers_pass');
+        const tchFound = tchCreds.find((t: any) => t && t.email === email && t.password === pass);
+        if (volFound) {
+          role = 'volunteer';
+          name = volFound.name || email.split('@')[0];
+        } else if (tchFound) {
+          role = 'teacher';
+          name = tchFound.name || email.split('@')[0];
+        }
+      }
+
+      if (!role) {
+        w.showToast('Invalid email or password');
+        document.querySelectorAll('#login-modal .modal-form').forEach(f => { (f as HTMLElement).style.display = ''; });
+        if (success) success.style.display = 'none';
+        return;
       }
 
       const successMsg = document.getElementById('success-msg');
@@ -719,7 +734,8 @@ export default function App() {
 
       currentUser = { role, name };
       localStorage.setItem('currentUser', JSON.stringify(currentUser));
-      if (w.currentUserEmail) localStorage.setItem('currentUserEmail', w.currentUserEmail);
+      w.currentUserEmail = email;
+      localStorage.setItem('currentUserEmail', email);
       const loginBtn = document.getElementById('login-btn');
       if (loginBtn) loginBtn.textContent = 'Logout';
       const loggedUserEl = document.getElementById('logged-user');
@@ -730,24 +746,29 @@ export default function App() {
 
       setTimeout(() => {
         w.closeModal();
-        if (role === 'volunteer') {          const pName = document.getElementById('portal-name');
+        w.renderEvents();
+        w.renderTasks();
+        w.renderVolunteersAndLeaderboard();
+        if (role === 'volunteer') {
+          const pName = document.getElementById('portal-name');
           const pFullName = document.getElementById('portal-fullname');
           const pAvatar = document.getElementById('portal-avatar');
           if (pName) pName.textContent = name;
           if (pFullName) pFullName.textContent = name;
           if (pAvatar) pAvatar.textContent = name[0].toUpperCase();
-          
-          // Re-render portal panels on dynamic login
-          w.renderEvents();
-          w.renderTasks();
-          w.renderVolunteersAndLeaderboard();
           // Populate profile fields
           w.populateVolunteerProfile();
           w.showPage('vol-portal');
+        } else if (role === 'teacher') {
+          const tpName = document.getElementById('tportal-name');
+          const tpFullName = document.getElementById('tportal-fullname');
+          const tpAvatar = document.getElementById('tportal-avatar');
+          if (tpName) tpName.textContent = name;
+          if (tpFullName) tpFullName.textContent = name;
+          if (tpAvatar) tpAvatar.textContent = name[0].toUpperCase();
+          w.renderTeacherPortal();
+          w.showPage('teacher-portal');
         } else {
-          w.renderEvents();
-          w.renderTasks();
-          w.renderVolunteersAndLeaderboard();
           w.loadEventRegistrations();
           w.showPage('admin-portal');
         }
@@ -756,6 +777,9 @@ export default function App() {
 
     // ===== PERSISTENT DATA LAYER & UI SYNC SYSTEM =====
     w.initData = async () => {
+      // Pull the shared server state into localStorage first (source of truth).
+      await syncFromServer();
+
       // Force clear stale mock data from localStorage for returning users
       try {
         const cachedVols = JSON.parse(localStorage.getItem('volunteers') || '[]');
@@ -2539,9 +2563,18 @@ export default function App() {
     };
 
     w.initData();
+    patchStorageSync();
     w.renderEvents();
     w.renderTasks();
     w.renderVolunteersAndLeaderboard();
+
+    // Flush pending local changes when the user leaves the page
+    const flushHandler = () => flushSync();
+    const visHandler = () => {
+      if (document.visibilityState === 'hidden') flushSync();
+    };
+    window.addEventListener('pagehide', flushHandler);
+    document.addEventListener('visibilitychange', visHandler);
 
     // Restore page from saved session
     if (currentUser) {
@@ -2564,6 +2597,15 @@ export default function App() {
           w.renderVolunteersAndLeaderboard();
           w.loadEventRegistrations();
           w.showPage('admin-portal');
+        } else if (currentUser?.role === 'teacher') {
+          const tpName = document.getElementById('tportal-name');
+          const tpFullName = document.getElementById('tportal-fullname');
+          const tpAvatar = document.getElementById('tportal-avatar');
+          if (tpName) tpName.textContent = currentUser.name;
+          if (tpFullName) tpFullName.textContent = currentUser.name;
+          if (tpAvatar) tpAvatar.textContent = currentUser.name[0].toUpperCase();
+          w.renderTeacherPortal();
+          w.showPage('teacher-portal');
         }
       }, 100);
     }
@@ -2574,6 +2616,8 @@ export default function App() {
       clearInterval(sliderInterval);
       clearInterval(labelInterval);
       window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('pagehide', flushHandler);
+      document.removeEventListener('visibilitychange', visHandler);
     };
   }, []);
 
@@ -2627,11 +2671,11 @@ export default function App() {
 
       {/* ========== HEADER ========== */}
       <header>
-        <div className="logo" onClick={() => (window as any).showPage('home')} style={{ padding: '0', background: 'transparent', borderRadius: '12px', overflow: 'hidden', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div className="logo" onClick={() => (window as any).showPage('home')} style={{ padding: '0', background: 'transparent', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <img src={logoImg} alt="IncuXai Logo" className="logo-icon" style={{ height: '45px', width: 'auto', borderRadius: '8px' }} />
-          <div className="logo-text-group" style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.1' }}>
-            <span className="logo-title">IncuXai</span>
-            <span className="logo-subtitle">Education Trust</span>
+          <div className="logo-text-group" style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.15' }}>
+            <span className="logo-title">IncuXai <span style={{ color: '#C5A059', WebkitTextFillColor: '#C5A059' }}>Education Trust</span></span>
+            <span className="logo-tagline">( In collaboration with Ratan Tata Innovation Hub )</span>
           </div>
         </div>
         <nav id="main-nav">
@@ -2661,8 +2705,8 @@ export default function App() {
           <a onClick={() => (window as any).showPage('contact')}>Contact</a>
         </nav>
         <nav id="portal-nav" style={{ display: 'none', alignItems: 'center', gap: '0.25rem', flexWrap: 'wrap' }}>
-          <a id="portal-nav-dashboard" onClick={() => { const u = JSON.parse(localStorage.getItem('currentUser')||'{}'); if(u.role==='volunteer') (window as any).showPage('vol-portal'); else (window as any).showPage('admin-portal'); }}>Dashboard</a>
-          <a id="portal-nav-profile" onClick={() => { const u = JSON.parse(localStorage.getItem('currentUser')||'{}'); if(u.role==='volunteer') (window as any).showPage('vol-portal'); else (window as any).showPage('admin-portal'); setTimeout(() => { const el = document.getElementById(u.role==='volunteer'?'vol-profile':'vol-profile'); if(el) (window as any).showPortalSection('vol-profile', {currentTarget: el}); }, 50); }}>Profile</a>
+          <a id="portal-nav-dashboard" onClick={() => { const u = JSON.parse(localStorage.getItem('currentUser')||'{}'); if(u.role==='volunteer') (window as any).showPage('vol-portal'); else if(u.role==='teacher') (window as any).showPage('teacher-portal'); else (window as any).showPage('admin-portal'); }}>Dashboard</a>
+          <a id="portal-nav-profile" onClick={() => { const u = JSON.parse(localStorage.getItem('currentUser')||'{}'); if(u.role==='volunteer') (window as any).showPage('vol-portal'); else if(u.role==='teacher') (window as any).showPage('teacher-portal'); else (window as any).showPage('admin-portal'); setTimeout(() => { if(u.role==='teacher'){ const el = document.getElementById('tportal-profile'); if(el) (window as any).showTportalSection('tportal-profile', {currentTarget: el}); } else { const el = document.getElementById('vol-profile'); if(el) (window as any).showPortalSection('vol-profile', {currentTarget: el}); } }, 50); }}>Profile</a>
         </nav>
         <div className="header-right">
           <span id="logged-user" style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.8)', fontWeight: '600', display: 'none' }}></span>
@@ -2788,10 +2832,11 @@ export default function App() {
               <div className="about-img-placeholder"><img src={whoWeAreImg} alt="Classroom learning" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '28px', display: 'block' }} /></div>
             </div>
             <div className="about-text">
-              <h3>Who We Are</h3>
-              <p>IncuXAI Education Trust is a non-profit educational initiative committed to making Artificial Intelligence, digital skills, and emerging technologies accessible to people from every section of society. We believe that technology becomes truly meaningful when everyone has the opportunity to understand it, use it, and benefit from it.</p>
-              <p>Through our AI 4 ALL initiative, educational programs, workshops, volunteer-led activities, and community partnerships, we bring practical AI learning to students, teachers, farmers, entrepreneurs, small businesses, children, and communities across India. Our approach focuses on practical learning rather than technology alone — we simplify complex concepts, encourage learning in regional languages, and demonstrate how AI can be used to solve real-world problems and create new opportunities.</p>
-              <p>Beyond AI education, we support initiatives in student development, leadership, innovation, entrepreneurship, career awareness, digital literacy, and community empowerment. Our goal is simple: education that reaches everyone, technology that empowers everyone, and opportunities that leave no one behind.</p>
+              <h3>About IncuXAI Education Trust</h3>
+              <p>IncuXAI Education Trust is a non-profit initiative making Artificial Intelligence, digital skills, and emerging technologies accessible to everyone.</p>
+              <p>Through our <strong>AI 4 ALL</strong> initiative and volunteer-led programs, we bring practical AI learning to students, teachers, farmers, entrepreneurs, children, and communities across India — with a focus on regional languages and real-world application.</p>
+              <p>Beyond AI, we support student development, leadership, innovation, entrepreneurship, and digital literacy.</p>
+              <p>Our goal: <strong>education that reaches everyone, technology that empowers everyone, and opportunities that leave no one behind.</strong></p>
             </div>
           </div>
 
@@ -2808,9 +2853,9 @@ export default function App() {
                 {/* Face 1: Mission (Front) */}
                 <div className="cube-face cube-front">
                   <div className="about-detail-matter">
-                    <h4 className="tab-title">Democratizing AI Education</h4>
-                    <p>Our mission is to democratize Artificial Intelligence and digital education by making knowledge accessible, practical, inclusive, and meaningful for everyone. We work to bridge the gap between rapidly advancing technology and the communities that can benefit from it most, equipping individuals with the skills and confidence to participate in an AI-powered world through free learning opportunities, practical training, regional-language education, workshops, mentorship, and community-driven programs.</p>
-                    <p>We are committed to reaching beyond traditional classrooms, bringing technology education to students, educators, farmers, entrepreneurs, small businesses, working communities, and individuals who may otherwise have limited access to emerging technologies. Our mission is not simply to teach people about AI — it is to help them use technology to learn better, work smarter, solve real problems, create opportunities, and improve their communities.</p>
+                    <h4 className="tab-title">Our Mission</h4>
+                    <p>To <strong>democratize AI and digital education</strong> — making knowledge accessible, practical, inclusive, and meaningful for everyone.</p>
+                    <p>Through free learning, practical training, regional-language education, workshops, and mentorship, we equip individuals with the skills and confidence to participate in an AI-powered world — reaching students, educators, farmers, entrepreneurs, small businesses, and communities beyond traditional classrooms.</p>
                   </div>
                   <div className="about-detail-photo">
                     <img src={ourMissionImg} alt="Our Mission" />
@@ -2821,9 +2866,9 @@ export default function App() {
                 {/* Face 2: Vision (Right) */}
                 <div className="cube-face cube-right">
                   <div className="about-detail-matter">
-                    <h4 className="tab-title">A Digitally Empowered India</h4>
-                    <p>Our vision is to build a digitally empowered and technologically inclusive India where every individual has the knowledge, confidence, and opportunity to benefit from Artificial Intelligence and emerging technologies.</p>
-                    <p>We envision a future where a farmer can use AI to make informed agricultural decisions, a teacher can create more engaging learning experiences, a student can explore new possibilities regardless of their background, and a small business owner can use technology to grow and compete. By promoting AI literacy, innovation, responsible technology use, and community participation, we aim to contribute to an India where people are not merely users of technological change — they are active participants, creators, innovators, and leaders of it.</p>
+                    <h4 className="tab-title">Our Vision</h4>
+                    <p>To build a <strong>digitally empowered and technologically inclusive India</strong> where everyone has the knowledge, confidence, and opportunity to benefit from AI.</p>
+                    <p>We envision a future where farmers make informed decisions with AI, teachers create richer learning experiences, students explore new possibilities, and small businesses grow and compete — where technology is not limited by geography, language, education, or economic circumstance.</p>
                   </div>
                   <div className="about-detail-photo">
                     <img src={ourVisionImg} alt="Our Vision" />
@@ -2833,13 +2878,13 @@ export default function App() {
                 {/* Face 3: Values (Back) */}
                 <div className="cube-face cube-back">
                   <div className="about-detail-matter">
-                    <h4 className="tab-title">What Drives Us Every Day</h4>
-                    <p><strong>Inclusivity — Education for Everyone:</strong> We believe knowledge should never be restricted by a person's location, language, age, educational background, or economic circumstances, and we strive to create learning opportunities that welcome everyone.</p>
-                    <p><strong>Accessibility — Knowledge Without Barriers:</strong> We work to simplify complex technologies and provide practical learning opportunities that can reach communities beyond traditional educational environments.</p>
-                    <p><strong>Empowerment — Turning Knowledge into Opportunity:</strong> Our programs help people apply what they learn to education, careers, businesses, agriculture, innovation, and everyday challenges.</p>
-                    <p><strong>Innovation — Learning for the Future:</strong> We encourage curiosity, experimentation, creativity, problem-solving, and responsible exploration of emerging technologies.</p>
-                    <p><strong>Community — Growing Together:</strong> Volunteers, educators, learners, institutions, professionals, and communities are at the heart of our work — knowledge becomes more powerful when people share it.</p>
-                    <p><strong>Integrity — Technology with Responsibility:</strong> As we promote Artificial Intelligence and digital technologies, we encourage their ethical, responsible, and thoughtful use, building trust through transparency, accountability, and a commitment to positive social impact.</p>
+                    <h4 className="tab-title">Our Values</h4>
+                    <p><strong>Inclusivity</strong> — knowledge for everyone, regardless of location, language, age, or background.</p>
+                    <p><strong>Accessibility</strong> — simplifying technology so learning reaches every community.</p>
+                    <p><strong>Empowerment</strong> — turning knowledge into opportunity for education, careers, and businesses.</p>
+                    <p><strong>Innovation</strong> — encouraging curiosity, creativity, and responsible exploration of emerging tech.</p>
+                    <p><strong>Community</strong> — growing together through volunteers, educators, and learners.</p>
+                    <p><strong>Integrity</strong> — promoting ethical, responsible, and transparent use of technology.</p>
                   </div>
                   <div className="about-detail-photo">
                     <img src={ourValuesImg} alt="Our Values" />
@@ -2850,9 +2895,11 @@ export default function App() {
                 {/* Face 4: Journey (Left) */}
                 <div className="cube-face cube-left">
                   <div className="about-detail-matter">
-                    <h4 className="tab-title">From Concept to Movement</h4>
-                    <p>Every meaningful movement begins with a simple belief. For IncuXAI Education Trust, that belief was that the benefits of technology should belong to everyone. As Artificial Intelligence began transforming the world, we recognized that while technology was advancing rapidly, access to the knowledge required to understand and use it was not reaching everyone equally.</p>
-                    <p>What began as an effort to bridge this gap grew into a broader mission of education, empowerment, and community impact — evolving into AI 4 ALL, an initiative designed to take practical AI education to people from different walks of life. Through workshops, student initiatives, hackathons, mentorship, community partnerships, and a growing volunteer network, what started as an idea is becoming a movement driven by people who believe knowledge should be shared and technology should create opportunity. Our journey is only beginning.</p>
+                    <h4 className="tab-title">Our Journey</h4>
+                    <p>It began with a simple belief: <strong>the benefits of technology should belong to everyone.</strong></p>
+                    <p>As AI advanced rapidly, we saw that access to the knowledge to understand and use it was not reaching everyone equally. So we brought together people passionate about technology, education, and social development to bridge that gap.</p>
+                    <p>What started with workshops and community outreach evolved into <strong>AI 4 ALL</strong> — bringing practical AI education to students, teachers, farmers, entrepreneurs, children, and small businesses.</p>
+                    <p>Through educational initiatives, hackathons, mentorship, and a growing volunteer network, a simple idea has become a movement — and our journey is only beginning.</p>
                   </div>
                   <div className="about-detail-photo">
                     <img src={ourJourneyImg} alt="Our Journey" />
@@ -3055,22 +3102,22 @@ export default function App() {
             <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
               <img src={veeraImg} alt="Veera" style={{ width: '70px', height: '70px', borderRadius: '50%', objectFit: 'cover', objectPosition: 'top', marginBottom: '0.5rem', display: 'inline-block' }} />
               <div className="card-title" style={{ fontSize: '1rem' }}>Veera</div>
-              <div className="card-text" style={{ fontSize: '0.85rem', fontStyle: 'italic' }}>IncuxAI&apos;s crop disease detection training helped me save my entire season&apos;s yield. I now teach other farmers in my village how to use AI on their phones.</div>
+              <div className="card-text" style={{ fontSize: '0.85rem', fontStyle: 'italic' }}>Quality UPSC coaching is often expensive, but IncuXAI Education Trust made it accessible to everyone through its Free IAS Classes. The faculty explained complex topics in a simple manner, provided study materials, and motivated us to stay consistent. The mentorship sessions gave me clarity and confidence to continue my civil services preparation.</div>
             </div>
             <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
               <img src={hariniImg} alt="Harini" style={{ width: '70px', height: '70px', borderRadius: '50%', objectFit: 'cover', objectPosition: 'top', marginBottom: '0.5rem', display: 'inline-block' }} />
               <div className="card-title" style={{ fontSize: '1rem' }}>Harini</div>
-              <div className="card-text" style={{ fontSize: '0.85rem', fontStyle: 'italic' }}>The AI teacher training program transformed my classroom. My students are more engaged and I can now create personalized lessons for each child.</div>
+              <div className="card-text" style={{ fontSize: '0.85rem', fontStyle: 'italic' }}>Quality UPSC coaching is often expensive, but IncuXAI Education Trust made it accessible to everyone through its Free IAS Classes. The faculty explained complex topics in a simple manner, provided study materials, and motivated us to stay consistent. The mentorship sessions gave me clarity and confidence to continue my civil services preparation.</div>
             </div>
             <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
               <img src={rajuImg} alt="Raju" style={{ width: '70px', height: '70px', borderRadius: '50%', objectFit: 'cover', objectPosition: 'top', marginBottom: '0.5rem', display: 'inline-block' }} />
               <div className="card-title" style={{ fontSize: '1rem' }}>Raju</div>
-              <div className="card-text" style={{ fontSize: '0.85rem', fontStyle: 'italic' }}>I doubled my sales after applying AI tools I learned at IncuxAI&apos;s MSME workshop. Best decision I ever made for my business.</div>
+              <div className="card-text" style={{ fontSize: '0.85rem', fontStyle: 'italic' }}>Every program conducted by IncuXAI Education Trust focuses on practical learning and community impact. Whether it&apos;s AI education, innovation, leadership, or public service, each initiative encourages students to apply knowledge in meaningful ways. I&apos;m grateful to be part of this growing movement.</div>
             </div>
             <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
               <img src={raziaImg} alt="Razia" style={{ width: '70px', height: '70px', borderRadius: '50%', objectFit: 'cover', objectPosition: 'top', marginBottom: '0.5rem', display: 'inline-block' }} />
               <div className="card-title" style={{ fontSize: '1rem' }}>Razia</div>
-              <div className="card-text" style={{ fontSize: '0.85rem', fontStyle: 'italic' }}>I never thought I could learn AI in Hindi. IncuxAI made it possible. I&apos;ve now built my own chatbot and won the school science fair!</div>
+              <div className="card-text" style={{ fontSize: '0.85rem', fontStyle: 'italic' }}>The 10-day IAS Foundation Program helped me understand the UPSC examination pattern, answer writing techniques, and current affairs strategy. The personalized guidance from experienced mentors made this one of the most valuable learning experiences I&apos;ve had.</div>
             </div>
           </div>
         </section>
@@ -3085,22 +3132,22 @@ export default function App() {
             <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
               <img src={divyaImg} alt="Divya" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', objectPosition: 'top', marginBottom: '0.5rem', display: 'inline-block' }} />
               <div className="card-title">Divya</div>
-              <div className="card-text">IIT Delhi graduate. Spearheads vernacular AI prompt engineering bootcamps across 40+ villages.</div>
+              <div className="card-text">Volunteering at the AI and Cybersecurity workshops allowed me to introduce students to emerging technologies through practical demonstrations. The enthusiasm participants showed during hands-on sessions made every workshop exciting. Helping beginners understand AI concepts and cybersecurity awareness was a truly rewarding experience.</div>
             </div>
             <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
               <img src={varunImg} alt="Varun" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', objectPosition: 'top', marginBottom: '0.5rem', display: 'inline-block' }} />
               <div className="card-title">Varun</div>
-              <div className="card-text">Social work specialist. Mapped agricultural cooperative partnerships to train 20,000+ farmers in AI.</div>
+              <div className="card-text">Supporting the IIT Hyderabad campus workshops was an unforgettable experience. Coordinating student activities, guiding participants during technical sessions, and interacting with industry mentors gave me valuable exposure to innovation and research. Every participant left the campus inspired to pursue technology with greater confidence.</div>
             </div>
             <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
               <img src={naziaImg} alt="Nazia" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', objectPosition: 'top', marginBottom: '0.5rem', display: 'inline-block' }} />
               <div className="card-title">Nazia</div>
-              <div className="card-text">Software engineer. Designs interactive vernacular code templates for rural government schools.</div>
+              <div className="card-text">Participating in the book distribution drive was one of the most emotional experiences I&apos;ve had. Handing books to deserving students reminded me that education can change lives. Their excitement and gratitude made me realize that even a simple act of support can inspire someone to dream bigger.</div>
             </div>
             <div className="card tilt-card" style={{ textAlign: 'center' }} onMouseMove={(e) => (window as any).handleCardTiltMove(e)} onMouseLeave={(e) => (window as any).handleCardTiltLeave(e)}>
               <img src={chandraImg} alt="Chandra" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover', objectPosition: 'top', marginBottom: '0.5rem', display: 'inline-block' }} />
               <div className="card-title">Chandra</div>
-              <div className="card-text">Rural education activist. Established 60+ mobile-learning resource centers across remote districts.</div>
+              <div className="card-text">I assisted faculty members during the IAS Foundation Program by helping students with study resources and doubt sessions. Watching aspirants become more confident each day reminded me how meaningful educational volunteering can be. IncuXAI has created a platform where knowledge reaches those who need it the most.</div>
             </div>
           </div>
         </section>
@@ -3111,7 +3158,13 @@ export default function App() {
           <div className="corp-course-hero">
               <div className="corp-course-hero-inner">
                 <span className="section-tag" style={{ color: 'var(--secondary)' }}>AI 4 ALL Program</span>
-                <h1 className="corp-course-title">AI for HR Professionals</h1>
+                <div className="corp-course-title-row">
+                  <h1 className="corp-course-title">AI for HR Professionals</h1>
+                  <button className="panel-btn-register corp-course-hero-cta" onClick={() => navigate('/lms/sign-up')}>
+                    <span>Register & Unlock Course</span>
+                    <span>→</span>
+                  </button>
+                </div>
                 <p className="section-sub" style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: 'clamp(1rem, 2vw, 1.2rem)', margin: '1rem 0 1.5rem', lineHeight: '1.5' }}>
                   Transform your HR operations with AI-powered resume screening, employee sentiment analysis, predictive attrition models, and AI governance frameworks designed for human resource teams.
                 </p>
@@ -3176,15 +3229,11 @@ export default function App() {
                 <p className="panel-desc">
                   This course is exclusively for HR professionals. To gain access, register using your official company email address.
                 </p>
-                <button className="panel-btn-register" onClick={() => navigate('/lms/sign-up')}>
-                  <span>Register & Unlock Course</span>
-                  <span>→</span>
-                </button>
                 <div className="panel-requirements">
                   <h5 className="panel-req-title">Validation Checklist</h5>
                   <div className="panel-req-item"><span className="panel-req-bullet">•</span><span>Requires official corporate domain email</span></div>
                   <div className="panel-req-item"><span className="panel-req-bullet">•</span><span>No personal domains (gmail, yahoo, etc.) accepted</span></div>
-                  <div className="panel-req-item"><span className="panel-req-bullet">•</span><span>6-Digit secure OTP code verification</span></div>
+                  <div className="panel-req-item"><span className="panel-req-bullet">•</span><span>Secure password-protected account</span></div>
                 </div>
               </div>
             </div>
@@ -4128,6 +4177,130 @@ export default function App() {
         </div>
       </div>
 
+      {/* ========== TEACHER PORTAL ========== */}
+      <div id="teacher-portal" className="page">
+        <div className="portal-header">
+          <div>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.3rem', color: 'var(--accent)' }}>Teacher Portal</h2>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>Welcome back, <span id="tportal-name" style={{ color: 'var(--accent)', fontWeight: '700' }}></span></p>
+          </div>
+          <div className="portal-user">
+            <div className="avatar" id="tportal-avatar" style={{ background: 'linear-gradient(135deg,var(--accent),var(--secondary))' }}>T</div>
+            <div>
+              <div style={{ fontWeight: '700' }} id="tportal-fullname">Teacher</div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>TeachXai Educator</div>
+            </div>
+          </div>
+        </div>
+        <div className="portal-nav">
+          <button className="portal-nav-btn active" onClick={(e) => (window as any).showTportalSection('tportal-dashboard', e)}>Dashboard</button>
+          <button className="portal-nav-btn" onClick={(e) => (window as any).showTportalSection('tportal-classes', e)}>My Classes</button>
+          <button className="portal-nav-btn" onClick={(e) => (window as any).showTportalSection('tportal-tasks', e)}>My Tasks</button>
+          <button className="portal-nav-btn" onClick={(e) => (window as any).showTportalSection('tportal-attendance', e)}>Attendance</button>
+          <button className="portal-nav-btn" onClick={(e) => (window as any).showTportalSection('tportal-courses', e)}>Courses</button>
+          <button className="portal-nav-btn" onClick={(e) => (window as any).showTportalSection('tportal-profile', e)}>Profile</button>
+        </div>
+
+        {/* Dashboard */}
+        <div id="tportal-dashboard" className="portal-section active">
+          <div className="hours-display">
+            <div className="hours-box"><div className="hours-num" id="tportal-hours">0</div><div className="hours-label">Total Teaching Hours</div></div>
+            <div className="hours-box"><div className="hours-num" id="tportal-upcoming">0</div><div className="hours-label">Upcoming Classes</div></div>
+            <div className="hours-box"><div className="hours-num" id="tportal-assigned">0</div><div className="hours-label">Classes Assigned</div></div>
+            <div className="hours-box"><div className="hours-num" id="tportal-att-pct">0%</div><div className="hours-label">Attendance Rate</div></div>
+          </div>
+          <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--accent)', fontSize: '1rem', marginBottom: '1rem' }}>Recent Activity</h3>
+          <div id="tportal-recent-activity"></div>
+        </div>
+
+        {/* My Classes */}
+        <div id="tportal-classes" className="portal-section">
+          <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--accent)', fontSize: '1rem', marginBottom: '1rem' }}>My Classes</h3>
+          <div id="tportal-classes-list"></div>
+        </div>
+
+        {/* My Tasks */}
+        <div id="tportal-tasks" className="portal-section">
+          <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--accent)', fontSize: '1rem', marginBottom: '1rem' }}>Assigned Lessons</h3>
+          <div id="tportal-tasks-list"></div>
+        </div>
+
+        {/* Attendance */}
+        <div id="tportal-attendance" className="portal-section">
+          <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--accent)', fontSize: '1rem', marginBottom: '1rem' }}>My Attendance</h3>
+          <div id="tportal-attendance-list"></div>
+        </div>
+
+        {/* Courses */}
+        <div id="tportal-courses" className="portal-section">
+          <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--accent)', fontSize: '1rem', marginBottom: '1rem' }}>Recommended Courses</h3>
+          <div id="tportal-courses-list"></div>
+        </div>
+
+        {/* Profile */}
+        <div id="tportal-profile" className="portal-section">
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', color: 'var(--accent)', marginBottom: '1.5rem' }}>My Profile</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '2rem', alignItems: 'start' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div id="tch-profile-photo" style={{ width: '140px', height: '140px', borderRadius: '50%', background: 'linear-gradient(135deg,var(--accent),var(--secondary))', margin: '0 auto 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem', color: '#fff', fontWeight: '700', overflow: 'hidden', position: 'relative', cursor: 'pointer', border: '3px solid var(--glass-border)' }} onClick={() => document.getElementById('tch-photo-input')?.click()}>
+                <span id="tch-profile-photo-text">T</span>
+                <img id="tch-profile-photo-img" style={{ display: 'none', width: '100%', height: '100%', objectFit: 'cover', position: 'absolute' }} alt="Profile" />
+              </div>
+              <input type="file" id="tch-photo-input" accept="image/*" style={{ display: 'none' }} onChange={(e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (file) { const reader = new FileReader(); reader.onload = (ev) => { const img = document.getElementById('tch-profile-photo-img') as HTMLImageElement; const txt = document.getElementById('tch-profile-photo-text'); if (img && txt) { img.src = ev.target?.result as string; img.style.display = 'block'; txt.style.display = 'none'; localStorage.setItem('tch_profile_photo_' + (window as any).currentUserEmail, ev.target?.result as string); } }; reader.readAsDataURL(file); } }} />
+              <button className="btn-small" onClick={() => document.getElementById('tch-photo-input')?.click()} style={{ fontSize: '0.78rem', padding: '0.3rem 0.8rem', marginTop: '0.3rem' }}>Change Photo</button>
+            </div>
+            <div>
+              <div className="card" style={{ padding: '1.5rem', background: 'var(--glass)', border: '1px solid var(--glass-border)', borderRadius: '16px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)' }}>Full Name</label>
+                    <input type="text" id="tch-profile-name" style={{ padding: '0.6rem 0.8rem', fontSize: '0.85rem', border: '1.5px solid var(--glass-border)', borderRadius: '8px', outline: 'none', width: '100%' }} />
+                  </div>
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)' }}>Email</label>
+                    <input type="email" id="tch-profile-email" style={{ padding: '0.6rem 0.8rem', fontSize: '0.85rem', border: '1.5px solid var(--glass-border)', borderRadius: '8px', outline: 'none', width: '100%', background: '#f5f5f5' }} readOnly />
+                  </div>
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)' }}>Phone</label>
+                    <input type="tel" id="tch-profile-phone" style={{ padding: '0.6rem 0.8rem', fontSize: '0.85rem', border: '1.5px solid var(--glass-border)', borderRadius: '8px', outline: 'none', width: '100%' }} />
+                  </div>
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)' }}>Education</label>
+                    <input type="text" id="tch-profile-education" style={{ padding: '0.6rem 0.8rem', fontSize: '0.85rem', border: '1.5px solid var(--glass-border)', borderRadius: '8px', outline: 'none', width: '100%' }} />
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)' }}>Subjects (comma separated)</label>
+                    <input type="text" id="tch-profile-subjects" placeholder="e.g. Machine Learning, Python" style={{ padding: '0.6rem 0.8rem', fontSize: '0.85rem', border: '1.5px solid var(--glass-border)', borderRadius: '8px', outline: 'none', width: '100%' }} />
+                  </div>
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)' }}>Languages (comma separated)</label>
+                    <input type="text" id="tch-profile-languages" placeholder="e.g. Telugu, English" style={{ padding: '0.6rem 0.8rem', fontSize: '0.85rem', border: '1.5px solid var(--glass-border)', borderRadius: '8px', outline: 'none', width: '100%' }} />
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '1.25rem' }}>
+                  <button className="btn-submit" style={{ padding: '0.5rem 1.5rem', fontSize: '0.85rem' }} onClick={() => (window as any).saveTeacherProfile()}>Save Changes</button>
+                  <button className="btn-submit" style={{ padding: '0.5rem 1.5rem', fontSize: '0.85rem', background: 'var(--text-muted)' }} onClick={() => { const el = document.getElementById('tch-profile-password-section'); if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none'; }}>Change Password</button>
+                </div>
+                <div id="tch-profile-password-section" style={{ display: 'none', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--glass-border)' }}>
+                  <h4 style={{ fontSize: '0.9rem', marginBottom: '1rem', color: 'var(--text)' }}>Change Password</h4>
+                  <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)' }}>Current Password</label>
+                    <input type="password" id="tch-current-pass" placeholder="Enter current password" style={{ padding: '0.6rem 0.8rem', fontSize: '0.85rem', border: '1.5px solid var(--glass-border)', borderRadius: '8px', outline: 'none', width: '100%' }} />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-muted)' }}>New Password</label>
+                    <input type="password" id="tch-new-pass" placeholder="Enter new password" style={{ padding: '0.6rem 0.8rem', fontSize: '0.85rem', border: '1.5px solid var(--glass-border)', borderRadius: '8px', outline: 'none', width: '100%' }} />
+                  </div>
+                  <button className="btn-submit" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }} onClick={() => (window as any).changeTeacherPassword()}>Update Password</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
 
 
       {/* ========== LOGIN MODAL ========== */}
@@ -4137,21 +4310,11 @@ export default function App() {
           <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.2rem', color: 'var(--primary)', fontWeight: '700' }}>Welcome Back</h2>
           </div>
-          <div className="modal-tabs">
-            <button className="modal-tab active" onClick={(e) => (window as any).switchTab('volunteer-tab', e)}>Volunteer</button>
-            <button className="modal-tab" onClick={(e) => (window as any).switchTab('admin-tab', e)}>Admin</button>
-          </div>
-          {/* Volunteer Login */}
-          <div className="modal-form active" id="volunteer-tab">
-            <div className="form-group"><label>Email</label><input type="email" id="vol-login-email" placeholder="your@email.com" /></div>
-            <div className="form-group"><label>Password</label><input type="password" id="vol-login-pass" placeholder="••••••••" /></div>
-            <button className="btn-submit" onClick={() => (window as any).loginUser('volunteer')}>Login</button>
-          </div>
-          {/* Admin Login */}
-          <div className="modal-form" id="admin-tab">
-            <div className="form-group"><label>Admin Email</label><input type="email" id="ad-login-email" placeholder="Enter admin email" /></div>
-            <div className="form-group"><label>Admin Password</label><input type="password" id="ad-login-pass" placeholder="••••••••" /></div>
-            <button className="btn-submit" onClick={() => (window as any).loginUser('admin')} style={{ background: 'linear-gradient(135deg,var(--primary),var(--secondary))' }}>Login as Admin</button>
+          {/* Single Login */}
+          <div className="modal-form active" id="login-tab">
+            <div className="form-group"><label>Email</label><input type="email" id="login-email" placeholder="your@email.com" /></div>
+            <div className="form-group"><label>Password</label><input type="password" id="login-pass" placeholder="••••••••" /></div>
+            <button className="btn-submit" onClick={() => (window as any).loginUser()}>Login</button>
           </div>
           {/* Success */}
           <div className="modal-success" id="modal-success">
@@ -4341,7 +4504,7 @@ export default function App() {
           {/* Payment Method */}
           <div style={{ background: 'var(--glass)', border: '1px solid var(--glass-border)', borderRadius: '20px', padding: '2rem', marginBottom: '1.5rem' }}>
             <h3 style={{ fontSize: '1.1rem', fontFamily: 'var(--font-display)', fontWeight: '700', color: 'var(--text)', marginBottom: '1.2rem' }}>Select Payment Method</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem' }}>
+            <div className="pay-methods-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem' }}>
               {[
                 { id: 'upi', label: 'UPI', icon: '📱', desc: 'Google Pay, PhonePe, Paytm' },
                 { id: 'card', label: 'Credit / Debit Card', icon: '💳', desc: 'Visa, Mastercard, Rupay' },
