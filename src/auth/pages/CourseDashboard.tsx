@@ -8,6 +8,7 @@ import ietLogo from '../../../picss/iet logo.png';
 
 const PROGRESS_KEY = 'lms_hr_progress';
 const WATCH_THRESHOLD = 0.8;
+const COURSE_LIVE = false;
 
 interface LessonProgress {
   completed: boolean;
@@ -750,6 +751,7 @@ export default function CourseDashboard() {
       )}
 
       {currentPage === 'course' && (
+        <div className="lms-course-cover" style={{ position: 'relative' }}>
         <div className="lms-body">
           <aside className={`lms-sidebar ${sidebarOpen ? 'open' : 'closed'} ${mobileSidebar ? 'mobile-open' : ''}`}>
             <div className="lms-sidebar-header">
@@ -984,6 +986,38 @@ export default function CourseDashboard() {
               </div>
             </aside>
           )}
+        </div>
+
+        {!COURSE_LIVE && (
+          <div className="lms-course-lock-overlay" style={{ position: 'absolute', inset: 0, background: 'rgba(12, 22, 40, 0.55)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '2rem', zIndex: 50 }}>
+            <div style={{ background: '#ffffff', borderRadius: '20px', boxShadow: '0 24px 60px rgba(12, 22, 40, 0.25)', maxWidth: '480px', width: '100%', overflow: 'hidden', fontFamily: 'Inter, sans-serif' }}>
+              <div style={{ background: 'linear-gradient(135deg, #0c1628 0%, #1e3a5f 100%)', padding: '2rem 2.5rem 1.75rem' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '6px 14px', borderRadius: '99px', background: 'rgba(255, 255, 255, 0.12)', color: '#C5A059', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                  AI for HR Professionals
+                </span>
+                <h2 style={{ margin: '0.9rem 0 0', color: '#ffffff', fontFamily: 'Plus Jakarta Sans, sans-serif', fontSize: '1.6rem', fontWeight: 800, letterSpacing: '-0.01em' }}>Course Coming Soon</h2>
+                <p style={{ margin: '0.5rem 0 0', color: 'rgba(255, 255, 255, 0.72)', fontSize: '0.9rem', lineHeight: 1.55 }}>
+                  Thank you for registering. Your access is confirmed and your seat is reserved.
+                </p>
+              </div>
+              <div style={{ padding: '1.75rem 2.5rem 2.25rem', textAlign: 'left' }}>
+                <p style={{ margin: '0 0 1.25rem', fontSize: '0.9rem', color: '#475569', lineHeight: 1.7 }}>
+                  We're putting the finishing touches on the video lectures and lessons. We'll notify you the moment the course goes live — no action needed on your side.
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.9rem 1rem', borderRadius: '12px', background: '#f8f7f3', border: '1px solid rgba(12, 22, 40, 0.06)' }}>
+                  <div style={{ background: 'linear-gradient(135deg, #9B7A3E, #7D6334)', borderRadius: '10px', width: '38px', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>
+                  </div>
+                  <div>
+                    <span style={{ display: 'block', fontSize: '0.78rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Stay Tuned</span>
+                    <span style={{ display: 'block', fontSize: '0.85rem', color: '#0c1628', fontWeight: 600 }}>We'll email you when your course is ready</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         </div>
       )}
 

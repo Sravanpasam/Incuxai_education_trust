@@ -5272,6 +5272,29 @@ footer {
   text-align: left;
 }
 
+.corp-course-title-row {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.2rem;
+}
+
+.corp-course-title-row .corp-course-title {
+  margin-bottom: 0;
+}
+
+.corp-course-hero-cta {
+  width: auto;
+  white-space: nowrap;
+  padding: 0 1.8rem;
+}
+
+.corp-course-title-row .panel-btn-register {
+  width: auto;
+  flex: 0 0 auto;
+}
+
 .corp-course-title {
   font-family: 'Space Grotesk', sans-serif;
   font-size: clamp(2.2rem, 5vw, 3.8rem);
@@ -6387,6 +6410,61 @@ footer {
   }
   .portal-header {
     padding: 1.25rem 1rem 0.75rem;
+  }
+}
+
+/* ============================================================
+   MAIN SITE HEADER — keep nav fully horizontal on all sizes
+   ============================================================ */
+@media (max-width: 991px) {
+  nav#main-nav {
+    display: flex;
+    flex-direction: row;
+    position: relative;
+    top: auto;
+    left: auto;
+    right: auto;
+    gap: 0.25rem;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    background: transparent;
+    backdrop-filter: none;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    margin: 0;
+    box-shadow: none;
+    max-height: none;
+    z-index: auto;
+    scrollbar-width: thin;
+  }
+  nav#main-nav.mobile-open {
+    display: flex;
+  }
+  nav#main-nav > a,
+  nav#main-nav > .nav-item > a {
+    padding: 0.35rem 0.6rem;
+    border-radius: 99px;
+    font-size: 0.78rem;
+    width: auto;
+    text-align: center;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  nav#main-nav > .nav-item > .dropdown {
+    display: none;
+  }
+  nav#main-nav > .nav-item:hover > .dropdown,
+  nav#main-nav > .nav-item:focus-within > .dropdown {
+    display: none;
+  }
+  .mobile-menu-toggle {
+    display: none;
+  }
+  header {
+    grid-template-columns: auto 1fr auto;
+    display: grid;
   }
 }
 

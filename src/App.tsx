@@ -3132,7 +3132,13 @@ export default function App() {
           <div className="corp-course-hero">
               <div className="corp-course-hero-inner">
                 <span className="section-tag" style={{ color: 'var(--secondary)' }}>AI 4 ALL Program</span>
-                <h1 className="corp-course-title">AI for HR Professionals</h1>
+                <div className="corp-course-title-row">
+                  <h1 className="corp-course-title">AI for HR Professionals</h1>
+                  <button className="panel-btn-register corp-course-hero-cta" onClick={() => navigate('/lms/sign-up')}>
+                    <span>Register & Unlock Course</span>
+                    <span>→</span>
+                  </button>
+                </div>
                 <p className="section-sub" style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: 'clamp(1rem, 2vw, 1.2rem)', margin: '1rem 0 1.5rem', lineHeight: '1.5' }}>
                   Transform your HR operations with AI-powered resume screening, employee sentiment analysis, predictive attrition models, and AI governance frameworks designed for human resource teams.
                 </p>
@@ -3197,10 +3203,6 @@ export default function App() {
                 <p className="panel-desc">
                   This course is exclusively for HR professionals. To gain access, register using your official company email address.
                 </p>
-                <button className="panel-btn-register" onClick={() => navigate('/lms/sign-up')}>
-                  <span>Register & Unlock Course</span>
-                  <span>→</span>
-                </button>
                 <div className="panel-requirements">
                   <h5 className="panel-req-title">Validation Checklist</h5>
                   <div className="panel-req-item"><span className="panel-req-bullet">•</span><span>Requires official corporate domain email</span></div>

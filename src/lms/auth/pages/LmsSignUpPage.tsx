@@ -380,12 +380,12 @@ export default function LmsSignUpPage() {
             </div>
             {form.password.length > 0 && (
               <div style={s.pwCheckBox}>
-                <span style={{ fontWeight: 600, fontSize: '0.78rem', color: '#e2e8f0', marginBottom: 4, display: 'block' }}>
+                <span style={{ fontWeight: 600, fontSize: '0.78rem', color: '#1e293b', marginBottom: 4, display: 'block' }}>
                   Password Requirements
                 </span>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px 12px' }}>
                   {pwItems.map((item) => (
-                    <span key={item.key} style={{ fontSize: '0.72rem', color: pwChecks[item.key] ? '#4ade80' : 'rgba(255,255,255,0.35)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span key={item.key} style={{ fontSize: '0.72rem', color: pwChecks[item.key] ? '#16a34a' : '#94a3b8', display: 'flex', alignItems: 'center', gap: 4 }}>
                       <span style={{ fontWeight: 700, fontSize: '0.8rem' }}>{pwChecks[item.key] ? '\u2713' : '\u25CB'}</span>
                       {item.label}
                     </span>
