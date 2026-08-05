@@ -48,6 +48,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="/course-dashboard" element={<CourseDashboard />} />
 
             {/* Main site (no auth required) */}
+            <Route path="/courses/ai-for-hr" element={<App />} />
             <Route path="*" element={<App />} />
           </Routes>
         </LmsAuthProvider>

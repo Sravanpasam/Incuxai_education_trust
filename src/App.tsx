@@ -185,6 +185,7 @@ export default function App() {
 
   // Show AI for HR popup after 1.5 seconds when the website is opened
   useEffect(() => {
+    if (window.location.pathname === '/courses/ai-for-hr') return;
     const timer = setTimeout(() => {
       const isVerified = localStorage.getItem('corp_otp_verified') === 'true';
       if (!isVerified) {
@@ -618,6 +619,11 @@ export default function App() {
       }
       window.scrollTo(0, 0);
     };
+
+    // Direct URL → AI for HR Professionals course page
+    if (window.location.pathname === '/courses/ai-for-hr') {
+      w.showPage('corporate-course');
+    }
 
     // Logins
     w.handleLoginBtn = () => {
@@ -2648,9 +2654,8 @@ export default function App() {
         <div className="logo" onClick={() => (window as any).showPage('home')} style={{ padding: '0', background: 'transparent', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <img src={logoImg} alt="IncuXai Logo" className="logo-icon" style={{ height: '45px', width: 'auto', borderRadius: '8px' }} />
           <div className="logo-text-group" style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.15' }}>
-            <span className="logo-title">IncuXai</span>
-            <span className="logo-subtitle">Education Trust</span>
-            <span className="logo-tagline">Ratan Tata Innovation Hub</span>
+            <span className="logo-title">IncuXai <span style={{ color: '#C5A059', WebkitTextFillColor: '#C5A059' }}>Education Trust</span></span>
+            <span className="logo-tagline">( In collaboration with Ratan Tata Innovation Hub )</span>
           </div>
         </div>
         <nav id="main-nav">

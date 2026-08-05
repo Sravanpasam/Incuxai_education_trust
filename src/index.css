@@ -161,12 +161,13 @@ header.scrolled, header.page-active {
 
 .logo-title {
   font-family: 'Inter', sans-serif;
-  font-size: 1.2rem;
+  font-size: 1.05rem;
   font-weight: 700;
   letter-spacing: 0.02em;
   color: #ffffff;
   -webkit-text-fill-color: #ffffff;
   background: none;
+  white-space: nowrap;
   transition: opacity 0.4s ease;
 }
 
@@ -184,12 +185,12 @@ header.scrolled, header.page-active {
 
 .logo-tagline {
   font-family: 'Inter', sans-serif;
-  font-size: 0.55rem;
+  font-size: 0.5rem;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.6);
   -webkit-text-fill-color: rgba(255, 255, 255, 0.6);
   background: none;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.03em;
   white-space: nowrap;
   transition: opacity 0.4s ease;
 }
