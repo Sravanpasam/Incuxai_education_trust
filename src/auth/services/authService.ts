@@ -217,14 +217,11 @@ export async function registerUser(data: {
     });
     if (res.ok) return await res.json();
     const errData = await res.json().catch(() => null);
-    if (errData && errData.message && res.status < 500) return errData;
-  } catch {}
-  const users = getLocalUsers();
-  const existing = users.find((u) => u.workEmail?.toLowerCase() === data.workEmail.toLowerCase());
-  if (existing) return { success: false, message: 'An account with this work email already exists. Please sign in.' };
-  const newUser = { id: `usr_${Date.now()}`, ...data, workEmail: data.workEmail.toLowerCase(), createdAt: new Date().toISOString() };
-  saveLocalUser(newUser);
-  return { success: true, token: `local_token_${Date.now()}`, user: { id: newUser.id, name: newUser.fullName, email: newUser.workEmail }, message: 'Account created successfully' };
+    if (errData && errData.message) return errData;
+    return { success: false, message: `Registration failed (${res.status}). Please try again.` };
+  } catch {
+    return { success: false, message: 'Cannot reach the authentication server. Your account was not created. Please try again later.' };
+  }
 }
 
 export async function resetPassword(email: string, newPassword: string): Promise<ApiResponse> {

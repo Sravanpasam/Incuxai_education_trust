@@ -9,7 +9,7 @@ const BCRYPT_ROUNDS = 10;
  *   id, full_name, personal_email, phone_number, company_name, role,
  *   work_email, password_hash, work_email_verified, created_at, updated_at
  */
-export async function createUser({ name, personalEmail, phone, workEmail, password, company, role, workEmailVerified = true }) {
+export async function createUser({ name, personalEmail, phone, workEmail, password, company, role, location, workEmailVerified = true }) {
   console.log('[UserService] createUser — inserting:', JSON.stringify({
     name,
     personalEmail,
@@ -18,6 +18,7 @@ export async function createUser({ name, personalEmail, phone, workEmail, passwo
     hasPassword: !!password,
     company,
     role,
+    location,
     workEmailVerified,
   }));
 
@@ -31,6 +32,7 @@ export async function createUser({ name, personalEmail, phone, workEmail, passwo
     work_email_verified: workEmailVerified,
     company_name: company || null,
     role: role || null,
+    location: location || null,
   };
   console.log('[UserService] createUser — insert payload columns:', Object.keys(insertData).join(', '));
 

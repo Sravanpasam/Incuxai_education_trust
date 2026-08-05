@@ -807,7 +807,7 @@ app.post('/api/update-volunteer-pass', async (req, res) => {
 });
 
 if (process.env.NODE_ENV !== 'production') {
-  const PORT = process.env.PORT || 3001;
+  const PORT = process.env.PAYMENT_PORT || 3001;
   app.listen(PORT, () => {
     console.log(`Razorpay backend running on http://localhost:${PORT}`);
   });

@@ -1,22 +1,17 @@
-import { useState, useEffect, useRef, useCallback, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import ietLogo from '../../../../picss/iet logo.png';
 import { validateWorkEmail } from '../../../auth/validation/emailValidation';
 import { validateCompanyEmail } from '../../../auth/validation/companyEmailValidation';
-import { sendOtp, verifyOtp, registerUser, loginUser, resendOtpApi, sendPersonalOtpApi } from '../../../auth/services/authService';
+import { registerUser } from '../../../auth/services/authService';
 import { useLmsAuth } from '../context/LmsAuthContext';
 import { useAuth } from '../../../auth/context/AuthContext';
 import RegistrationSuccessPopup from '../../../auth/components/RegistrationSuccessPopup';
 import { HR_ROLES } from '../../../auth/constants/hrRoles';
 
-const OTP_LENGTH = 6;
-const OTP_TIMER = 180;
-const RESEND_CD = 30;
-
-type Step = 'info' | 'otp';
-
 interface FormErrors {
   fullName?: string;
+  workEmail?: string;
   personalEmail?: string;
   phone?: string;
   companyName?: string;
@@ -53,25 +48,16 @@ export default function LmsSignUpPage() {
   const navigate = useNavigate();
   const { login: lmsLogin } = useLmsAuth();
   const { login: mainLogin } = useAuth();
-  const [step, setStep] = useState<Step>('info');
   const [showPopup, setShowPopup] = useState(false);
 
-  const handleBack = () => {
-    if (step === 'otp') setStep('info');
-    else navigate('/');
-  };
+  const handleBack = () => navigate('/');
+
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
-  const [workEmail, setWorkEmail] = useState('');
-  const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(''));
-  const [timer, setTimer] = useState(OTP_TIMER);
-  const [resendCd, setResendCd] = useState(RESEND_CD);
-  const [resendCount, setResendCount] = useState(0);
-  const [otpTarget, setOtpTarget] = useState<'work' | 'personal'>('work');
-  const refs = useRef<(HTMLInputElement | null)[]>([]);
 
   const [form, setForm] = useState({
     fullName: '',
+    workEmail: '',
     personalEmail: '',
     phone: '',
     companyName: '',
@@ -82,18 +68,6 @@ export default function LmsSignUpPage() {
   });
   const [errors, setErrors] = useState<FormErrors>({});
 
-  useEffect(() => {
-    if (step !== 'otp' || timer <= 0) return;
-    const id = setInterval(() => setTimer((p) => (p <= 1 ? 0 : p - 1)), 1000);
-    return () => clearInterval(id);
-  }, [step, timer]);
-
-  useEffect(() => {
-    if (step !== 'otp' || resendCd <= 0) return;
-    const id = setInterval(() => setResendCd((p) => (p > 0 ? p - 1 : 0)), 1000);
-    return () => clearInterval(id);
-  }, [step, resendCd]);
-
   const showToast = (type: 'success' | 'error', msg: string) => {
     setToast({ type, msg });
     setTimeout(() => setToast(null), 5000);
@@ -102,6 +76,17 @@ export default function LmsSignUpPage() {
   const validateInfo = (): boolean => {
     const e: FormErrors = {};
     if (!form.fullName.trim()) e.fullName = 'Full name is required.';
+    if (!form.workEmail.trim()) {
+      e.workEmail = 'Work email is required.';
+    } else {
+      const { valid, error } = validateWorkEmail(form.workEmail);
+      if (!valid) {
+        e.workEmail = error;
+      } else {
+        const companyCheck = validateCompanyEmail(form.workEmail, form.companyName);
+        if (!companyCheck.valid) e.workEmail = companyCheck.error;
+      }
+    }
     if (!form.personalEmail.trim()) {
       e.personalEmail = 'Personal email is required.';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.personalEmail)) {
@@ -127,85 +112,23 @@ export default function LmsSignUpPage() {
     return Object.keys(e).length === 0;
   };
 
-  const handleInfoSubmit = (e: FormEvent) => {
+  const handleCreateAccount = async (e: FormEvent) => {
     e.preventDefault();
     if (!validateInfo()) return;
-    setStep('otp');
-  };
-
-  const handleSendOtp = async () => {
-    if (otpTarget === 'work') {
-      const { valid, error } = validateWorkEmail(workEmail);
-      if (!valid) {
-        showToast('error', error!);
-        return;
-      }
-      const companyCheck = validateCompanyEmail(workEmail, form.companyName);
-      if (!companyCheck.valid) {
-        showToast('error', companyCheck.error!);
-        return;
-      }
-    }
-    const targetEmail = otpTarget === 'work' ? workEmail.trim().toLowerCase() : form.personalEmail.trim().toLowerCase();
     setLoading(true);
     try {
-      let res;
-      if (otpTarget === 'personal') {
-        res = await sendPersonalOtpApi(
-          workEmail.trim().toLowerCase(),
-          form.personalEmail.trim().toLowerCase(),
-          form.fullName,
-        );
-      } else {
-        res = await sendOtp(workEmail.trim().toLowerCase(), {
-          name: form.fullName.trim(),
-          personalEmail: form.personalEmail.trim().toLowerCase(),
-          phone: form.phone.trim(),
-          company: form.companyName.trim(),
-          role: form.role,
-          workEmail: workEmail.trim().toLowerCase(),
-          password: form.password,
-        });
-      }
-      if (res.success) {
-        showToast('success', res.message || 'OTP sent successfully!');
-        setTimer(OTP_TIMER);
-        setResendCd(RESEND_CD);
-        setOtp(Array(OTP_LENGTH).fill(''));
-        setResendCount((res as any).resendCount ?? 1);
-      } else {
-        showToast('error', res.message);
-      }
-    } catch (err: any) {
-      console.error('[LmsSignUp] sendOtp error:', err);
-      showToast('error', err?.message || 'Network error. Please check your connection and try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async (e: FormEvent) => {
-    e.preventDefault();
-    const code = otp.join('');
-    if (code.length !== OTP_LENGTH) {
-      showToast('error', 'Please enter the complete 6-digit code.');
-      return;
-    }
-    const verifyEmail = otpTarget === 'work' ? workEmail.trim().toLowerCase() : form.personalEmail.trim().toLowerCase();
-    setLoading(true);
-    try {
-      const res = await verifyOtp(verifyEmail, code, {
-        name: form.fullName.trim(),
+      const res = await registerUser({
+        fullName: form.fullName.trim(),
         personalEmail: form.personalEmail.trim().toLowerCase(),
         phone: form.phone.trim(),
-        company: form.companyName.trim(),
+        workEmail: form.workEmail.trim().toLowerCase(),
+        companyName: form.companyName.trim(),
+        location: form.location.trim(),
         role: form.role,
-        workEmail: workEmail.trim().toLowerCase(),
         password: form.password,
-        emailType: otpTarget,
       });
 
-      if (res.success && res.token && res.user?.name && res.user?.email) {
+      if (res.success && res.token && res.user) {
         lmsLogin(res.token, res.user.email, res.user.name, res.user.id);
         mainLogin(res.token, res.user.email, res.user.name, res.user.id);
         setShowPopup(true);
@@ -213,63 +136,12 @@ export default function LmsSignUpPage() {
         showToast('error', res.message || 'Failed to create account. Please try again.');
       }
     } catch (err: any) {
-      console.error('[LmsSignUp] verifyOtp error:', err);
+      console.error('[LmsSignUp] register error:', err);
       showToast('error', err?.message || 'Network error. Please try again.');
     } finally {
       setLoading(false);
     }
   };
-
-  const handleResend = async () => {
-    if (loading || resendCd > 0) return;
-    setResendCd(RESEND_CD);
-    setTimer(OTP_TIMER);
-    setOtp(Array(OTP_LENGTH).fill(''));
-    try {
-      const res = await resendOtpApi(
-        workEmail.trim().toLowerCase(),
-        form.personalEmail.trim().toLowerCase(),
-        resendCount,
-        form.fullName,
-      );
-      if (res.success) {
-        setResendCount((res as any).resendCount ?? resendCount + 1);
-        if ((res as any).recipient === 'personal') {
-          setOtpTarget('personal');
-        }
-        const recipient = (res as any).recipient === 'personal' ? 'Personal Email' : 'Work Email';
-        showToast('success', res.message || `OTP resent to your ${recipient}.`);
-      } else {
-        showToast('error', res.message);
-      }
-    } catch (err: any) {
-      console.error('[LmsSignUp] resend error:', err);
-      showToast('error', err?.message || 'Failed to resend code.');
-    }
-  };
-
-  const handleDigit = (i: number, v: string) => {
-    if (!/^\d*$/.test(v)) return;
-    const n = [...otp];
-    n[i] = v.slice(-1);
-    setOtp(n);
-    if (v && i < OTP_LENGTH - 1) refs.current[i + 1]?.focus();
-  };
-
-  const handleKey = (i: number, e: React.KeyboardEvent) => {
-    if (e.key === 'Backspace' && !otp[i] && i > 0) refs.current[i - 1]?.focus();
-  };
-
-  const handlePaste = (e: React.ClipboardEvent) => {
-    e.preventDefault();
-    const d = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, OTP_LENGTH);
-    const n = Array(OTP_LENGTH).fill('');
-    d.split('').forEach((c, i) => { n[i] = c; });
-    setOtp(n);
-    if (d.length) refs.current[Math.min(d.length, OTP_LENGTH - 1)]?.focus();
-  };
-
-  const fmt = (sec: number) => `${Math.floor(sec / 60)}:${(sec % 60).toString().padStart(2, '0')}`;
 
   const update = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -287,11 +159,11 @@ export default function LmsSignUpPage() {
     { key: 'special', label: 'One special character (!@#$%^&*...)' },
   ];
 
-  const handlePopupComplete = useCallback(() => {
+  const handlePopupComplete = () => {
     setShowPopup(false);
     window.history.replaceState(null, '', '/course-dashboard');
     navigate('/course-dashboard', { replace: true });
-  }, [navigate]);
+  };
 
   return (
     <div style={s.page}>
@@ -302,213 +174,115 @@ export default function LmsSignUpPage() {
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="15 18 9 12 15 6"/>
         </svg>
-        {step === 'otp' ? 'Back to Details' : 'Back to Home'}
+        Back to Home
       </button>
       <div style={s.card}>
         <div style={s.header}>
           <img src={ietLogo} alt="IncuXAI Education Trust" style={{ height: '52px', width: 'auto', borderRadius: '10px', objectFit: 'contain', margin: '0 auto 12px', display: 'block' }} />
           <h1 style={s.title}>Join Learning Hub</h1>
-          <p style={s.subtitle}>
-            {step === 'info'
-              ? 'Step 1 of 2 \u2014 Enter your personal details'
-              : otpTarget === 'work'
-                ? 'Step 2 of 2 \u2014 Verify your work email'
-                : 'Step 2 of 2 \u2014 Verify your personal email'
-            }
-          </p>
+          <p style={s.subtitle}>Create your account</p>
         </div>
 
-        {step === 'info' && (
-          <form onSubmit={handleInfoSubmit} style={s.form}>
-            <div style={s.row}>
-              <div style={s.field}>
-                <label style={s.label}>Full Name *</label>
-                <input type="text" value={form.fullName} onChange={(e) => update('fullName', e.target.value)}
-                  placeholder="John Doe" style={s.input} />
-                {errors.fullName && <span style={s.error}>{errors.fullName}</span>}
-              </div>
-              <div style={s.field}>
-                <label style={s.label}>Personal Email *</label>
-                <input type="email" value={form.personalEmail} onChange={(e) => update('personalEmail', e.target.value)}
-                  placeholder="john@gmail.com" style={s.input} />
-                {errors.personalEmail && <span style={s.error}>{errors.personalEmail}</span>}
-              </div>
+        <form onSubmit={handleCreateAccount} style={s.form}>
+          <div style={s.row}>
+            <div style={s.field}>
+              <label style={s.label}>Full Name *</label>
+              <input type="text" value={form.fullName} onChange={(e) => update('fullName', e.target.value)}
+                placeholder="John Doe" style={s.input} />
+              {errors.fullName && <span style={s.error}>{errors.fullName}</span>}
             </div>
-            <div style={s.row}>
-              <div style={s.field}>
-                <label style={s.label}>Phone Number *</label>
-                <input type="text" value={form.phone} onChange={(e) => update('phone', e.target.value)}
-                  placeholder="+91 98765 43210" style={s.input} />
-                {errors.phone && <span style={s.error}>{errors.phone}</span>}
-              </div>
-              <div style={s.field}>
-                <label style={s.label}>Location *</label>
-                <input type="text" value={form.location} onChange={(e) => update('location', e.target.value)}
-                  placeholder="City, State" style={s.input} />
-                {errors.location && <span style={s.error}>{errors.location}</span>}
-              </div>
+            <div style={s.field}>
+              <label style={s.label}>Work Email *</label>
+              <input type="email" value={form.workEmail} onChange={(e) => update('workEmail', e.target.value)}
+                placeholder="you@company.com" style={s.input} />
+              {errors.workEmail && <span style={s.error}>{errors.workEmail}</span>}
+              <span style={s.hint}>Only work/business emails are accepted and must match your company.</span>
             </div>
-            <div style={s.row}>
-              <div style={s.field}>
-                <label style={s.label}>Company Name *</label>
-                <input type="text" value={form.companyName} onChange={(e) => update('companyName', e.target.value)}
-                  placeholder="e.g. Microsoft" style={s.input} />
-                {errors.companyName && <span style={s.error}>{errors.companyName}</span>}
-              </div>
-              <div style={s.field}>
-                <label style={s.label}>Role *</label>
-                <select value={form.role} onChange={(e) => update('role', e.target.value)} style={s.input}>
-                  <option value="">Select Your HR Role</option>
-                  {HR_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
-                </select>
-                {errors.role && <span style={s.error}>{errors.role}</span>}
-              </div>
+          </div>
+          <div style={s.row}>
+            <div style={s.field}>
+              <label style={s.label}>Personal Email *</label>
+              <input type="email" value={form.personalEmail} onChange={(e) => update('personalEmail', e.target.value)}
+                placeholder="john@gmail.com" style={s.input} />
+              {errors.personalEmail && <span style={s.error}>{errors.personalEmail}</span>}
             </div>
-            <div style={s.row}>
-              <div style={s.field}>
-                <label style={s.label}>Password *</label>
-                <input type="password" value={form.password} onChange={(e) => update('password', e.target.value)}
-                  placeholder="Create a strong password" style={s.input} />
-                {errors.password && <span style={s.error}>{errors.password}</span>}
-              </div>
-              <div style={s.field}>
-                <label style={s.label}>Confirm Password *</label>
-                <input type="password" value={form.confirmPassword} onChange={(e) => update('confirmPassword', e.target.value)}
-                  placeholder="Re-enter password" style={s.input} />
-                {errors.confirmPassword && <span style={s.error}>{errors.confirmPassword}</span>}
-              </div>
+            <div style={s.field}>
+              <label style={s.label}>Phone Number *</label>
+              <input type="text" value={form.phone} onChange={(e) => update('phone', e.target.value)}
+                placeholder="+91 98765 43210" style={s.input} />
+              {errors.phone && <span style={s.error}>{errors.phone}</span>}
             </div>
-            {form.password.length > 0 && (
-              <div style={s.pwCheckBox}>
-                <span style={{ fontWeight: 600, fontSize: '0.78rem', color: '#1e293b', marginBottom: 4, display: 'block' }}>
-                  Password Requirements
-                </span>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px 12px' }}>
-                  {pwItems.map((item) => (
-                    <span key={item.key} style={{ fontSize: '0.72rem', color: pwChecks[item.key] ? '#16a34a' : '#94a3b8', display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <span style={{ fontWeight: 700, fontSize: '0.8rem' }}>{pwChecks[item.key] ? '\u2713' : '\u25CB'}</span>
-                      {item.label}
-                    </span>
-                  ))}
-                </div>
-                {form.confirmPassword.length > 0 && form.password !== form.confirmPassword && (
-                  <span style={{ fontSize: '0.72rem', color: '#f87171', marginTop: 4, display: 'block' }}>
-                    Passwords do not match.
+          </div>
+          <div style={s.row}>
+            <div style={s.field}>
+              <label style={s.label}>Company Name *</label>
+              <input type="text" value={form.companyName} onChange={(e) => update('companyName', e.target.value)}
+                placeholder="e.g. Microsoft" style={s.input} />
+              {errors.companyName && <span style={s.error}>{errors.companyName}</span>}
+            </div>
+            <div style={s.field}>
+              <label style={s.label}>Location *</label>
+              <input type="text" value={form.location} onChange={(e) => update('location', e.target.value)}
+                placeholder="City, State" style={s.input} />
+              {errors.location && <span style={s.error}>{errors.location}</span>}
+            </div>
+          </div>
+          <div style={s.row}>
+            <div style={s.field}>
+              <label style={s.label}>Role *</label>
+              <select value={form.role} onChange={(e) => update('role', e.target.value)} style={s.input}>
+                <option value="">Select Your HR Role</option>
+                {HR_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+              </select>
+              {errors.role && <span style={s.error}>{errors.role}</span>}
+            </div>
+          </div>
+          <div style={s.row}>
+            <div style={s.field}>
+              <label style={s.label}>Password *</label>
+              <input type="password" value={form.password} onChange={(e) => update('password', e.target.value)}
+                placeholder="Create a strong password" style={s.input} />
+              {errors.password && <span style={s.error}>{errors.password}</span>}
+            </div>
+            <div style={s.field}>
+              <label style={s.label}>Confirm Password *</label>
+              <input type="password" value={form.confirmPassword} onChange={(e) => update('confirmPassword', e.target.value)}
+                placeholder="Re-enter password" style={s.input} />
+              {errors.confirmPassword && <span style={s.error}>{errors.confirmPassword}</span>}
+            </div>
+          </div>
+          {form.password.length > 0 && (
+            <div style={s.pwCheckBox}>
+              <span style={{ fontWeight: 600, fontSize: '0.78rem', color: '#1e293b', marginBottom: 4, display: 'block' }}>
+                Password Requirements
+              </span>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px 12px' }}>
+                {pwItems.map((item) => (
+                  <span key={item.key} style={{ fontSize: '0.72rem', color: pwChecks[item.key] ? '#16a34a' : '#94a3b8', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ fontWeight: 700, fontSize: '0.8rem' }}>{pwChecks[item.key] ? '\u2713' : '\u25CB'}</span>
+                    {item.label}
                   </span>
-                )}
-              </div>
-            )}
-            <button type="submit" style={{ ...s.btn, opacity: !isPasswordStrong(form.password) && form.password.length > 0 ? 0.5 : 1 }}>
-              Continue
-            </button>
-            <p style={s.footer}>
-              Already have an account?{' '}
-              <Link to="/lms/sign-in" style={s.link}>Sign In</Link>
-            </p>
-          </form>
-        )}
-
-        {step === 'otp' && (
-          <form onSubmit={handleVerifyOtp} style={s.form}>
-            {otpTarget === 'work' ? (
-              <>
-                <label style={s.label}>Work Email Address *</label>
-                <input
-                  type="email"
-                  value={workEmail}
-                  onChange={(e) => setWorkEmail(e.target.value)}
-                  placeholder="you@company.com"
-                  style={s.input}
-                  autoFocus
-                  disabled={loading}
-                />
-                <p style={s.hint}>
-                  Only work/business emails are accepted. Your work email must match your company: <strong style={{ color: '#C5A059' }}>{form.companyName}</strong>
-                </p>
-                <button type="button" onClick={handleSendOtp}
-                  style={{ ...s.btn, opacity: loading || !workEmail.trim() ? 0.6 : 1, marginTop: '1rem' }}
-                  disabled={loading || !workEmail.trim()}>
-                  {loading ? (
-                    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                      <span style={s.spin} /> Sending...
-                    </span>
-                  ) : 'Send OTP'}
-                </button>
-              </>
-            ) : (
-              <>
-                <div style={{ background: 'rgba(201,162,39,0.1)', border: '1px solid rgba(201,162,39,0.3)', borderRadius: '10px', padding: '12px 16px', marginBottom: '12px' }}>
-                  <p style={{ margin: 0, fontSize: '0.82rem', color: '#C5A059', fontWeight: 600 }}>
-                    Work email not receiving OTP. Sending to your personal email instead.
-                  </p>
-                </div>
-                <label style={s.label}>Personal Email Address</label>
-                <input
-                  type="email"
-                  value={form.personalEmail}
-                  style={s.input}
-                  disabled
-                />
-                <button type="button" onClick={handleSendOtp}
-                  style={{ ...s.btn, opacity: loading ? 0.6 : 1, marginTop: '1rem' }}
-                  disabled={loading}>
-                  {loading ? (
-                    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                      <span style={s.spin} /> Sending...
-                    </span>
-                  ) : 'Send OTP to Personal Email'}
-                </button>
-              </>
-            )}
-            <div style={{ marginTop: '1.5rem' }}>
-              <label style={s.label}>Enter 6-digit OTP</label>
-              <div style={s.otpRow}>
-                {otp.map((d, i) => (
-                  <input
-                    key={i}
-                    ref={(el) => { refs.current[i] = el; }}
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={1}
-                    value={d}
-                    onChange={(e) => handleDigit(i, e.target.value)}
-                    onKeyDown={(e) => handleKey(i, e)}
-                    onPaste={handlePaste}
-                    style={{ ...s.otpBox, borderColor: d ? '#C5A059' : 'rgba(255,255,255,0.08)' }}
-                    disabled={loading}
-                  />
                 ))}
               </div>
-              <div style={s.timerRow}>
-                {timer > 0
-                  ? <>Code expires in <strong style={{ color: '#e2e8f0' }}>{fmt(timer)}</strong></>
-                  : <span style={{ color: '#f87171', fontWeight: 600 }}>Code expired</span>
-                }
-              </div>
-            </div>
-            <button type="submit" style={{ ...s.btn, opacity: loading || timer === 0 ? 0.6 : 1, marginTop: '1rem' }}
-              disabled={loading || timer === 0}>
-              {loading ? (
-                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                  <span style={s.spin} /> Creating Account...
+              {form.confirmPassword.length > 0 && form.password !== form.confirmPassword && (
+                <span style={{ fontSize: '0.72rem', color: '#f87171', marginTop: 4, display: 'block' }}>
+                  Passwords do not match.
                 </span>
-              ) : 'Verify OTP & Create Account'}
-            </button>
-            <div style={s.links}>
-              <button type="button" onClick={handleResend} disabled={resendCd > 0}
-                style={{ ...s.linkBtn, opacity: resendCd > 0 ? 0.5 : 1, cursor: resendCd > 0 ? 'not-allowed' : 'pointer' }}>
-                {resendCd > 0 ? `Resend in ${fmt(resendCd)}` : 'Resend Code'}
-              </button>
-              <button type="button" onClick={() => setStep('info')} style={s.linkBtn}>
-                Edit Details
-              </button>
+              )}
             </div>
-            <p style={{ ...s.footer, marginTop: '1rem' }}>
-              Already have an account?{' '}
-              <Link to="/lms/sign-in" style={s.link}>Sign In</Link>
-            </p>
-          </form>
-        )}
+          )}
+          <button type="submit" style={{ ...s.btn, opacity: loading ? 0.7 : 1 }} disabled={loading}>
+            {loading ? (
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <span style={s.spin} /> Creating Account...
+              </span>
+            ) : 'Create Account'}
+          </button>
+          <p style={s.footer}>
+            Already have an account?{' '}
+            <Link to="/lms/sign-in" style={s.link}>Sign In</Link>
+          </p>
+        </form>
       </div>
 
       {toast && (
@@ -573,21 +347,6 @@ const s: Record<string, React.CSSProperties> = {
     textAlign: 'center',
     borderBottom: '1px solid rgba(255,255,255,0.1)',
   },
-  brandIcon: {
-    width: '48px',
-    height: '48px',
-    borderRadius: '12px',
-    background: 'linear-gradient(135deg, #9B7A3E, #7D6334)',
-    color: '#ffffff',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontFamily: 'Plus Jakarta Sans, sans-serif',
-    fontWeight: 800,
-    fontSize: '1.3rem',
-    margin: '0 auto 14px',
-    boxShadow: '0 4px 14px rgba(155, 122, 62, 0.35)',
-  },
   title: { margin: 0, color: '#ffffff', fontSize: '1.35rem', fontWeight: 700, fontFamily: 'Plus Jakarta Sans, sans-serif' },
   subtitle: { margin: '8px 0 0', color: 'rgba(255,255,255,0.75)', fontSize: '0.85rem' },
   form: { padding: '1.5rem 2rem 2rem' },
@@ -607,7 +366,7 @@ const s: Record<string, React.CSSProperties> = {
     color: '#0c1628',
   },
   error: { fontSize: '0.72rem', color: '#EF4444', marginTop: '2px' },
-  hint: { marginTop: '6px', fontSize: '0.75rem', color: '#64748b', lineHeight: 1.4 },
+  hint: { marginTop: '4px', fontSize: '0.72rem', color: '#64748b', lineHeight: 1.35 },
   pwCheckBox: {
     padding: '12px 14px',
     background: '#f8f7f3',
@@ -632,18 +391,6 @@ const s: Record<string, React.CSSProperties> = {
   spin: {
     width: '16px', height: '16px', border: '2px solid rgba(255,255,255,0.3)',
     borderTopColor: '#ffffff', borderRadius: '50%', animation: 'lmsSpin2 0.6s linear infinite',
-  },
-  otpRow: { display: 'flex', gap: '8px', justifyContent: 'center', marginBottom: '0.5rem' },
-  otpBox: {
-    width: '48px', height: '56px', textAlign: 'center', fontSize: '1.5rem', fontWeight: 700,
-    fontFamily: "'Courier New', monospace", border: '1.5px solid rgba(12, 22, 40, 0.12)', borderRadius: '10px',
-    outline: 'none', background: '#f8f7f3', color: '#0c1628',
-  },
-  timerRow: { textAlign: 'center', fontSize: '0.85rem', color: '#64748b', marginBottom: '0.5rem' },
-  links: { display: 'flex', justifyContent: 'center', gap: '1.5rem', marginTop: '1rem' },
-  linkBtn: {
-    background: 'none', border: 'none', color: '#9B7A3E', fontWeight: 600,
-    fontSize: '0.85rem', fontFamily: 'Inter, sans-serif', textDecoration: 'underline', cursor: 'pointer',
   },
   footer: { textAlign: 'center', fontSize: '0.85rem', color: '#64748b' },
   link: { color: '#9B7A3E', fontWeight: 600, textDecoration: 'none' },

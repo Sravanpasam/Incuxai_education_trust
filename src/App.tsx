@@ -2645,11 +2645,12 @@ export default function App() {
 
       {/* ========== HEADER ========== */}
       <header>
-        <div className="logo" onClick={() => (window as any).showPage('home')} style={{ padding: '0', background: 'transparent', borderRadius: '12px', overflow: 'hidden', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div className="logo" onClick={() => (window as any).showPage('home')} style={{ padding: '0', background: 'transparent', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <img src={logoImg} alt="IncuXai Logo" className="logo-icon" style={{ height: '45px', width: 'auto', borderRadius: '8px' }} />
-          <div className="logo-text-group" style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.1' }}>
+          <div className="logo-text-group" style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.15' }}>
             <span className="logo-title">IncuXai</span>
             <span className="logo-subtitle">Education Trust</span>
+            <span className="logo-tagline">Ratan Tata Innovation Hub</span>
           </div>
         </div>
         <nav id="main-nav">
@@ -3207,7 +3208,7 @@ export default function App() {
                   <h5 className="panel-req-title">Validation Checklist</h5>
                   <div className="panel-req-item"><span className="panel-req-bullet">•</span><span>Requires official corporate domain email</span></div>
                   <div className="panel-req-item"><span className="panel-req-bullet">•</span><span>No personal domains (gmail, yahoo, etc.) accepted</span></div>
-                  <div className="panel-req-item"><span className="panel-req-bullet">•</span><span>6-Digit secure OTP code verification</span></div>
+                  <div className="panel-req-item"><span className="panel-req-bullet">•</span><span>Secure password-protected account</span></div>
                 </div>
               </div>
             </div>

@@ -309,7 +309,7 @@ export async function verifyOtp(req, res) {
  */
 export async function register(req, res) {
   try {
-    const { fullName, personalEmail, phone, workEmail, password, company, role } = req.body;
+    const { fullName, personalEmail, phone, workEmail, password, company, companyName, role, location } = req.body;
 
     if (!fullName || !personalEmail || !phone || !password) {
       return res.status(400).json({ success: false, message: 'All fields are required.' });
@@ -330,8 +330,9 @@ export async function register(req, res) {
       phone,
       workEmail,
       password,
-      company,
+      company: company || companyName,
       role,
+      location,
     });
 
     if (error) {
