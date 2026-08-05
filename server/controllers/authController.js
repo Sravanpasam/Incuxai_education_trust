@@ -437,7 +437,7 @@ export async function login(req, res) {
 
 /**
  * POST /api/auth/reset-password
- * Resets user password after OTP verification (by personal email).
+ * Reset s user password after OTP verification (by personal email).
  */
 export async function resetPassword(req, res) {
   try {
