@@ -1488,7 +1488,7 @@ export default function CourseDashboard() {
       <nav className="lms-mobile-nav">
         <button className={`lms-mnav-tab ${currentPage === 'dashboard' ? 'active' : ''}`} onClick={() => setCurrentPage('dashboard')}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0h4"/></svg>
-          <span>Home</span>
+          <span>Dashboard</span>
         </button>
         <button className={`lms-mnav-tab ${currentPage === 'course' ? 'active' : ''}`} onClick={() => setCurrentPage('course')}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
@@ -2153,8 +2153,8 @@ header.lms-header, .lms-header{position:sticky !important;top:0 !important;left:
   .lms-enrolled-card{flex-direction:column;text-align:center;align-items:center}
   .lms-enrolled-cta{width:100%;justify-content:center}
   .lms-enrolled-meta{flex-direction:column;gap:4px}
-  .lms-mobile-nav{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:1001;background:#0c1628;border-top:1px solid rgba(255,255,255,0.1);box-shadow:0 -4px 20px rgba(0,0,0,0.3)}
-  .lms-mnav-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:10px 4px 8px;background:none;border:none;color:rgba(255,255,255,0.55);font-family:'Inter',sans-serif;font-size:0.62rem;font-weight:600;cursor:pointer;transition:all 0.2s}
+  .lms-mobile-nav{display:flex;position:fixed;bottom:0;left:0;right:0;width:100%;max-width:100%;margin:0;padding:0;z-index:1001;background:#0c1628;border-top:1px solid rgba(255,255,255,0.1);box-shadow:0 -4px 20px rgba(0,0,0,0.3)}
+  .lms-mnav-tab{flex:1 1 0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:10px 4px 8px;background:none;border:none;border-radius:0;color:rgba(255,255,255,0.55);font-family:'Inter',sans-serif;font-size:0.62rem;font-weight:600;cursor:pointer;transition:all 0.2s;min-width:0}
   .lms-mnav-tab span{white-space:nowrap}
   .lms-mnav-tab.active{color:#ffffff;background:linear-gradient(180deg,rgba(155,122,62,0.15),rgba(155,122,62,0.02))}
   .lms-mnav-tab.active svg{color:#C5A059}
