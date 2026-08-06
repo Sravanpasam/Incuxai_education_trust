@@ -701,8 +701,37 @@ export default function CourseDashboard() {
               </button>
             </div>
 
-            {/* Course Overview */}
+            {/* Enrolled Course */}
             <div className="lms-section-card">
+              <h3 className="lms-section-title">
+                <BookOpen size={18} style={{ color: '#9B7A3E' }} />
+                My Enrolled Course
+              </h3>
+              <div className="lms-enrolled-card" onClick={() => setCurrentPage('course')}>
+                <div className="lms-enrolled-icon">
+                  <BookOpen size={28} style={{ color: '#ffffff' }} />
+                </div>
+                <div className="lms-enrolled-info">
+                  <span className="lms-enrolled-status">Active Enrollment</span>
+                  <h4 className="lms-enrolled-course-name">{HR_COURSE.title}</h4>
+                  <p className="lms-enrolled-course-sub">{HR_COURSE.subtitle}</p>
+                  <div className="lms-enrolled-bar">
+                    <div className="lms-enrolled-fill" style={{ width: `${progressPercent}%` }} />
+                  </div>
+                  <div className="lms-enrolled-meta">
+                    <span>{completedCount}/{totalLessons} lessons completed</span>
+                    <span className="lms-enrolled-pct">{progressPercent}%</span>
+                  </div>
+                </div>
+                <button className="lms-enrolled-cta">
+                  Continue Learning
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+
+            {/* Course Overview */}
+            <div className="lms-section-card lms-hidden">
               <h3 className="lms-section-title">
                 <BookOpen size={18} style={{ color: '#9B7A3E' }} />
                 Course Overview
@@ -1481,6 +1510,25 @@ export default function CourseDashboard() {
           </div>
         </div>
       )}
+      {/* Mobile Bottom Navigation */}
+      <nav className="lms-mobile-nav">
+        <button className={`lms-mnav-tab ${currentPage === 'dashboard' ? 'active' : ''}`} onClick={() => setCurrentPage('dashboard')}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0h4"/></svg>
+          <span>Home</span>
+        </button>
+        <button className={`lms-mnav-tab ${currentPage === 'course' ? 'active' : ''}`} onClick={() => setCurrentPage('course')}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+          <span>Course</span>
+        </button>
+        <button className={`lms-mnav-tab ${currentPage === 'certificate' ? 'active' : ''}`} onClick={() => setCurrentPage('certificate')}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
+          <span>Certificate</span>
+        </button>
+        <button className={`lms-mnav-tab ${currentPage === 'profile' ? 'active' : ''}`} onClick={() => setCurrentPage('profile')}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span>Profile</span>
+        </button>
+      </nav>
     </div>
   );
 }
@@ -1561,6 +1609,9 @@ header.lms-header, .lms-header{position:sticky !important;top:0 !important;left:
 .lms-hamburger:hover{background:rgba(255,255,255,0.1);color:#ffffff}
 .lms-sidebar-toggle{background:none;border:none;cursor:pointer;padding:6px;color:rgba(255,255,255,0.7);border-radius:8px;transition:all 0.15s}
 .lms-sidebar-toggle:hover{background:rgba(255,255,255,0.1);color:#ffffff}
+
+/* Mobile Bottom Navigation */
+.lms-mobile-nav{display:none}
 
 .lms-body{display:flex;flex:1;overflow:hidden;position:relative}
 
@@ -1735,6 +1786,7 @@ header.lms-header, .lms-header{position:sticky !important;top:0 !important;left:
 
 /* Page Layout: Dashboard */
 .lms-dash{max-width:1040px;margin:0 auto}
+.lms-hidden{display:none !important}
 .lms-dash-welcome{display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;padding:36px;background:linear-gradient(135deg,#0c1628 0%,#1e3a5f 100%);color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:20px;box-shadow:0 12px 32px rgba(12,22,40,0.25)}
 .lms-dash-welcome-left{max-width:620px}
 .lms-dash-pill{display:inline-flex;align-items:center;gap:6px;font-size:0.72rem;font-weight:700;color:#C5A059;background:rgba(155,122,62,0.15);padding:5px 14px;border-radius:99px;border:1px solid rgba(155,122,62,0.3);margin-bottom:14px;text-transform:uppercase;letter-spacing:0.5px}
@@ -1977,6 +2029,22 @@ header.lms-header, .lms-header{position:sticky !important;top:0 !important;left:
 .lms-overview-module-fill{height:100%;border-radius:100px;background:linear-gradient(90deg,#9B7A3E,#C5A059);transition:width 0.5s cubic-bezier(0.4,0,0.2,1)}
 .lms-overview-module-pct{font-size:0.72rem;font-weight:600;color:#64748b}
 
+/* Enrolled course card */
+.lms-section-card{background:#ffffff;border:1px solid rgba(12,22,40,0.08);border-radius:20px;padding:24px;box-shadow:0 8px 30px rgba(12,22,40,0.04)}
+.lms-enrolled-card{display:flex;align-items:center;gap:20px;padding:22px 24px;border:1px solid rgba(12,22,40,0.08);border-radius:16px;background:linear-gradient(135deg,#f8f7f3 0%,#ffffff 100%);cursor:pointer;transition:all 0.25s cubic-bezier(0.4,0,0.2,1)}
+.lms-enrolled-card:hover{border-color:rgba(155,122,62,0.35);box-shadow:0 10px 30px rgba(12,22,40,0.08);transform:translateY(-2px)}
+.lms-enrolled-icon{width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,#9B7A3E,#7D6334);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 6px 18px rgba(155,122,62,0.3)}
+.lms-enrolled-info{flex:1;min-width:0}
+.lms-enrolled-status{display:inline-block;font-size:0.68rem;font-weight:700;color:#059669;background:rgba(5,150,105,0.1);padding:3px 10px;border-radius:99px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px}
+.lms-enrolled-course-name{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.15rem;color:#0c1628;margin:0 0 4px}
+.lms-enrolled-course-sub{font-size:0.82rem;color:#64748b;margin:0 0 14px;line-height:1.4}
+.lms-enrolled-bar{height:7px;background:rgba(12,22,40,0.08);border-radius:100px;overflow:hidden;margin-bottom:8px}
+.lms-enrolled-fill{height:100%;border-radius:100px;background:linear-gradient(90deg,#9B7A3E,#C5A059);transition:width 0.5s cubic-bezier(0.4,0,0.2,1)}
+.lms-enrolled-meta{display:flex;align-items:center;justify-content:space-between;font-size:0.75rem;color:#64748b;font-weight:500}
+.lms-enrolled-pct{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;color:#9B7A3E}
+.lms-enrolled-cta{display:inline-flex;align-items:center;gap:6px;padding:11px 20px;border:none;border-radius:99px;background:linear-gradient(135deg,#9B7A3E,#7D6334);color:#ffffff;font-size:0.85rem;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;transition:all 0.3s cubic-bezier(0.16,1,0.3,1);box-shadow:0 6px 18px rgba(155,122,62,0.3)}
+.lms-enrolled-cta:hover{background:#B89047;transform:translateY(-2px);box-shadow:0 10px 24px rgba(155,122,62,0.4)}
+
 .lms-actions-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
 .lms-action-card{display:flex;flex-direction:column;align-items:center;gap:10px;padding:18px 12px;border:1px solid rgba(12,22,40,0.06);border-radius:14px;background:#f8f7f3;cursor:pointer;font-family:inherit;transition:all 0.25s cubic-bezier(0.4,0,0.2,1)}
 .lms-action-card:hover{border-color:rgba(155,122,62,0.3);transform:translateY(-3px);box-shadow:0 8px 24px rgba(12,22,40,0.08)}
@@ -2077,8 +2145,16 @@ header.lms-header, .lms-header{position:sticky !important;top:0 !important;left:
   .lms-right-panel{display:none}
 }
 @media(max-width:768px){
-  .lms-hamburger{display:flex}
+  .lms-header{padding:0 12px;gap:8px}
+  .lms-header-nav{display:none}
+  .lms-hamburger{display:flex;align-items:center;justify-content:center;width:40px;height:40px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.14);border-radius:10px;color:#ffffff;flex-shrink:0}
   .lms-sidebar-toggle{display:none}
+  .lms-brand-icon{width:32px;height:32px;font-size:0.95rem}
+  .lms-brand-text{display:none}
+  .lms-progress-wrap{width:auto;padding:4px 10px}
+  .lms-hr{gap:8px}
+  .lms-avatar{width:34px;height:34px}
+  .lms-logout-btn{width:34px;height:34px}
   .lms-sidebar{position:fixed;top:64px;left:0;bottom:0;z-index:950;width:300px;min-width:300px;transform:translateX(-100%);transition:transform 0.3s cubic-bezier(0.4,0,0.2,1)}
   .lms-sidebar.mobile-open{transform:translateX(0);box-shadow:4px 0 24px rgba(0,0,0,0.3)}
   .lms-sidebar.closed{width:300px;min-width:300px;opacity:0;transform:translateX(-100%)}
@@ -2086,7 +2162,8 @@ header.lms-header, .lms-header{position:sticky !important;top:0 !important;left:
   .lms-video-section{padding:20px 18px 0}
   .lms-tab-content{padding:20px 18px 28px}
   .lms-tabs{padding:0 18px;overflow-x:auto}
-  .lms-page-content{padding:24px 18px}
+  .lms-page-content{padding:24px 18px 92px}
+  .lms-main{padding-bottom:80px}
   .lms-dash-welcome{flex-direction:column;text-align:center;gap:20px}
   .lms-dash-grid{grid-template-columns:1fr}
   .lms-dash-course-card{flex-direction:column;text-align:center}
@@ -2099,18 +2176,34 @@ header.lms-header, .lms-header{position:sticky !important;top:0 !important;left:
   .lms-overview-header{flex-direction:column;text-align:center}
   .lms-overview-stats{justify-content:center}
   .lms-schedule-speed-grid{grid-template-columns:repeat(2,1fr)}
+  .lms-enrolled-card{flex-direction:column;text-align:center;align-items:center}
+  .lms-enrolled-cta{width:100%;justify-content:center}
+  .lms-enrolled-meta{flex-direction:column;gap:4px}
+  .lms-mobile-nav{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:1001;background:#0c1628;border-top:1px solid rgba(255,255,255,0.1);box-shadow:0 -4px 20px rgba(0,0,0,0.3)}
+  .lms-mnav-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:10px 4px 8px;background:none;border:none;color:rgba(255,255,255,0.55);font-family:'Inter',sans-serif;font-size:0.62rem;font-weight:600;cursor:pointer;transition:all 0.2s}
+  .lms-mnav-tab span{white-space:nowrap}
+  .lms-mnav-tab.active{color:#ffffff;background:linear-gradient(180deg,rgba(155,122,62,0.15),rgba(155,122,62,0.02))}
+  .lms-mnav-tab.active svg{color:#C5A059}
+  .lms-mnav-tab:active{background:rgba(255,255,255,0.08)}
 }
 @media(max-width:480px){
-  .lms-header{padding:0 12px;height:64px}
-  .lms-brand-icon{width:32px;height:32px;font-size:0.95rem}
+  .lms-header{padding:0 10px;height:60px}
+  .lms-brand-icon{width:30px;height:30px;font-size:0.9rem}
   .lms-brand-sub{display:none}
-  .lms-brand-group{padding:4px 4px}
+  .lms-brand-group{padding:4px 2px;gap:8px}
+  .lms-brand{font-size:0.98rem}
+  .lms-hamburger{width:38px;height:38px}
+  .lms-progress-wrap{display:none}
   .lms-video-section{padding:16px 14px 0}
-  .lms-page-content{padding:20px 14px}
+  .lms-page-content{padding:18px 12px 88px}
   .lms-profile-stats-grid{grid-template-columns:1fr}
   .lms-actions-grid{grid-template-columns:1fr}
   .lms-quick-actions{grid-template-columns:1fr}
   .lms-achievements-grid{flex-wrap:wrap}
+  .lms-hero-card{padding:20px 16px}
+  .lms-video-title{font-size:1.15rem}
+  .lms-mnav-tab{padding:9px 2px 8px;font-size:0.58rem}
+  .lms-sidebar{top:60px}
 }
 `;
 

@@ -5626,6 +5626,57 @@ footer {
   font-weight: bold;
 }
 
+/* Course details sidebar card */
+.panel-details {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 0.4rem;
+}
+
+.panel-detail-item {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.9rem 1rem;
+  background: rgba(10, 18, 31, 0.03);
+  border: 1px solid rgba(10, 18, 31, 0.06);
+  border-radius: 12px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.panel-detail-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(10, 18, 31, 0.06);
+}
+
+.panel-detail-icon {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+.panel-detail-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  text-align: left;
+}
+
+.panel-detail-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.panel-detail-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--primary);
+  line-height: 1.4;
+}
+
 /* Locked modules overlay look */
 .curriculum-module.locked {
   opacity: 0.75;
