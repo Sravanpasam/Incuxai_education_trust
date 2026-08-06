@@ -111,60 +111,6 @@ const aiCategories: any[] = [
   }
 ];
 
-const hrCurriculum = [
-  {
-    section: "Section 1: AI in Talent Acquisition & Recruitment",
-    videos: [
-      {
-        title: "1.1 Automated Resume Screening with GPT-4",
-        duration: "12m",
-        description: "Learn how to parse resumes, rank applicants, and extract candidate skills using structured prompt patterns.",
-        videoUrl: "https://www.youtube.com/embed/a0_lo_GDcFw"
-      },
-      {
-        title: "1.2 Designing Interactive Screening Chatbots",
-        duration: "15m",
-        description: "Build custom chatbots that conduct initial behavioral screenings and answer applicant questions automatically.",
-        videoUrl: "https://www.youtube.com/embed/0yCJMt9Mx9c"
-      }
-    ]
-  },
-  {
-    section: "Section 2: Employee Retention & Sentiment Analytics",
-    videos: [
-      {
-        title: "2.1 Sentiment Analysis of Annual Surveys",
-        duration: "18m",
-        description: "Leverage natural language processing to gauge team satisfaction, identify burnout hotspots, and summarize feedback.",
-        videoUrl: "https://www.youtube.com/embed/qYNweeDHiyU"
-      },
-      {
-        title: "2.2 Predictive Attrition Models with LLMs",
-        duration: "20m",
-        description: "Use case studies to analyze risk factors and preemptively flag high-performing employee turnover trends.",
-        videoUrl: "https://www.youtube.com/embed/a0_lo_GDcFw"
-      }
-    ]
-  },
-  {
-    section: "Section 3: AI Policies, Ethics & Governance",
-    videos: [
-      {
-        title: "3.1 Data Privacy & GDPR in HR Tech",
-        duration: "14m",
-        description: "Understand legal guidelines when processing candidate and employee data using public and private LLM APIs.",
-        videoUrl: "https://www.youtube.com/embed/0yCJMt9Mx9c"
-      },
-      {
-        title: "3.2 Eliminating Bias in AI Hiring Algorithms",
-        duration: "22m",
-        description: "Implement fairness constraints and verify model outputs to prevent bias against gender, race, or age.",
-        videoUrl: "https://www.youtube.com/embed/qYNweeDHiyU"
-      }
-    ]
-  }
-];
-
 // Standalone Quiz Questions for Student Portal
 const quizBank = [
   { q: 'What does AI stand for?', opts: ['Automatic Internet', 'Artificial Intelligence', 'Advanced Information', 'Automated Interface'], ans: 1 },
@@ -201,7 +147,6 @@ export default function App() {
 
   // --- CORPORATE COURSE SYSTEM STATES ---
   const [showHrPopup, setShowHrPopup] = useState(false);
-  const [corpExpandedModule, setCorpExpandedModule] = useState<number | null>(null);
 
   // Show AI for HR popup after 1.5 seconds when the website is opened
   useEffect(() => {
@@ -3161,7 +3106,7 @@ export default function App() {
                 <div className="corp-course-title-row">
                   <h1 className="corp-course-title">AI for HR Professionals</h1>
                   <button className="panel-btn-register corp-course-hero-cta" onClick={() => navigate('/lms/sign-up')}>
-                    <span>Register & Unlock Course</span>
+                    <span>Register Now</span>
                     <span>→</span>
                   </button>
                 </div>
@@ -3194,47 +3139,48 @@ export default function App() {
                   <div className="outcome-card"><div className="outcome-check">✓</div><div className="outcome-text">Build Predictive Attrition & Retention Models</div></div>
                   <div className="outcome-card"><div className="outcome-check">✓</div><div className="outcome-text">Ensure AI Ethics, GDPR Compliance & Bias-Free Hiring</div></div>
                 </div>
-
-                <h3 className="corp-section-title">📋 Course Curriculum</h3>
-                <div className="curriculum-list">
-                  {hrCurriculum.map((sec, sIdx) => (
-                    <div key={sIdx} className={`curriculum-module ${corpExpandedModule === sIdx ? 'expanded' : ''}`}>
-                      <div className="curriculum-module-header" onClick={() => setCorpExpandedModule(corpExpandedModule === sIdx ? null : sIdx)}>
-                        <div className="curriculum-module-title-group">
-                          <span className="curriculum-module-badge">Section {sIdx + 1}</span>
-                          <span className="curriculum-module-title">{sec.section.split(': ')[1] || sec.section}</span>
-                        </div>
-                        <span className="curriculum-module-icon">▼</span>
-                      </div>
-                      <div className="curriculum-module-body">
-                        <div className="curriculum-module-content">
-                          <ul className="curriculum-lessons-list">
-                            {sec.videos.map((vid, vIdx) => (
-                              <li key={vIdx} className="curriculum-lesson-item">
-                                <span className="curriculum-lesson-bullet"></span>
-                                <span>{vid.title} ({vid.duration})</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
               </div>
 
               <div className="sidebar-panel">
-                <span className="panel-lock-icon">🔒</span>
-                <h4 className="panel-title">Work Email Verification Required</h4>
-                <p className="panel-desc">
-                  This course is exclusively for HR professionals. To gain access, register using your official company email address.
-                </p>
-                <div className="panel-requirements">
-                  <h5 className="panel-req-title">Validation Checklist</h5>
-                  <div className="panel-req-item"><span className="panel-req-bullet">•</span><span>Requires official corporate domain email</span></div>
-                  <div className="panel-req-item"><span className="panel-req-bullet">•</span><span>No personal domains (gmail, yahoo, etc.) accepted</span></div>
-                  <div className="panel-req-item"><span className="panel-req-bullet">•</span><span>Secure password-protected account</span></div>
+                <span className="panel-lock-icon">📘</span>
+                <h4 className="panel-title">Course Details</h4>
+                <div className="panel-details">
+                  <div className="panel-detail-item">
+                    <span className="panel-detail-icon">⏳</span>
+                    <div className="panel-detail-text">
+                      <span className="panel-detail-label">Duration</span>
+                      <span className="panel-detail-value">6 lectures · ~101 min</span>
+                    </div>
+                  </div>
+                  <div className="panel-detail-item">
+                    <span className="panel-detail-icon">🎓</span>
+                    <div className="panel-detail-text">
+                      <span className="panel-detail-label">Level</span>
+                      <span className="panel-detail-value">Beginner to Intermediate</span>
+                    </div>
+                  </div>
+                  <div className="panel-detail-item">
+                    <span className="panel-detail-icon">📜</span>
+                    <div className="panel-detail-text">
+                      <span className="panel-detail-label">Certification</span>
+                      <span className="panel-detail-value">Certificate of Completion</span>
+                    </div>
+                  </div>
+                  <div className="panel-detail-item">
+                    <span className="panel-detail-icon">👥</span>
+                    <div className="panel-detail-text">
+                      <span className="panel-detail-label">Who It's For</span>
+                      <span className="panel-detail-value">HR professionals & talent teams</span>
+                    </div>
+                  </div>
                 </div>
+                <p className="panel-desc" style={{ marginTop: '1.5rem', marginBottom: '0' }}>
+                  Register for free and start learning today.
+                </p>
+                <button className="panel-btn-register" onClick={() => navigate('/lms/sign-up')}>
+                  <span>Register Now</span>
+                  <span>→</span>
+                </button>
               </div>
             </div>
       </div>

@@ -5626,6 +5626,57 @@ footer {
   font-weight: bold;
 }
 
+/* Course details sidebar card */
+.panel-details {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 0.4rem;
+}
+
+.panel-detail-item {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.9rem 1rem;
+  background: rgba(10, 18, 31, 0.03);
+  border: 1px solid rgba(10, 18, 31, 0.06);
+  border-radius: 12px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.panel-detail-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(10, 18, 31, 0.06);
+}
+
+.panel-detail-icon {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+.panel-detail-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  text-align: left;
+}
+
+.panel-detail-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.panel-detail-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--primary);
+  line-height: 1.4;
+}
+
 /* Locked modules overlay look */
 .curriculum-module.locked {
   opacity: 0.75;
@@ -6435,61 +6486,6 @@ footer {
   }
   .portal-header {
     padding: 1.25rem 1rem 0.75rem;
-  }
-}
-
-/* ============================================================
-   MAIN SITE HEADER — keep nav fully horizontal on all sizes
-   ============================================================ */
-@media (max-width: 991px) {
-  nav#main-nav {
-    display: flex;
-    flex-direction: row;
-    position: relative;
-    top: auto;
-    left: auto;
-    right: auto;
-    gap: 0.25rem;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    background: transparent;
-    backdrop-filter: none;
-    border: none;
-    border-radius: 0;
-    padding: 0;
-    margin: 0;
-    box-shadow: none;
-    max-height: none;
-    z-index: auto;
-    scrollbar-width: thin;
-  }
-  nav#main-nav.mobile-open {
-    display: flex;
-  }
-  nav#main-nav > a,
-  nav#main-nav > .nav-item > a {
-    padding: 0.35rem 0.6rem;
-    border-radius: 99px;
-    font-size: 0.78rem;
-    width: auto;
-    text-align: center;
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-  nav#main-nav > .nav-item > .dropdown {
-    display: none;
-  }
-  nav#main-nav > .nav-item:hover > .dropdown,
-  nav#main-nav > .nav-item:focus-within > .dropdown {
-    display: none;
-  }
-  .mobile-menu-toggle {
-    display: none;
-  }
-  header {
-    grid-template-columns: auto 1fr auto;
-    display: grid;
   }
 }
 
